@@ -1,0 +1,5 @@
+        <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <version>3.0.0</version> <!-- Update this version as needed to match your Spring Boot version -->
+            <scope>runtime</scope>
+        </dependency>
