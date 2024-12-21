@@ -6,8 +6,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import org.bson.Document;
+//import org.bson.Document;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -24,26 +25,24 @@ import org.springframework.web.bind.annotation.RequestParam;
 @CrossOrigin
 public class MyController {
 
-    private final MongoDB db;
+    private final FriendService service;
     
     @GetMapping("allFriends")
-    public ArrayList<Document> getAllFriends() {
-        ArrayList<Document> result = new ArrayList<>();
-        result = db.findAll();
+    public List<Friend> getAllFriends() {
+        List<Friend> result = service.getAllFriends();
         return result;
     }
 
     @GetMapping("thisWeek")
-    public ArrayList<Document> getWeekFriends() {
-        ArrayList<Document> result = new ArrayList<>();
-        result = db.findThisWeek();
+    public List<Friend> getWeekFriends() {
+        List<Friend> result = service.findThisWeek();
         return result;
     }
 
     @PostMapping("/addFriend")
     public ResponseEntity<String> addFriend(@Valid @RequestBody Friend friend) {
         try {
-            db.insertFriend(friend);
+            service.save(friend);
             //System.out.println(friend.getName() +"  "+ friend.getExperience() +"  "+ friend.getDateOfBirth().toString() +"  "+ friend.getLastTimeSpoken().toString());
             return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
         } catch (Exception e) {
@@ -53,17 +52,13 @@ public class MyController {
     }
 
     @DeleteMapping("/deleteFriend/{id}")
-    public ResponseEntity<String> deleteFriend(@PathVariable String id) {
+    public ResponseEntity<String> deleteFriend(@PathVariable Integer id) {
         try {
             // Attempt to delete the friend by ID
-            boolean isDeleted = db.deleteFriendById(id);
-            
-            if (isDeleted) {
-                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Friend deleted successfully!");
-            } else {
-                // If no friend was found with the given ID
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend not found.");
-            }
+            //int idInt = Integer.parseInt(id);
+            service.deleteFriendById(id);
+
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Friend deleted successfully!");
             
         } catch (Exception e) {
             System.err.println("Error deleting friend: " + e.getMessage());

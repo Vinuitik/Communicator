@@ -28,13 +28,6 @@
             <version>${spring.boot.version}</version>
         </dependency>
 
-        <!-- Spring Boot Starter Data MongoDB -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-            <version>${spring.boot.version}</version>
-        </dependency>
-
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -50,20 +43,20 @@
             <version>3.3</version> <!-- Latest version -->
         </dependency>
 
+        <!-- Spring Boot DevTools -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
-            <version>3.0.0</version> <!-- Update this version as needed to match your Spring Boot version -->
+            <version>${spring.boot.version}</version>
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Spring Boot Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
             <version>${spring.boot.version}</version>
         </dependency>
-
-
 
         <!-- Spring Boot Test -->
         <dependency>
@@ -71,6 +64,14 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <version>${spring.boot.version}</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- PostgreSQL Driver -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+            <version>42.6.1</version> <!-- Correct driver version -->
         </dependency>
     </dependencies>
 
