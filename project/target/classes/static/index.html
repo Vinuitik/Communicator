@@ -15,35 +15,6 @@
 
 <body>
 
-    <!-- Add Friend Form -->
-<div id="addFriendForm" class="modal hidden">
-    <div class="modal-content">
-        <h2>Add Friend</h2>
-        <form id="friendForm">
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name" placeholder="Enter full name" required>
-            
-            <label for="lastSpoken">Last Time Spoken:</label>
-            <input type="date" id="lastSpoken" name="lastSpoken" required>
-            
-            <label for="experience">Experience:</label>
-            <select id="experience" name="experience">
-                <option value="***">Great!</option>
-                <option value="**">Okay</option>
-                <option value="*">Bad</option>
-            </select>
-            
-            <label for="dob">Date of Birth:</label>
-            <input type="date" id="dob" name="dob" required>
-            
-            <div class="form-buttons">
-                <button type="submit" class="button">Submit</button>
-                <button type="button" id="cancelForm" class="button">Cancel</button>
-            </div>
-        </form>
-    </div>
-</div>
-
     <div class="container">
         <h1>Friends Tracker</h1>
         <!-- Table for displaying friend data -->
@@ -64,7 +35,7 @@
 
         <!-- Buttons at the bottom -->
         <div class="button-container">
-            <button class="button" id="addFriend">Add Friend</button>
+            <a href="addForm.html" class="button">Add Friend</a>
             <button class="button" id="viewAllFriends">View All Friends</button>
             <button class="button" id="viewWeek">View This Week Planned</button>
             <button class="button" id="viewStats">View Stats</button>
@@ -72,7 +43,7 @@
     </div>
 
     <!-- Link to external JavaScript -->
-    <script src="app.js"></script>
+    <script src="index.js"></script>
 </body>
 
 </html>

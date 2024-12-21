@@ -71,14 +71,17 @@ td {
 
 /* Button styling */
 .button {
-    background-color: #4a90e2;
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
     color: white;
+    background-color: #4682b4;
     border: none;
     border-radius: 5px;
-    padding: 12px 20px;
+    text-align: center;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    font-weight: 500;
 }
 
 .button:hover {
