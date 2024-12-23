@@ -1,6 +1,7 @@
 package communicate;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import lombok.Getter;
@@ -25,6 +26,7 @@ import jakarta.validation.constraints.Size;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Data
 public class Friend {
 
     @Id

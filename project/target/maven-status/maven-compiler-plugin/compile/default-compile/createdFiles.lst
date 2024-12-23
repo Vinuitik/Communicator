@@ -1,5 +1,6 @@
 communicate\FriendRepository.class
 communicate\FriendService.class
+communicate\WebController.class
 communicate\Friend.class
 communicate\MyController.class
 communicate\Main.class

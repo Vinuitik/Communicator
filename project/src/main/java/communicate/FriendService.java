@@ -4,6 +4,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -79,6 +80,29 @@ public class FriendService {
            System.out.print("Error deleting friends " + e.toString());
         }
         return false;
+    }
+
+    @Transactional
+    public void updateFriend(Integer id, Friend friend){
+        Optional<Friend> friendDBOptional = friendRepository.findById(id);
+        if (friendDBOptional.isPresent()) {
+            Friend friendDB = friendDBOptional.get();
+            if(friendDB.getName() == null || friend.getName()!= null){
+                friendDB.setName(friend.getName());
+            }
+            if(friendDB.getLastTimeSpoken() == null || friend.getLastTimeSpoken()!= null){
+                friendDB.setLastTimeSpoken(friend.getLastTimeSpoken());
+            }
+            if(friendDB.getExperience() == null || friend.getExperience()!= null){
+                friendDB.setExperience(friend.getExperience());
+            }
+            if(friendDB.getDateOfBirth() == null || friend.getDateOfBirth()!= null){
+                friendDB.setDateOfBirth(friend.getDateOfBirth());
+            }
+            friendRepository.save(friendDB);
+        } else {
+            System.out.print("Friend not found with id " + id);
+        }
     }
 
 

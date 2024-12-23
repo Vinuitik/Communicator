@@ -20,7 +20,7 @@ async function viewRequest(endpoint) {
                 <td>${friend.dateOfBirth}</td>
                 <td>
                     <button class="button delete-button">Delete</button>
-                    <button class="button">Talked</button>
+                    <a href="addForm.html" class="button">Talked</a>
                     <button class="button">Knowledge</button>
                 </td>
             `;
@@ -66,3 +66,5 @@ document.getElementById('viewWeek').addEventListener('click', fetchWeekFriends);
 document.getElementById('viewStats').addEventListener('click', () => {
     alert('View Stats button clicked!');
 });
+
+window.onload = fetchWeekFriends;

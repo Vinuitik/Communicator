@@ -2,6 +2,7 @@ package communicate;
 
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
+
 
 
 @RestController
@@ -65,6 +68,29 @@ public class MyController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while deleting the friend.");
         }
     }
+
+    @PutMapping("talkedToFriend/{id}")
+    public ResponseEntity<String> updateFriend(
+            @PathVariable Integer id, 
+            @RequestBody Friend friend) {
+
+        try {
+            // Call the service method to update the friend
+            service.updateFriend(id, friend);
+
+            // Return a success message with HTTP status 200 (OK)
+            return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
+        } catch (EntityNotFoundException e) {
+            // If the entity is not found, return a 404 (Not Found)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body("Friend with ID " + id + " not found.");
+        } catch (Exception e) {
+            // For other errors, return a 500 (Internal Server Error)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("An error occurred while updating the friend: " + e.getMessage());
+        }
+    }
+
 
 
 
