@@ -35,11 +35,17 @@ public class FriendService {
             LocalDate sundayDate = getSunday(LocalDate.now());
             int currentYear = LocalDate.now().getYear();
 
+            System.out.println(mondayDate.toString());
+            System.out.println(sundayDate.toString());
+
             List<Friend> friends = friendRepository.findAll();
             List<Friend> result = new ArrayList<Friend>();
             for(Friend friend:friends){
 
-                LocalDate dateOfBirth = friend.getDateOfBirth().withYear(currentYear);
+                LocalDate dateOfBirth = friend.getDateOfBirth();
+                if(dateOfBirth!= null){
+                    dateOfBirth = dateOfBirth.withYear(currentYear);
+                }
                 LocalDate lastTimeSpoken = friend.getLastTimeSpoken();
 
                 if( isBetween(dateOfBirth, mondayDate, sundayDate) || isBetween(lastTimeSpoken, mondayDate, sundayDate)){
@@ -108,7 +114,10 @@ public class FriendService {
 
 
     private boolean isBetween(LocalDate date, LocalDate left, LocalDate right) {
-        return date.isEqual(right)||date.isEqual(right)||( date.isAfter(left) && date.isBefore(right) );
+        if(date == null){
+            return false;
+        }
+        return ((date.isEqual(left))||(date.isEqual(right))||( date.isAfter(left) && date.isBefore(right) ));
     }
 
     

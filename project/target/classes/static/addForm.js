@@ -5,14 +5,14 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     const name = document.getElementById('name').value.trim();
     const lastSpoken = formatDate(document.getElementById('lastSpoken').value);
     const experience = document.getElementById('experience').value;
-    const dob = formatDate(document.getElementById('dob').value);
+    const dobField = document.getElementById('dob').value;
+    const dob = dobField ? formatDate(dobField) : null; // Set to null if empty
 
-    // Prepare data to send to backend
     const friendData = {
         name: name,
         lastTimeSpoken: lastSpoken,
         experience: experience,
-        dateOfBirth: dob
+        dateOfBirth: dob, // Pass null if dob is not provided
     };
 
     // Log for debugging (replace with actual backend call)

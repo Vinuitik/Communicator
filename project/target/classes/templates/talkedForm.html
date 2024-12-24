@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Tracker</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+
+    <!-- Add Friend Form -->
+    <div id="addFriendForm">
+        <div class="modal-content">
+            <h2 th:text="${friend != null} ? 'Edit Friend' : 'Add Friend'"></h2>
+            <form id="friendForm" th:action="@{/friends/save}" th:method="post">
+                <!-- Hidden field to hold ID -->
+                <input type="hidden" id="friend-id" name="id" th:value="${friend.id}">
+
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" placeholder="Enter full name" 
+                       th:value="${friend.name}" required>
+
+                <label for="experience">Experience:</label>
+                <select id="experience" name="experience">
+                    <option th:selected="${friend.experience == '***'}" value="***">Great!</option>
+                    <option th:selected="${friend.experience == '**'}" value="**">Okay</option>
+                    <option th:selected="${friend.experience == '*'}" value="*">Bad</option>
+                </select>
+
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" th:value="${friend.dateOfBirth != null ? friend.dateOfBirth : ''}">
+
+                <div class="form-buttons">
+                    <button type="submit" class="button">Submit</button>
+                    <a href="/index" class="button">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Link to external JavaScript -->
+    <script src="../talkedForm.js"></script>
+</body>
+
+</html>

@@ -3,7 +3,7 @@ package communicate;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import lombok.ToString;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -27,6 +27,7 @@ import jakarta.validation.constraints.Size;
 @NoArgsConstructor
 @Entity
 @Data
+@ToString
 public class Friend {
 
     @Id

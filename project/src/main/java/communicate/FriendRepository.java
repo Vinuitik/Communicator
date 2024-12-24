@@ -8,11 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FriendRepository extends JpaRepository<Friend, Integer> {
     // Custom query method (derived query)
     List<Friend> findByName(String name);
+
+    Optional<Friend> findById(Integer id);
 
     @Query("SELECT f FROM Friend f WHERE " +
        "(f.lastTimeSpoken >= :mondayDate AND f.lastTimeSpoken <= :sundayDate) AND " +

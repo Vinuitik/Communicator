@@ -20,7 +20,7 @@ async function viewRequest(endpoint) {
                 <td>${friend.dateOfBirth}</td>
                 <td>
                     <button class="button delete-button">Delete</button>
-                    <a href="addForm.html" class="button">Talked</a>
+                    <a href="talked/${friend.id}" class="button">Talked</a>
                     <button class="button">Knowledge</button>
                 </td>
             `;
