@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friendship Analytics</title>
+    <link rel="stylesheet" href="analytics.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Friendship Analytics</h1>
+        <p class="subtitle">Visualizing the key factors of friendship: Duration, Frequency, and Intensity</p>
+
+        <!-- Filters Section -->
+        <div class="filters">
+            <label for="date-range">Select Date Range:</label>
+            <input type="date" id="start-date">
+            <input type="date" id="end-date">
+            <button class="button" id="apply-filters">Apply Filters</button>
+        </div>
+
+        <!-- Graph Section -->
+        <div class="graph-section">
+            <div class="graph">
+                <h3>Duration (Hours)</h3>
+                <!-- Placeholder for Duration Graph -->
+                <canvas id="durationChart"></canvas>
+            </div>
+            <div class="graph">
+                <h3>Frequency (Talks)</h3>
+                <!-- Placeholder for Frequency Graph -->
+                <canvas id="frequencyChart"></canvas>
+            </div>
+            <div class="graph">
+                <h3>Intensity (Stars)</h3>
+                <!-- Placeholder for Intensity Graph -->
+                <canvas id="intensityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="data-table">
+            <h3>Friendship Data</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Friend's Name</th>
+                        <th>Date</th>
+                        <th>Duration (Hours)</th>
+                        <th>Frequency</th>
+                        <th>Intensity (Stars)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data rows will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Action Button -->
+        <div class="button-container">
+            <button class="button" id="add-data-btn">Add Data</button>
+        </div>
+    </div>
+
+    <script src="chart.js"></script>
+    <script src="analytics.js"></script>
+</body>
+</html>

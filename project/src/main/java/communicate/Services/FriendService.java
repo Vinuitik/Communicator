@@ -1,4 +1,4 @@
-package communicate;
+package communicate.Services;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import communicate.Entities.Friend;
+import communicate.Repository.FriendRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 

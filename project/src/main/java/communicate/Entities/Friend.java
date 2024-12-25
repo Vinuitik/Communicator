@@ -1,4 +1,4 @@
-package communicate;
+package communicate.Entities;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,12 +9,15 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.PastOrPresent;
@@ -50,9 +53,12 @@ public class Friend {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    //private LinkedList<String> facts;
+    @OneToMany(mappedBy = "friend")
+    private List<Knowledge> knowledge;
 
-    //private HashMap<LocalDate, String> experienceHistory;
+    @OneToMany(mappedBy = "friend")
+    private List<Analytics> analytics;
+    
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         this.name = name;

@@ -1,7 +1,9 @@
-package communicate;
+package communicate.Controller;
 
 import org.springframework.web.bind.annotation.RestController;
 
+import communicate.Entities.Friend;
+import communicate.Services.FriendService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

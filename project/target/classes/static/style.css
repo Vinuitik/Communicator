@@ -62,14 +62,53 @@ td {
     border-bottom: 1px solid #e1e4e8;
 }
 
-/* Bottom button container styling */
-.button-container {
-    display: flex;
-    justify-content: space-around;
+/* Input Form Container */
+.input-form-container {
     margin-top: 20px;
+    padding: 20px;
+    background-color: #ffffff;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
-/* Button styling */
+h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: 500;
+    color: #333;
+}
+
+.input-form-container form {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-form-container form label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.input-form-container form textarea, 
+.input-form-container form input {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+
+textarea {
+    resize: vertical;
+    height: 100px;
+}
+
+input[type="number"] {
+    max-width: 100px;
+}
+
+/* Button Styling */
 .button {
     display: inline-block;
     padding: 10px 20px;
@@ -88,10 +127,11 @@ td {
     background-color: #357ab8;
 }
 
-/* Small animation for focus */
-.button:focus {
-    outline: none;
-    box-shadow: 0px 0px 5px 2px rgba(70, 130, 180, 0.5);
+/* Bottom button container styling */
+.button-container {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
 }
 
 /* Modal Styling */

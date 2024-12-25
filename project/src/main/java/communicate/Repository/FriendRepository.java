@@ -1,10 +1,11 @@
-package communicate;
+package communicate.Repository;
 
-import communicate.Friend;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import communicate.Entities.Friend;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,7 +22,7 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
        "(f.lastTimeSpoken >= :mondayDate AND f.lastTimeSpoken <= :sundayDate) AND " +
        "(EXTRACT(YEAR FROM f.dateOfBirth) = :currentYear AND " +
        "f.dateOfBirth >= :mondayDate AND f.dateOfBirth <= :sundayDate)")
-List<Friend> findFriendsWithBirthdaysThisWeek(@Param("mondayDate") LocalDate mondayDate,
+    List<Friend> findFriendsWithBirthdaysThisWeek(@Param("mondayDate") LocalDate mondayDate,
                                               @Param("sundayDate") LocalDate sundayDate,
                                               @Param("currentYear") int currentYear);
 
