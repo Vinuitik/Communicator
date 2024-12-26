@@ -16,18 +16,22 @@ import lombok.RequiredArgsConstructor;
 public class WebController {
 
     private final FriendService friendService;
-    private final FriendRepository friendRepository;
 
     @GetMapping("/talked/{id}")
     public String showFriendForm(@PathVariable(required = false) Integer id, Model model) {
-        Friend friend = id != null ? friendRepository.findById(id).orElse(new Friend()) : new Friend();
+        Friend friend = friendService.findById(id);
         model.addAttribute("friend", friend);
         return "talkedForm"; // Your Thymeleaf template name
     }
 
     @GetMapping("index")
-    public String getMethodName() {
+    public String index() {
         return "forward:/index.html";
+    }
+
+    @GetMapping("stats")
+    public String stats() {
+        return "forward:/analytics.html";
     }
     
 }

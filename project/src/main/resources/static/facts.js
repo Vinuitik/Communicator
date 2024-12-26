@@ -10,11 +10,36 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create table cells for Fact and Importance
         const factCell = document.createElement('td');
         factCell.textContent = fact;
+
+        // Make the Fact cell editable
+        factCell.setAttribute('contenteditable', 'true');
+        factCell.addEventListener('blur', () => {
+            // You can commit the changes to the database here when the user stops editing
+            console.log('Fact updated:', factCell.textContent);
+        });
         newRow.appendChild(factCell);
 
         const importanceCell = document.createElement('td');
         importanceCell.textContent = importance;
         newRow.appendChild(importanceCell);
+
+        // Create a delete button cell
+        const deleteCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        
+        // Apply the existing "button" class for styling
+        deleteButton.classList.add('button');
+        
+        // Add the click event to remove the row
+        deleteButton.addEventListener('click', () => {
+            newRow.remove();  // Remove the row from the table
+            console.log('Fact deleted');
+            // You can also call a function here to remove the entry from the database
+        });
+        
+        deleteCell.appendChild(deleteButton);
+        newRow.appendChild(deleteCell);
 
         // Append the new row to the table body
         knowledgeTableBody.appendChild(newRow);

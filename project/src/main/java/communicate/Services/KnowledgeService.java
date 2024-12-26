@@ -1,5 +1,7 @@
 package communicate.Services;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
@@ -25,5 +27,10 @@ public class KnowledgeService {
 
         knowledgeRepository.save(knowledge);
 
+    }
+
+    @Transactional
+    public List<Knowledge> getKnowledgeByFriendId(Integer friendId){
+        return knowledgeRepository.findByFriendId(friendId);
     }
 }

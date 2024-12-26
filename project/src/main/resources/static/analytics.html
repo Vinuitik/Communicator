@@ -14,9 +14,27 @@
 
         <!-- Filters Section -->
         <div class="filters">
-            <label for="date-range">Select Date Range:</label>
-            <input type="date" id="start-date">
-            <input type="date" id="end-date">
+            <!-- Friend Selector -->
+            <div class="friend-selector">
+                <label for="friend-select">Select Friend:</label>
+                <select id="friend-select">
+                    <option value="1">John Doe</option>
+                    <option value="2">John Doe 2</option>
+                    <option value="3">John Doe 3</option>
+                    <option value="4">John Doe 4</option>
+                    <option value="5">John Doe 5</option>
+                </select>
+            </div>
+
+            <!-- Date Range -->
+            <div class="date-range">
+                <label for="start-date">Start Date:</label>
+                <input type="date" id="start-date">
+                <label for="end-date">End Date:</label>
+                <input type="date" id="end-date">
+            </div>
+
+            <!-- Apply Filters Button -->
             <button class="button" id="apply-filters">Apply Filters</button>
         </div>
 
@@ -24,17 +42,14 @@
         <div class="graph-section">
             <div class="graph">
                 <h3>Duration (Hours)</h3>
-                <!-- Placeholder for Duration Graph -->
                 <canvas id="durationChart"></canvas>
             </div>
             <div class="graph">
                 <h3>Frequency (Talks)</h3>
-                <!-- Placeholder for Frequency Graph -->
                 <canvas id="frequencyChart"></canvas>
             </div>
             <div class="graph">
                 <h3>Intensity (Stars)</h3>
-                <!-- Placeholder for Intensity Graph -->
                 <canvas id="intensityChart"></canvas>
             </div>
         </div>
@@ -52,7 +67,7 @@
                         <th>Intensity (Stars)</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="data-table-body">
                     <!-- Data rows will be dynamically inserted here -->
                 </tbody>
             </table>
@@ -64,7 +79,7 @@
         </div>
     </div>
 
-    <script src="chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="analytics.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import communicate.DTOs.ShortFriendDTO;
 import communicate.Entities.Friend;
 
 import java.time.LocalDate;
@@ -18,13 +19,8 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
 
     Optional<Friend> findById(Integer id);
 
-    @Query("SELECT f FROM Friend f WHERE " +
-       "(f.lastTimeSpoken >= :mondayDate AND f.lastTimeSpoken <= :sundayDate) AND " +
-       "(EXTRACT(YEAR FROM f.dateOfBirth) = :currentYear AND " +
-       "f.dateOfBirth >= :mondayDate AND f.dateOfBirth <= :sundayDate)")
-    List<Friend> findFriendsWithBirthdaysThisWeek(@Param("mondayDate") LocalDate mondayDate,
-                                              @Param("sundayDate") LocalDate sundayDate,
-                                              @Param("currentYear") int currentYear);
-
+    // Custom query to select id and name only
+    @Query("SELECT new communicate.DTOs.ShortFriendDTO(f.id, f.name) FROM Friend f")
+    List<ShortFriendDTO> findAllShortFriendDTOs();
         
 }

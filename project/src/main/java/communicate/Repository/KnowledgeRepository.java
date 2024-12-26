@@ -16,5 +16,5 @@ import java.util.Optional;
 
 @Repository
 public interface KnowledgeRepository extends JpaRepository<Knowledge, Integer> {
-    
+    public List<Knowledge> findByFriendId(Integer friendId);
 }

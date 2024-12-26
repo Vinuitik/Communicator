@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import communicate.DTOs.ShortFriendDTO;
 import communicate.Entities.Friend;
 import communicate.Repository.FriendRepository;
 import jakarta.transaction.Transactional;
@@ -48,7 +49,7 @@ public class FriendService {
                 if(dateOfBirth!= null){
                     dateOfBirth = dateOfBirth.withYear(currentYear);
                 }
-                LocalDate lastTimeSpoken = friend.getLastTimeSpoken();
+                LocalDate lastTimeSpoken = friend.getPlannedSpeakingTime();
 
                 if( isBetween(dateOfBirth, mondayDate, sundayDate) || isBetween(lastTimeSpoken, mondayDate, sundayDate)){
                     result.add(friend);
@@ -67,7 +68,7 @@ public class FriendService {
         try {
             friendRepository.save(friend);
         } catch (Exception e) {
-           System.out.print("Error savinf friends " + e.toString());
+           System.out.print("Error saving friends " + e.toString());
         }
     }
 
@@ -98,8 +99,8 @@ public class FriendService {
             if(friendDB.getName() == null || friend.getName()!= null){
                 friendDB.setName(friend.getName());
             }
-            if(friendDB.getLastTimeSpoken() == null || friend.getLastTimeSpoken()!= null){
-                friendDB.setLastTimeSpoken(friend.getLastTimeSpoken());
+            if(friendDB.getPlannedSpeakingTime() == null || friend.getPlannedSpeakingTime()!= null){
+                friendDB.setPlannedSpeakingTime(friend.getPlannedSpeakingTime());
             }
             if(friendDB.getExperience() == null || friend.getExperience()!= null){
                 friendDB.setExperience(friend.getExperience());
@@ -113,6 +114,23 @@ public class FriendService {
         }
     }
 
+    @Transactional
+    public Friend findById(Integer id){
+        if(id==null){
+            return new Friend();
+        }
+        return friendRepository.findById(id).orElse(new Friend());
+    }
+
+    @Transactional
+    public List<ShortFriendDTO> getCompressedList(){
+        try {
+            return friendRepository.findAllShortFriendDTOs();
+        } catch (Exception e) {
+            System.out.print("Error retrieving friends " + e.toString());
+        }
+        return new ArrayList<ShortFriendDTO>();
+    }
 
 
     private boolean isBetween(LocalDate date, LocalDate left, LocalDate right) {
@@ -142,22 +160,8 @@ public class FriendService {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    public void setMeetingTime(String stars, Friend friend){
-        LocalDate meetingDate = friend.getLastTimeSpoken();
+    public LocalDate setMeetingTime(String stars){
+        LocalDate meetingDate;
         switch (stars) {
             case "*":
                 meetingDate = LocalDate.now().plusDays(1);
@@ -171,6 +175,8 @@ public class FriendService {
                 meetingDate = LocalDate.now().plusMonths(1);
                 break;
         }
+
+        return meetingDate;
         
     }
 

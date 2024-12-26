@@ -15,7 +15,7 @@ async function viewRequest(endpoint) {
             row.setAttribute('data-id', friend.id); // Store the ID on the row element
             row.innerHTML = `
                 <td>${friend.name}</td>
-                <td>${friend.lastTimeSpoken}</td>
+                <td>${friend.plannedSpeakingTime}</td>
                 <td>${friend.experience}</td>
                 <td>${friend.dateOfBirth}</td>
                 <td>
@@ -63,8 +63,5 @@ async function fetchWeekFriends() {
 // Event listeners for buttons
 document.getElementById('viewAllFriends').addEventListener('click', fetchAllFriends);
 document.getElementById('viewWeek').addEventListener('click', fetchWeekFriends);
-document.getElementById('viewStats').addEventListener('click', () => {
-    alert('View Stats button clicked!');
-});
 
 window.onload = fetchWeekFriends;

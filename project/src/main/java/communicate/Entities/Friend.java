@@ -1,6 +1,7 @@
 package communicate.Entities;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
@@ -10,6 +11,8 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -30,7 +33,7 @@ import jakarta.validation.constraints.Size;
 @NoArgsConstructor
 @Entity
 @Data
-@ToString
+@Builder
 public class Friend {
 
     @Id
@@ -42,7 +45,7 @@ public class Friend {
     private String name;
 
     @NotNull(message = "Date is Required")
-    private LocalDate lastTimeSpoken;
+    private LocalDate plannedSpeakingTime;
 
     @NotNull(message = "Experience is required")
     @Size(max = 100, message = "Experience description must not exceed 100 characters")
@@ -54,16 +57,18 @@ public class Friend {
     private LocalDate dateOfBirth;
 
     @OneToMany(mappedBy = "friend")
+    @JsonManagedReference
     private List<Knowledge> knowledge;
 
     @OneToMany(mappedBy = "friend")
+    @JsonManagedReference
     private List<Analytics> analytics;
     
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
-        this.name = name;
-        this.lastTimeSpoken = lastTimeSpoken;
-        this.experience = experience;
-        this.dateOfBirth = dateOfBirth;
+        setName(name);
+        setPlannedSpeakingTime(lastTimeSpoken);
+        setExperience(experience);
+        setDateOfBirth(dateOfBirth);
     }
 }

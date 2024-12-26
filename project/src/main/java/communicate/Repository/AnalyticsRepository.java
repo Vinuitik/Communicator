@@ -15,5 +15,5 @@ import java.util.Optional;
 
 @Repository
 public interface AnalyticsRepository extends JpaRepository<Analytics, Integer> {
-        
+    List<Analytics> findByFriendIdAndDateBetween(Integer friendId, LocalDate leftDateBoundary, LocalDate rightDateBoundary);
 }
