@@ -61,7 +61,11 @@ public class MyController {
             friend.setPlannedSpeakingTime(plannedTime);
 
             System.out.println();
-            System.out.println(friend.getPlannedSpeakingTime());
+            List<Analytics> analytics = friend.getAnalytics();
+            if(analytics!=null){
+                System.out.println(analytics.get(0));
+            }
+            System.out.println("Hello World");
             System.out.println();
 
 
@@ -98,7 +102,17 @@ public class MyController {
 
         try {
             // Call the service method to update the friend
-            friendService.updateFriend(id, friend);
+
+            LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience());
+            friend.setPlannedSpeakingTime(plannedTime);
+
+            System.out.println();
+            System.out.println(friend);
+            System.out.println("Hello World");
+            System.out.println();
+
+            friend = friendService.updateFriend(id, friend);
+            analyticsService.saveAll(friend);
 
             // Return a success message with HTTP status 200 (OK)
             return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");

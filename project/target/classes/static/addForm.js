@@ -21,7 +21,7 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     };
     
     const analyticsData = [{
-        lastTimeSpoken: lastSpoken,
+        date: lastSpoken,
         experience: experience,
         hours: hours
     }];

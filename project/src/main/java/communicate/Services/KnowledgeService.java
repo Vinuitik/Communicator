@@ -33,4 +33,5 @@ public class KnowledgeService {
     public List<Knowledge> getKnowledgeByFriendId(Integer friendId){
         return knowledgeRepository.findByFriendId(friendId);
     }
+
 }

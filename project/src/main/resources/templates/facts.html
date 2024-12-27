@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head>
     <meta charset="UTF-8">
@@ -10,13 +10,34 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
 
     <!-- Link to external CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../style.css">
 </head>
 
 <body>
 
     <div class="container">
-        <h1>Knowledge Tracker</h1>
+        <h1 id="top">Knowledge Tracker</h1>
+
+
+        <h2>Committed Knowledge</h2>
+        <table id="committedTable">
+            <thead>
+                <tr>
+                    <th>Fact</th>
+                    <th>Importance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Example row for committed data (this would be dynamically populated from DB) -->
+                <tr>
+                    <td>Example committed fact</td>
+                    <td>5</td>
+                    <td><button class="button">Delete</button></td>
+                </tr>
+            </tbody>
+        </table>
+
         
         <!-- Table for displaying knowledge data -->
         <table id="knowledgeTable">
@@ -28,7 +49,14 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Dynamic content will be added here -->
+                <tr th:each="knowledge : ${knowledges}" data-id="${knowledge.id}">
+                    <td th:text="${knowledge.fact}" contenteditable=true></td>
+                    <td th:text="${knowledge.importance}" contenteditable=true></td>
+                    <td>
+                        <button class = "button" id = "updateKnowledgeBtn">Update</button>
+                        <button class = "Button" id = "deleteKnowledgeBtn">Delete</button>
+                    </td>
+                </tr>
             </tbody>
         </table>
 
@@ -45,10 +73,14 @@
                 <button type="submit" class="button" id="addKnowledgeBtn">Add Knowledge</button>
             </form>
         </div>
+
+        <button class="button large" id="submitInfoBtn">Submit Info</button>
     </div>
 
+    
+
     <!-- Link to external JavaScript -->
-    <script src="facts.js"></script>
+    <script src="../facts.js"></script>
 </body>
 
 </html>

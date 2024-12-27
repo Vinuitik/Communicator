@@ -38,6 +38,7 @@ public class Knowledge {
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference
+    @ToString.Exclude
     private Friend friend;
 
 }

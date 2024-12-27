@@ -216,12 +216,12 @@ input[type="number"] {
 }
 
 /* Optional: Ensure the table fits neatly */
-#knowledgeTable, #committedTable {
+#knowledgeTable {
     width: 100%;
     border-collapse: collapse;
 }
 
-#knowledgeTable th, #knowledgeTable td, #committedTable th, #committedTable td {
+#knowledgeTable th, #knowledgeTable td {
     padding: 10px;
     text-align: left;
     border: 1px solid #ddd;
@@ -244,25 +244,4 @@ input[type="number"] {
     .input-form-container {
         width: 100%; /* Use full width on smaller screens */
     }
-}
-
-#submitInfoBtn {
-    width: 100%; /* Make the button wide */
-    padding: 15px;
-    font-size: 18px;
-    color: white;
-    background-color: #4682b4;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    text-align: center;
-}
-
-#submitInfoBtn:hover {
-    background-color: #357ab8;
-}
-
-#top{
-    padding-top:20px;
 }

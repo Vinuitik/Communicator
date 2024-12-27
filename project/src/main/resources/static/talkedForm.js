@@ -1,30 +1,48 @@
 document.getElementById('friendForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Prevent default form submission
 
+
+    const today = formatDate(new Date());
+
+
     // Get form data
     const id = document.getElementById('friend-id').value;
     const name = document.getElementById('name').value.trim();
-    const lastSpoken = new Date();
+    const lastSpoken = formatDate(new Date());
     const experience = document.getElementById('experience').value;
     const dobField = document.getElementById('dob').value;
     const dob = dobField ? formatDate(dobField) : null; // Set to null if empty
+    const hours = parseFloat(document.getElementById('hours').value); // Ensure hours is a floating-point number
+
 
     // Prepare data to send to backend
+    // Create analytics object
     const friendData = {
         name: name,
-        lastTimeSpoken: lastSpoken,
+        plannedSpeakingTime: today,
         experience: experience,
         dateOfBirth: dob
     };
+    
+    const analyticsData = [{
+        date: lastSpoken,
+        experience: experience,
+        hours: hours
+    }];
+    
+    const requestData = {
+        ...friendData,
+        analytics: analyticsData
+    };
 
     // Log for debugging (replace with actual backend call)
-    console.log('Form data ready to send:', friendData);
+    console.log('Form data ready to send:', requestData);
 
     // Example of sending data to backend using fetch
     fetch(`/talkedToFriend/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(friendData)
+        body: JSON.stringify(requestData)
     })
     .then(response => {
         if (response.ok) {

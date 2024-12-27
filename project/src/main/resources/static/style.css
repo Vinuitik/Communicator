@@ -200,3 +200,69 @@ input[type="number"] {
 .delete-btn:hover {
     background-color: #d32f2f;
 }
+/* Class for fixed top-aligned containers */
+.fixed-top-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* Fixes alignment to the top */
+    height: 100%; /* Full height for the container */
+    max-height: 600px; /* Limit the height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    width: 100%; /* Ensure it spans its parent width */
+    border: 1px solid #ddd; /* Optional: for clarity */
+    padding: 10px; /* Add some padding for better appearance */
+    box-sizing: border-box; /* Include padding in height calculation */
+}
+
+/* Optional: Ensure the table fits neatly */
+#knowledgeTable, #committedTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#knowledgeTable th, #knowledgeTable td, #committedTable th, #committedTable td {
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+/* Adjust the width of the Add Knowledge form */
+.input-form-container {
+    width: 500px; /* Set the desired width */
+    max-width: 90%; /* Ensure it fits well on smaller screens */
+    padding: 20px; /* Add padding for spacing */
+    border: 1px solid #ddd; /* Optional: Add a border for clarity */
+    border-radius: 8px; /* Optional: Rounded corners */
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add shadow */
+    background-color: white; /* Ensure consistency with the theme */
+    margin: 0 auto; /* Center the form horizontally */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .input-form-container {
+        width: 100%; /* Use full width on smaller screens */
+    }
+}
+
+#submitInfoBtn {
+    width: 100%; /* Make the button wide */
+    padding: 15px;
+    font-size: 18px;
+    color: white;
+    background-color: #4682b4;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    text-align: center;
+}
+
+#submitInfoBtn:hover {
+    background-color: #357ab8;
+}
+
+#top{
+    padding-top:20px;
+}

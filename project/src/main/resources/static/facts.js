@@ -21,6 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const importanceCell = document.createElement('td');
         importanceCell.textContent = importance;
+        importanceCell.setAttribute('contenteditable', 'true');
+        importanceCell.addEventListener('blur', () => {
+            // You can commit the changes to the database here when the user stops editing
+            console.log('Importance updated:', factCell.textContent);
+        });
         newRow.appendChild(importanceCell);
 
         // Create a delete button cell

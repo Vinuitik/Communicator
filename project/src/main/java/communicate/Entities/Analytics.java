@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Data
@@ -35,5 +36,6 @@ public class Analytics {
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference
+    @ToString.Exclude
     private Friend friend;
 }

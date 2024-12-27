@@ -38,8 +38,12 @@ public class FriendService {
             LocalDate sundayDate = getSunday(LocalDate.now());
             int currentYear = LocalDate.now().getYear();
 
+            System.out.print("\n \n \n");
+
             System.out.println(mondayDate.toString());
             System.out.println(sundayDate.toString());
+
+            System.out.print("\n \n \n");
 
             List<Friend> friends = friendRepository.findAll();
             List<Friend> result = new ArrayList<Friend>();
@@ -51,7 +55,11 @@ public class FriendService {
                 }
                 LocalDate lastTimeSpoken = friend.getPlannedSpeakingTime();
 
-                if( isBetween(dateOfBirth, mondayDate, sundayDate) || isBetween(lastTimeSpoken, mondayDate, sundayDate)){
+                //System.out.println(friend);
+
+                System.out.print("\n \n");
+
+                if( isBetween(dateOfBirth, mondayDate, sundayDate) || isBefore(lastTimeSpoken, sundayDate)){
                     result.add(friend);
                 }
             }
@@ -92,27 +100,45 @@ public class FriendService {
     }
 
     @Transactional
-    public void updateFriend(Integer id, Friend friend){
+    public Friend updateFriend(Integer id, Friend friend) {
         Optional<Friend> friendDBOptional = friendRepository.findById(id);
         if (friendDBOptional.isPresent()) {
             Friend friendDB = friendDBOptional.get();
-            if(friendDB.getName() == null || friend.getName()!= null){
+            
+            boolean updated = false;
+
+            // Explicit comparison to ensure the entity is marked as modified
+            if (friend.getName() != null || friendDB.getName() == null) {
                 friendDB.setName(friend.getName());
+                updated = true;
             }
-            if(friendDB.getPlannedSpeakingTime() == null || friend.getPlannedSpeakingTime()!= null){
+
+            if (friend.getPlannedSpeakingTime() != null || friendDB.getPlannedSpeakingTime() == null) {
                 friendDB.setPlannedSpeakingTime(friend.getPlannedSpeakingTime());
+                updated = true;
             }
-            if(friendDB.getExperience() == null || friend.getExperience()!= null){
+
+            if (friend.getExperience() != null || friendDB.getExperience() == null) {
                 friendDB.setExperience(friend.getExperience());
+                updated = true;
             }
-            if(friendDB.getDateOfBirth() == null || friend.getDateOfBirth()!= null){
+
+            if (friend.getDateOfBirth() != null || friendDB.getDateOfBirth() == null) {
                 friendDB.setDateOfBirth(friend.getDateOfBirth());
+                updated = true;
             }
-            friendRepository.save(friendDB);
-        } else {
-            System.out.print("Friend not found with id " + id);
+
+            // Trigger save and flush even if no changes detected
+            if (updated || friendDB != null) {
+                friendRepository.save(friendDB);
+                friendRepository.flush();  // Forces flush to commit changes immediately
+                return friendDB;
+            }
         }
+        friendRepository.save(friend);
+        return friend;
     }
+
 
     @Transactional
     public Friend findById(Integer id){
@@ -137,7 +163,20 @@ public class FriendService {
         if(date == null){
             return false;
         }
-        return ((date.isEqual(left))||(date.isEqual(right))||( date.isAfter(left) && date.isBefore(right) ));
+        boolean equalsLeft = date.isEqual(left);
+        boolean equalsRight = date.isEqual(right);
+        boolean between = date.isAfter(left) && date.isBefore(right);
+        boolean result = equalsLeft || equalsRight || between;
+        //System.out.println(result + "\n \n " );
+        //result = date.isBefore(right); // update for forgetting / laziness
+        return result;
+    }
+
+    private Boolean isBefore(LocalDate date, LocalDate right){
+        if(date == null){
+            return false;
+        }
+        return date.isBefore(right) || date.isEqual(right);
     }
 
     
