@@ -29,10 +29,23 @@ public class AnalyticsService {
         }
     }
     @Transactional
+    public void saveAll(List<Analytics> analytics, Integer friendId){
+        try {
+            for(Analytics a :analytics){
+                Friend f = new Friend();
+                f.setId(friendId);
+                a.setFriend(f);
+                analyticsRepository.save(a);
+            }
+        } catch (Exception e) {
+           System.out.print("Error saving analytics " + e.toString());
+        }
+    }
+    @Transactional
     public void saveAll(Friend friend){
         try {
             List<Analytics> analytics = friend.getAnalytics();
-            for(Analytics a :analytics){
+            for(Analytics a :analytics){;
                 a.setFriend(friend);
                 analyticsRepository.save(a);
             }

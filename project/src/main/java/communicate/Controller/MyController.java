@@ -30,6 +30,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PutMapping;
 
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+
+
 
 
 @RestController
@@ -40,6 +44,8 @@ public class MyController {
     private final FriendService friendService;
     private final KnowledgeService knowledgeService;
     private final AnalyticsService analyticsService;
+
+    //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
     @GetMapping("allFriends")
     public List<Friend> getAllFriends() {
@@ -59,14 +65,6 @@ public class MyController {
 
             LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience());
             friend.setPlannedSpeakingTime(plannedTime);
-
-            System.out.println();
-            List<Analytics> analytics = friend.getAnalytics();
-            if(analytics!=null){
-                System.out.println(analytics.get(0));
-            }
-            System.out.println("Hello World");
-            System.out.println();
 
 
             friendService.save(friend);
@@ -106,14 +104,14 @@ public class MyController {
             LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience());
             friend.setPlannedSpeakingTime(plannedTime);
 
-            System.out.println();
-            System.out.println(friend);
-            System.out.println("Hello World");
-            System.out.println();
+
+            List<Analytics> analytics = friend.getAnalytics();
+            
 
             friend = friendService.updateFriend(id, friend);
-            analyticsService.saveAll(friend);
+            analyticsService.saveAll(analytics,id);
 
+            
             // Return a success message with HTTP status 200 (OK)
             return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
         } catch (EntityNotFoundException e) {
@@ -139,6 +137,25 @@ public class MyController {
         return analyticsService.getFriendDateAnalytics(friendId, left, right);
     }
 
+    @PostMapping("addKnowledge/{id}")
+    public ResponseEntity<String> addKnowledge(@PathVariable Integer id, @RequestBody List<Knowledge> knowledge) {
+        try {
+            Friend friend = friendService.getFriendById(id);
+            if (friend == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend with ID " + id + " not found.");
+            }
+            for(Knowledge k : knowledge){
+                k.setFriend(friend);
+                //System.out.println(k.toString());
+            }
+            knowledgeService.saveAll(knowledge);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body("Knowledge added successfully!");
+        } catch (Exception e) {
+            System.err.println("Error adding knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while adding the knowledge.");
+        }
+    }
 
 
 

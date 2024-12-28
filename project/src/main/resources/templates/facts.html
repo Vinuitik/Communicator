@@ -15,7 +15,7 @@
 
 <body>
 
-    <div class="container">
+    <div class="container fixed_top">
         <h1 id="top">Knowledge Tracker</h1>
 
 
@@ -50,11 +50,11 @@
             </thead>
             <tbody>
                 <tr th:each="knowledge : ${knowledges}" data-id="${knowledge.id}">
-                    <td th:text="${knowledge.fact}" contenteditable=true></td>
-                    <td th:text="${knowledge.importance}" contenteditable=true></td>
+                    <td th:text="${knowledge.text}" contenteditable=true></td>
+                    <td th:text="${knowledge.priority}" contenteditable=true></td>
                     <td>
                         <button class = "button" id = "updateKnowledgeBtn">Update</button>
-                        <button class = "Button" id = "deleteKnowledgeBtn">Delete</button>
+                        <button class = "button" id = "deleteKnowledgeBtn">Delete</button>
                     </td>
                 </tr>
             </tbody>

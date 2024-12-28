@@ -7,6 +7,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import communicate.Entities.Friend;
 import communicate.Entities.Knowledge;
@@ -40,8 +41,13 @@ public class WebController {
     }
 
     @GetMapping("knowledge/{id}")
+    //@ResponseBody
     public String knowledge(@PathVariable(required = true) Integer id, Model model) {
         List<Knowledge> knowledges = knowledgeService.getKnowledgeByFriendId(id);
+        for(Knowledge k:knowledges){
+            System.out.println(k.toString());
+        }
+        //return knowledges;
         model.addAttribute("knowledges", knowledges);
         return "facts.html";
     }

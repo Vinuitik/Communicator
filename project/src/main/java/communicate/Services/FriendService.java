@@ -139,6 +139,15 @@ public class FriendService {
         return friend;
     }
 
+    @Transactional
+    public Friend getFriendById(Integer id){
+        try {
+            return friendRepository.findById(id).orElse(null);
+        } catch (Exception e) {
+            System.out.print("Error retrieving friend by id " + e.toString());
+        }
+        return null;
+    }
 
     @Transactional
     public Friend findById(Integer id){

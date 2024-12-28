@@ -2,32 +2,53 @@ let durationChartInstance, frequencyChartInstance, intensityChartInstance;
 
 // Example function to update the charts with the received data
 function updateCharts(data) {
-    // Assuming data contains an array of objects with 'duration', 'frequency', and 'intensity'
-    const durationData = data.map(item => item.duration);
-    const frequencyData = data.map(item => item.frequency);
-    const intensityData = data.map(item => item.intensity);
+    const startDate = document.getElementById("start-date").value;
+    const endDate = document.getElementById("end-date").value;
 
-    // Destroy existing chart instances if they exist
-    if (durationChartInstance) {
-        durationChartInstance.destroy();
-    }
-    if (frequencyChartInstance) {
-        frequencyChartInstance.destroy();
-    }
-    if (intensityChartInstance) {
-        intensityChartInstance.destroy();
-    }
+    // Step 1: Preprocess data
+    const durationData = data.map(item => item.hours);
+    const intensityData = data.map(item => {
+        // Convert experience levels "*" -> 1, "**" -> 2, "***" -> 3
+        return item.experience === "*" ? 1 : item.experience === "**" ? 2 : 3;
+    });
 
-    // Create new chart instances for each graph with the updated data
+    // Filter data based on date range
+    const filteredData = data.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= new Date(startDate) && itemDate <= new Date(endDate);
+    });
+
+    // Calculate moving averages (window size of 5 as an example)
+    const movingAverage = (arr, windowSize) => {
+        return arr.map((_, i) => {
+            if (i < windowSize - 1) return null;
+            const window = arr.slice(i - windowSize + 1, i + 1);
+            const sum = window.reduce((acc, val) => acc + val, 0);
+            return sum / window.length;
+        });
+    };
+
+    const smoothedDuration = movingAverage(filteredData.map(item => item.hours), 5);
+    const smoothedIntensity = movingAverage(intensityData, 5);
+    const smoothedFrequency = movingAverage(filteredData.map(item => item.frequency), 5);
+
+    // Step 2: Destroy existing chart instances if they exist
+    if (durationChartInstance) durationChartInstance.destroy();
+    if (frequencyChartInstance) frequencyChartInstance.destroy();
+    if (intensityChartInstance) intensityChartInstance.destroy();
+
+    // Step 3: Create new charts with smoothed data
+    // Duration (Hours)
     durationChartInstance = new Chart(document.getElementById("durationChart"), {
         type: 'line',
         data: {
-            labels: data.map(item => item.date), // Dates as labels
+            labels: filteredData.map(item => item.date), // Dates as labels
             datasets: [{
                 label: 'Duration (Hours)',
-                data: durationData,
+                data: smoothedDuration,
                 borderColor: 'rgb(75, 192, 192)',
-                tension: 0.1
+                tension: 0.1,
+                fill: false
             }]
         },
         options: {
@@ -40,15 +61,17 @@ function updateCharts(data) {
         }
     });
 
+    // Frequency (Talks)
     frequencyChartInstance = new Chart(document.getElementById("frequencyChart"), {
         type: 'line',
         data: {
-            labels: data.map(item => item.date), // Dates as labels
+            labels: filteredData.map(item => item.date), // Dates as labels
             datasets: [{
                 label: 'Frequency (Talks)',
-                data: frequencyData,
+                data: smoothedFrequency,
                 borderColor: 'rgb(54, 162, 235)',
-                tension: 0.1
+                tension: 0.1,
+                fill: false
             }]
         },
         options: {
@@ -61,27 +84,31 @@ function updateCharts(data) {
         }
     });
 
+    // Intensity (Stars)
     intensityChartInstance = new Chart(document.getElementById("intensityChart"), {
         type: 'line',
         data: {
-            labels: data.map(item => item.date), // Dates as labels
+            labels: filteredData.map(item => item.date), // Dates as labels
             datasets: [{
                 label: 'Intensity (Stars)',
-                data: intensityData,
+                data: smoothedIntensity,
                 borderColor: 'rgb(255, 99, 132)',
-                tension: 0.1
+                tension: 0.1,
+                fill: false
             }]
         },
         options: {
             responsive: true,
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    max: 3 // Max intensity level is 3
                 }
             }
         }
     });
 }
+
 
 // Function to fetch the friend list and populate the dropdown
 async function fetchFriendList() {
@@ -148,11 +175,10 @@ document.getElementById("apply-filters").addEventListener("click", function() {
                 const row = document.createElement("tr");
 
                 row.innerHTML = `
-                    <td>${item.friendName}</td>
+                    <td>${item.id}</td>
                     <td>${item.date}</td>
-                    <td>${item.duration}</td>
-                    <td>${item.frequency}</td>
-                    <td>${item.intensity}</td>
+                    <td>${item.hours}</td>
+                    <td>${item.experience}</td>
                 `;
 
                 tableBody.appendChild(row);

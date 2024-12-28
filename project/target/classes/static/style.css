@@ -12,8 +12,16 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
     padding: 20px;
+}
+html, body {
+    /*height: 100%; /* Ensure the page takes full height */
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    overflow-y: auto; /* Enable vertical scrolling on the page */
+    display: flex;
+    flex-direction: column;  /* Align child elements vertically */
 }
 
 .container {
@@ -265,4 +273,36 @@ input[type="number"] {
 
 #top{
     padding-top:20px;
+}
+
+/* Ensure the container has a scrollable layout */
+.fixed_top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+    width: 100%;
+    padding: 15px;
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    background-color: #fafafa;
+    margin-bottom: 20px;
+    /* Make sure it's positioned properly in the viewport */
+    position: relative;
+    height: auto;  /* Ensure it adjusts based on content */
+    transition: background-color 0.3s ease, background-image 0.3s ease; /* Smooth transition for background */
+}
+
+.fixed-top-container::-webkit-scrollbar {
+    width: 10px; /* You can adjust this width */
+}
+
+.fixed-top-container::-webkit-scrollbar-thumb {
+    background-color: #888; /* Color of the scrollbar */
+    border-radius: 10px;
+}
+
+.fixed-top-container::-webkit-scrollbar-thumb:hover {
+    background-color: #555; /* Hover effect on scrollbar */
 }

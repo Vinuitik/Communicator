@@ -34,4 +34,9 @@ public class KnowledgeService {
         return knowledgeRepository.findByFriendId(friendId);
     }
 
+    @Transactional
+    public List<Knowledge> saveAll(List<Knowledge> knowledge){
+        return knowledgeRepository.saveAll(knowledge);
+    }
+
 }

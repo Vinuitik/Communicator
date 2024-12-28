@@ -72,3 +72,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Function to collect knowledge entries into an array
+const collectKnowledgeData = () => {
+    const knowledgeEntries = [];
+    const rows = document.querySelectorAll('#knowledgeTable tbody tr');
+
+    rows.forEach(row => {
+        const fact = row.cells[0].textContent;
+        const importance = row.cells[1].textContent;
+        knowledgeEntries.push({ fact, importance });
+    });
+
+    return knowledgeEntries;
+};
+
+// Function to get the ID from the current page URL
+const getIdFromUrl = () => {
+    const path = window.location.pathname;
+    const id = path.split('/').pop(); // Extract the last part of the path
+    return id;
+};
+
+// Function to send collected knowledge data to an endpoint
+const sendKnowledgeData = () => {
+    const id = getIdFromUrl();  // Get ID from the URL
+    const knowledgeData = collectKnowledgeData();
+
+    console.log('Sending data:', knowledgeData);
+
+    fetch(`http://localhost:8085/addKnowledge/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(knowledgeData),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Data sent successfully:', data);
+    })
+    .catch(error => {
+        console.error('Error sending data:', error);
+    });
+};
+
+// Add event listener to submitInfoBtn
+const submitInfoBtn = document.getElementById('submitInfoBtn');
+if (submitInfoBtn) {
+    submitInfoBtn.addEventListener('click', (e) => {
+        e.preventDefault();  // Prevent default button behavior (if necessary)
+        sendKnowledgeData(); // Call the function to send data
+    });
+}
+

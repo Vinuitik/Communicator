@@ -1,6 +1,7 @@
 package communicate.Entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -30,9 +31,11 @@ public class Knowledge {
     private Integer id;
 
     @Lob
+    @JsonProperty("fact")
     private String text;
     
     @NotNull(message = "Priority is required")
+    @JsonProperty("importance")
     private Long priority;
 
     @ManyToOne
