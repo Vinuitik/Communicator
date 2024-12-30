@@ -86,7 +86,7 @@ textarea {
     padding: 10px 20px;
     font-size: 1rem;
     color: #fff;
-    background-color: #007BFF;
+    background-color: #6A5ACD;
     border: none;
     border-radius: 4px;
     text-decoration: none;
@@ -96,7 +96,7 @@ textarea {
 }
 
 .button:hover {
-    background-color: #0056b3;
+    background-color: #6A5ACD;
 }
 
 /* Table Styling */
@@ -160,3 +160,73 @@ table tr:last-child td {
     visibility: visible;
     opacity: 1;
 }
+
+/* Redesigned Form with Better Layout */
+form {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+form label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+form input,
+form textarea,
+form select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+}
+
+form input[type="number"] {
+    flex: 1;
+    max-width: 100px; /* Limit width for number input */
+}
+
+form textarea {
+    resize: none;
+}
+
+.input-group-inline {
+    display: flex;
+    gap: 10px;
+}
+
+.input-group-inline input {
+    flex: 1; /* Ensure inputs in inline groups take up equal space */
+}
+
+.form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    color: #fff;
+    background-color: #6A5ACD;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button:hover {
+    background-color: #483D8B;
+}
+

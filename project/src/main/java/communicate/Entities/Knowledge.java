@@ -32,6 +32,7 @@ public class Knowledge {
 
     @Lob
     @JsonProperty("fact")
+    @NotNull(message = "Text id required")
     private String text;
     
     @NotNull(message = "Priority is required")

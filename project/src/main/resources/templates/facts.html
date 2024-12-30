@@ -23,17 +23,21 @@
         <table id="committedTable">
             <thead>
                 <tr>
+                    <th>Id</td>
                     <th>Fact</th>
                     <th>Importance</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <!-- Example row for committed data (this would be dynamically populated from DB) -->
-                <tr>
-                    <td>Example committed fact</td>
-                    <td>5</td>
-                    <td><button class="button">Delete</button></td>
+                <tr th:each="knowledge : ${knowledges}" th:attr="data-id=${knowledge.id}">
+                    <td th:text = "${knowledge.id}"></td>
+                    <td th:text="${knowledge.text}" contenteditable=true></td>
+                    <td th:text="${knowledge.priority}" contenteditable=true></td>
+                    <td>
+                        <button class = "button" th:attr="id = 'updateKnowledgeBtn' + ${knowledge.id}">Update</button>
+                        <button class = "button" th:attr="id = 'deleteKnowledgeBtn' + ${knowledge.id}">Delete</button>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -49,14 +53,6 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="knowledge : ${knowledges}" data-id="${knowledge.id}">
-                    <td th:text="${knowledge.text}" contenteditable=true></td>
-                    <td th:text="${knowledge.priority}" contenteditable=true></td>
-                    <td>
-                        <button class = "button" id = "updateKnowledgeBtn">Update</button>
-                        <button class = "button" id = "deleteKnowledgeBtn">Delete</button>
-                    </td>
-                </tr>
             </tbody>
         </table>
 

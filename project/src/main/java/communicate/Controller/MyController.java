@@ -3,6 +3,7 @@ package communicate.Controller;
 import org.springframework.web.bind.annotation.RestController;
 
 import communicate.DTOs.FriendAndHoursDTO;
+import communicate.DTOs.FriendDTO;
 import communicate.DTOs.ShortFriendDTO;
 import communicate.Entities.Analytics;
 import communicate.Entities.Friend;
@@ -48,19 +49,27 @@ public class MyController {
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
     @GetMapping("allFriends")
-    public List<Friend> getAllFriends() {
-        List<Friend> result = friendService.getAllFriends();
+    public List<FriendDTO> getAllFriends() {
+        List<Friend> friends = friendService.getAllFriends();
+        List<FriendDTO> result = new ArrayList<>();
+        for(Friend f: friends){
+            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime()) );
+        }
         return result;
     }
 
     @GetMapping("thisWeek")
-    public List<Friend> getWeekFriends() {
-        List<Friend> result = friendService.findThisWeek();
+    public List<FriendDTO> getWeekFriends() {
+        List<Friend> friends = friendService.findThisWeek();
+        List<FriendDTO> result = new ArrayList<>();
+        for(Friend f: friends){
+            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime()) );
+        }
         return result;
     }
 
     @PostMapping("addFriend")
-    public ResponseEntity<String> addFriend(/*@Valid*/ @RequestBody Friend friend) {
+    public ResponseEntity<String> addFriend(@Valid @RequestBody Friend friend) { // chaned here
         try {
 
             LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience());

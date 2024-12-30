@@ -84,7 +84,7 @@ table td[contenteditable="true"] {
     padding: 10px 20px;
     font-size: 1rem;
     color: #fff;
-    background-color: #007BFF;
+    background-color: #6A5ACD;
     border: none;
     border-radius: 4px;
     text-align: center;
@@ -93,7 +93,7 @@ table td[contenteditable="true"] {
 }
 
 .button:hover {
-    background-color: #0056b3;
+    background-color: #6A5ACD;
 }
 
 .button.large {

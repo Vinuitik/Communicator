@@ -1,308 +1,110 @@
-/* Resetting margins, paddings, and setting box-sizing to border-box */
+/* General Reset */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* Body Styling */
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #f3f4f6;
+    background-color: #f9f9f9;
     color: #333;
+    line-height: 1.6;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
-}
-html, body {
-    /*height: 100%; /* Ensure the page takes full height */
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden; /* Prevent horizontal scrolling */
-    overflow-y: auto; /* Enable vertical scrolling on the page */
-    display: flex;
-    flex-direction: column;  /* Align child elements vertically */
+    min-height: 100vh;
 }
 
+/* Container */
 .container {
-    background-color: #ffffff;
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 20px;
-    width: 80%;
+    width: 90%;
     max-width: 1000px;
-}
-
-h1 {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
-    margin-bottom: 20px;
-    font-weight: 500;
-    color: #333;
 }
 
+/* Header */
+h1 {
+    font-size: 2rem;
+    font-weight: 500;
+    color: #222;
+    margin-bottom: 20px;
+}
+
+/* Table Styling */
 table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    margin: 20px 0;
+    background-color: #f9f9f9;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-th, td {
-    padding: 12px;
-    text-align: center;
+thead {
+    background-color: #6A5ACD;
+    color: #fff;
 }
 
-th {
-    background-color: #4a90e2;
-    color: #ffffff;
-}
-
-tr:nth-child(even) {
-    background-color: #f8f9fa;
-}
-
-tr:hover {
-    background-color: #e8effb;
-}
-
+th,
 td {
-    border-bottom: 1px solid #e1e4e8;
-}
-
-/* Input Form Container */
-.input-form-container {
-    margin-top: 20px;
-    padding: 20px;
-    background-color: #ffffff;
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-}
-
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-weight: 500;
-    color: #333;
-}
-
-.input-form-container form {
-    display: flex;
-    flex-direction: column;
-}
-
-.input-form-container form label {
-    font-weight: 500;
-    margin-bottom: 5px;
-}
-
-.input-form-container form textarea, 
-.input-form-container form input {
-    width: 100%;
     padding: 10px;
-    font-size: 1rem;
-    border-radius: 5px;
-    border: 1px solid #ddd;
-    margin-bottom: 15px;
-    box-sizing: border-box;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
 }
 
-textarea {
-    resize: vertical;
-    height: 100px;
-}
-
-input[type="number"] {
-    max-width: 100px;
+tbody tr:hover {
+    background-color: #f1f1f1;
 }
 
 /* Button Styling */
+.button-container {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
 .button {
     display: inline-block;
     padding: 10px 20px;
-    font-size: 16px;
-    color: white;
-    background-color: #4682b4;
+    font-size: 1rem;
+    color: #fff;
+    background-color: #6A5ACD;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
     text-align: center;
-    text-decoration: none;
     cursor: pointer;
+    text-decoration: none;
     transition: background-color 0.3s ease;
 }
 
 .button:hover {
-    background-color: #357ab8;
+    background-color: #6A5ACD;
 }
 
-/* Bottom button container styling */
-.button-container {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 20px;
+button {
+    font-family: inherit;
 }
 
-/* Modal Styling */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal.hidden {
-    display: none;
-}
-
-.modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    width: 400px;
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.modal-content h2 {
-    margin-bottom: 20px;
-    text-align: center;
-    color: #333;
-}
-
-.modal-content form label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-
-.modal-content form input, 
-.modal-content form select {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.form-buttons {
-    display: flex;
-    justify-content: space-between;
-}
-
-
-.delete-btn {
-    background-color: #f44336;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.delete-btn:hover {
-    background-color: #d32f2f;
-}
-/* Class for fixed top-aligned containers */
-.fixed-top-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start; /* Fixes alignment to the top */
-    height: 100%; /* Full height for the container */
-    max-height: 600px; /* Limit the height */
-    overflow-y: auto; /* Enable vertical scrolling */
-    width: 100%; /* Ensure it spans its parent width */
-    border: 1px solid #ddd; /* Optional: for clarity */
-    padding: 10px; /* Add some padding for better appearance */
-    box-sizing: border-box; /* Include padding in height calculation */
-}
-
-/* Optional: Ensure the table fits neatly */
-#knowledgeTable, #committedTable {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#knowledgeTable th, #knowledgeTable td, #committedTable th, #committedTable td {
-    padding: 10px;
-    text-align: left;
-    border: 1px solid #ddd;
-}
-
-/* Adjust the width of the Add Knowledge form */
-.input-form-container {
-    width: 500px; /* Set the desired width */
-    max-width: 90%; /* Ensure it fits well on smaller screens */
-    padding: 20px; /* Add padding for spacing */
-    border: 1px solid #ddd; /* Optional: Add a border for clarity */
-    border-radius: 8px; /* Optional: Rounded corners */
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add shadow */
-    background-color: white; /* Ensure consistency with the theme */
-    margin: 0 auto; /* Center the form horizontally */
-}
-
-/* Responsive adjustments for smaller screens */
+/* Responsive Design */
 @media (max-width: 768px) {
-    .input-form-container {
-        width: 100%; /* Use full width on smaller screens */
+    .container {
+        width: 95%;
     }
-}
 
-#submitInfoBtn {
-    width: 100%; /* Make the button wide */
-    padding: 15px;
-    font-size: 18px;
-    color: white;
-    background-color: #4682b4;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    text-align: center;
-}
+    table {
+        font-size: 0.9rem;
+    }
 
-#submitInfoBtn:hover {
-    background-color: #357ab8;
-}
-
-#top{
-    padding-top:20px;
-}
-
-/* Ensure the container has a scrollable layout */
-.fixed_top {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100%;
-    width: 100%;
-    padding: 15px;
-    box-sizing: border-box;
-    border: 1px solid #ddd;
-    background-color: #fafafa;
-    margin-bottom: 20px;
-    /* Make sure it's positioned properly in the viewport */
-    position: relative;
-    height: auto;  /* Ensure it adjusts based on content */
-    transition: background-color 0.3s ease, background-image 0.3s ease; /* Smooth transition for background */
-}
-
-.fixed-top-container::-webkit-scrollbar {
-    width: 10px; /* You can adjust this width */
-}
-
-.fixed-top-container::-webkit-scrollbar-thumb {
-    background-color: #888; /* Color of the scrollbar */
-    border-radius: 10px;
-}
-
-.fixed-top-container::-webkit-scrollbar-thumb:hover {
-    background-color: #555; /* Hover effect on scrollbar */
+    .button {
+        font-size: 0.9rem;
+    }
 }
