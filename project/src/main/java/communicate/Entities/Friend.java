@@ -56,11 +56,11 @@ public class Friend {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @OneToMany(mappedBy = "friend")
+    @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Knowledge> knowledge;
 
-    @OneToMany(mappedBy = "friend")
+    @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Analytics> analytics;
     

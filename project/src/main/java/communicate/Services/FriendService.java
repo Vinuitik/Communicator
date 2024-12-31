@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import communicate.DTOs.ShortFriendDTO;
@@ -208,19 +209,19 @@ public class FriendService {
 
 
 
-    public LocalDate setMeetingTime(String stars){
-        LocalDate meetingDate;
+    public LocalDate setMeetingTime(String stars, LocalDate date){
+        LocalDate meetingDate = LocalDate.now();
         switch (stars) {
             case "*":
-                meetingDate = LocalDate.now().plusDays(1);
+                meetingDate = date.plusDays(1);
                 break;
 
             case "**":
-                meetingDate = LocalDate.now().plusWeeks(1);
+                meetingDate = date.plusWeeks(1);
                 break;
         
             default:
-                meetingDate = LocalDate.now().plusMonths(1);
+                meetingDate = date.plusMonths(1);
                 break;
         }
 

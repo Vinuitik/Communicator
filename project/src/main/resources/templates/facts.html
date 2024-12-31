@@ -35,8 +35,8 @@
                     <td th:text="${knowledge.text}" contenteditable=true></td>
                     <td th:text="${knowledge.priority}" contenteditable=true></td>
                     <td>
-                        <button class = "button" th:attr="id = 'updateKnowledgeBtn' + ${knowledge.id}">Update</button>
-                        <button class = "button" th:attr="id = 'deleteKnowledgeBtn' + ${knowledge.id}">Delete</button>
+                        <button class = "button updateKnowledgeBtn" >Update</button>
+                        <button class = "button deleteKnowledgeBtn" >Delete</button>
                     </td>
                 </tr>
             </tbody>
@@ -76,7 +76,7 @@
     
 
     <!-- Link to external JavaScript -->
-    <script src="../facts.js"></script>
+    <script type = "module" src="../facts.js"></script>
 </body>
 
 </html>

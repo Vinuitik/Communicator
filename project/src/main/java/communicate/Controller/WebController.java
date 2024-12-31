@@ -43,10 +43,7 @@ public class WebController {
     @GetMapping("knowledge/{id}")
     //@ResponseBody
     public String knowledge(@PathVariable(required = true) Integer id, Model model) {
-        List<Knowledge> knowledges = knowledgeService.getKnowledgeByFriendId(id);
-        for(Knowledge k:knowledges){
-            System.out.println(k.toString());
-        }
+        List<Knowledge> knowledges = knowledgeService.getKnowledgeByFriendIdSorted(id);
         //return knowledges;
         model.addAttribute("knowledges", knowledges);
         return "facts.html";

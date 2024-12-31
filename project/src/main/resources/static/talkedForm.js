@@ -1,3 +1,6 @@
+import { collectKnowledgeData } from '/facts.js';
+
+
 document.getElementById('friendForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Prevent default form submission
 
@@ -32,7 +35,8 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     
     const requestData = {
         ...friendData,
-        analytics: analyticsData
+        analytics: analyticsData,
+        knowledge: collectKnowledgeData()
     };
 
     // Log for debugging (replace with actual backend call)
@@ -53,11 +57,15 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     })
     .then(data => {
         console.log('Success:', data);
-        alert(data); // Alert the server response message
+        const knowledgeTableBody = document.querySelector('#knowledgeTable tbody');
+        if (knowledgeTableBody) {
+            knowledgeTableBody.innerHTML = ''; // Clears all rows
+        }
+        //alert(data); // Alert the server response message
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to add friend: ' + error.message); // Include specific error message
+        //alert('Failed to add friend: ' + error.message); // Include specific error message
     });
 });
 

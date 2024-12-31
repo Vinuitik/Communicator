@@ -1,6 +1,8 @@
 communicate\Services\KnowledgeService.class
+communicate\Config\WebConfig.class
 communicate\Entities\Friend$FriendBuilder.class
 communicate\Services\FriendService.class
+communicate\DTOs\FriendDTO.class
 communicate\Controller\WebController.class
 communicate\Entities\Analytics$AnalyticsBuilder.class
 communicate\Entities\Knowledge$KnowledgeBuilder.class
