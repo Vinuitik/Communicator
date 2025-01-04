@@ -92,7 +92,7 @@ function updateCharts(data) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 10 // Max duration is 24 hours
+                    max: 5 // Max duration is 24 hours
                 }
             }
         }
