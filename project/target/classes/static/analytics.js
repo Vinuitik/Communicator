@@ -92,7 +92,6 @@ function updateCharts(data) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 5 // Max duration is 24 hours
                 }
             }
         }
@@ -143,7 +142,6 @@ function updateCharts(data) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 3 // Max intensity level is 3
                 }
             }
         }
