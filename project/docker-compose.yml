@@ -12,6 +12,7 @@ services:
       POSTGRES_DB: my_database
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   java-app:
     build:
@@ -26,6 +27,7 @@ services:
     depends_on:
       - postgres
     command: java -jar app.jar  # Match the JAR name specified in the Dockerfile
+    restart: unless-stopped
 
 volumes:
   postgres-data:
