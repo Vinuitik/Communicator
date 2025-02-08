@@ -5,6 +5,7 @@ async function viewRequest(endpoint) {
             throw new Error(`Error: ${response.statusText}`);
         }
         const data = await response.json();
+        data.sort((a, b) => a.name.localeCompare(b.name));
         console.log(`Fetched data from ${endpoint}:`, data);
 
         // Handle displaying data dynamically here
