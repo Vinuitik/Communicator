@@ -157,6 +157,7 @@ async function fetchFriendList() {
         // Sending GET request to /shortList endpoint
         const response = await fetch('/shortList');
         const friends = await response.json();
+        friends.sort((a, b) => a.name.localeCompare(b.name));
 
         // Find the select element for the friend dropdown
         const friendSelect = document.getElementById('friend-select');
