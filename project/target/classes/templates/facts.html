@@ -30,11 +30,11 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="knowledge : ${knowledges}" th:attr="data-id=${knowledge.id}">
-                    <td th:text = "${knowledge.id}"></td>
-                    <td th:text="${knowledge.text}" contenteditable=true></td>
-                    <td th:text="${knowledge.priority}" contenteditable=true></td>
-                    <td>
+                <tr  th:each="knowledge : ${knowledges}" th:attr="data-id=${knowledge.id}">
+                    <td data-label="Id"  th:text = "${knowledge.id}"></td>
+                    <td data-label="Fact" th:text="${knowledge.text}" contenteditable=true></td>
+                    <td data-label="Importance" th:text="${knowledge.priority}" contenteditable=true></td>
+                    <td data-label="Actions" id = "actions">
                         <button class = "button updateKnowledgeBtn" >Update</button>
                         <button class = "button deleteKnowledgeBtn" >Delete</button>
                     </td>
