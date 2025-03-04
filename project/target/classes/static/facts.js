@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleSubmitInfo(e) {
             e.preventDefault();
             
-            const knowledgeData = this.collectTableData(knowledgeTableBody);
+            const knowledgeData = this.collectKnowledgeData();
             
             this.sendKnowledgeData(knowledgeData)
                 .then(data => {
@@ -229,23 +229,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return low;
         }
         
-        collectTableData(tableBody) {
-            const entries = [];
-            const rows = tableBody.querySelectorAll('tr');
-            
+        // Preserved method for collecting knowledge data
+        collectKnowledgeData() {
+            const knowledgeEntries = [];
+            const rows = document.querySelectorAll('#knowledgeTable tbody tr');
+
             rows.forEach(row => {
-                // Adjust indices based on table type
-                const factIndex = tableBody === committedTableBody ? 1 : 0;
-                const importanceIndex = tableBody === committedTableBody ? 2 : 1;
-                
-                const fact = row.cells[factIndex].textContent;
-                const importance = row.cells[importanceIndex].textContent;
-                entries.push({ fact, importance });
+                const fact = row.cells[0].textContent;
+                const importance = row.cells[1].textContent;
+                knowledgeEntries.push({ fact, importance });
             });
-            
-            return entries;
+
+            return knowledgeEntries;
         }
         
+        // Preserved method for getting ID from URL
+        getIdFromUrl() {
+            const path = window.location.pathname;
+            return path.split('/').pop();
+        }
+        
+        // Preserved method for sending knowledge data
         sendKnowledgeData(knowledgeData) {
             const id = this.getIdFromUrl();
             
@@ -269,13 +273,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw error;
             });
         }
-        
-        getIdFromUrl() {
-            const path = window.location.pathname;
-            return path.split('/').pop();
-        }
     }
     
     // Initialize the knowledge table manager
     const tableManager = new KnowledgeTableManager();
+
+    // Export methods to be used in other modules
+    window.KnowledgeTableManager = {
+        collectKnowledgeData: () => new KnowledgeTableManager().collectKnowledgeData(),
+        sendKnowledgeData: (knowledgeData) => new KnowledgeTableManager().sendKnowledgeData(knowledgeData),
+        getIdFromUrl: () => new KnowledgeTableManager().getIdFromUrl()
+    };
 });
+
+// Export for module-based systems
+export const collectKnowledgeData = () => {
+    const knowledgeEntries = [];
+    const rows = document.querySelectorAll('#knowledgeTable tbody tr');
+
+    rows.forEach(row => {
+        const fact = row.cells[0].textContent;
+        const importance = row.cells[1].textContent;
+        knowledgeEntries.push({ fact, importance });
+    });
+
+    return knowledgeEntries;
+};
+
+export const sendKnowledgeData = (knowledgeData) => {
+    const id = getIdFromUrl();
+    
+    console.log('Sending data:', knowledgeData);
+    
+    return fetch(`http://localhost:8085/addKnowledge/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(knowledgeData)
+    })
+    .then(response => {
+        console.log('Response:', response);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Data sent successfully:', data);
+        return data;
+    })
+    .catch(error => {
+        console.error('Error sending data:', error);
+        throw error;
+    });
+};
+
+export const getIdFromUrl = () => {
+    const path = window.location.pathname;
+    return path.split('/').pop();
+};

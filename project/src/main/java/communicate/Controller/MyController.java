@@ -78,10 +78,11 @@ public class MyController {
             LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience(), friend.getAnalytics().get(0).getDate());
             friend.setPlannedSpeakingTime(plannedTime);
 
-
             friendService.save(friend);
-
             analyticsService.saveAll(friend);
+            knowledgeService.saveAll(friend.getKnowledge());
+
+
 
             return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
         } catch (Exception e) {
