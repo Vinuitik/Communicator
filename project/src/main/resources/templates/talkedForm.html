@@ -19,7 +19,7 @@
     <div id="addFriendForm">
         <div class="modal-content">
             <h2 th:text="${friend != null} ? 'Edit Friend' : 'Add Friend'"></h2>
-            <form id="friendForm" th:action="@{/friends/save}" th:method="post">
+            <form id="friendForm">
                 <!-- Hidden field to hold ID -->
                 <input type="hidden" id="friend-id" name="id" th:value="${friend.id}">
 
@@ -34,7 +34,7 @@
                     <option th:selected="${friend.experience == '*'}" value="*">Bad</option>
                 </select>
 
-                <label for="lastSpoken">Hours Spoken:</label>
+                <label for="Hours">Hours Spoken:</label>
                 <input type="number" id="hours" name="Hours" required min="0" max="24" step="0.01">
 
                 <label for="dob">Date of Birth:</label>

@@ -1,4 +1,16 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive",
-    "java.debug.settings.onBuildFailureProceed": true
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.debug.settings.onBuildFailureProceed": true,
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": ".*\\.java$",
+                "cmd": "mvn package"
+            },
+            {
+                "match": ".*pom\\.xml$",
+                "cmd": "mvn package && docker compose up --build -d"
+            }
+        ]
+    }
 }
