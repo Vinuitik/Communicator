@@ -29,6 +29,15 @@ services:
     command: java -jar app.jar  # Match the JAR name specified in the Dockerfile
     restart: unless-stopped
 
+  backup:
+      build: 
+        context: ./backup
+        dockerfile: Dockerfile
+      container_name: backupService
+      depends_on:
+        - postgres
+      restart: unless-stopped
+
 volumes:
   postgres-data:
     driver: local
