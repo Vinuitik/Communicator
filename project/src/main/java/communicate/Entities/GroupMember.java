@@ -9,5 +9,5 @@ import jakarta.persistence.Id;
 public class GroupMember {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    Integer id;
+    Integer id; // I think we need to replace it into unique id of GROUP, FRIEND
 }
