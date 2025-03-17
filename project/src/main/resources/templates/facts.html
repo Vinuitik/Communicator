@@ -10,13 +10,29 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
 
     <!-- Link to external CSS -->
-    <link rel="stylesheet" href="../facts.css">
+    <link rel="stylesheet" th:href="@{/facts/facts.css}">
 </head>
 
 <body>
 
     <div class="container fixed_top">
         <h1 id="top">Knowledge Tracker</h1>
+
+        <!-- Input Form Container for Adding New Knowledge -->
+        <div class="input-form-container">
+            <h2>Add New Knowledge</h2>
+            <form id="knowledgeForm">
+                <label for="factInput">Fact:</label>
+                <textarea id="factInput" rows="3" placeholder="Enter your new knowledge here..."></textarea>
+                
+                <label for="importanceInput">Importance:</label>
+                <input type="number" id="importanceInput" placeholder="Rate the importance">
+                
+                <button type="submit" class="button" id="addKnowledgeBtn">Add Knowledge</button>
+            </form>
+        </div>
+
+        <button class="button large" id="submitInfoBtn">Submit Info</button>
 
 
         <h2>Committed Knowledge</h2>
@@ -55,28 +71,12 @@
             <tbody>
             </tbody>
         </table>
-
-        <!-- Input Form Container for Adding New Knowledge -->
-        <div class="input-form-container">
-            <h2>Add New Knowledge</h2>
-            <form id="knowledgeForm">
-                <label for="factInput">Fact:</label>
-                <textarea id="factInput" rows="3" placeholder="Enter your new knowledge here..."></textarea>
-                
-                <label for="importanceInput">Importance:</label>
-                <input type="number" id="importanceInput" placeholder="Rate the importance">
-                
-                <button type="submit" class="button" id="addKnowledgeBtn">Add Knowledge</button>
-            </form>
-        </div>
-
-        <button class="button large" id="submitInfoBtn">Submit Info</button>
     </div>
 
     
 
     <!-- Link to external JavaScript -->
-    <script type = "module" src="../facts.js"></script>
+    <script type = "module" th:src="@{/facts/facts.js}"></script>
 </body>
 
 </html>

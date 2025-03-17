@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     python3 \
     python3-pip \
-    && rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
+    && rm -rf /var/lib/apt/lists/* 
 
 # Copy and install Python dependencies
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt  # No --no-cache-dir flag
+RUN pip3 install -r requirements.txt
 
 # Copy backup-related files
 COPY upload_to_drive.py .
