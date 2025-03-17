@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Tracker</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="..//updateForm/talkedForm.css">
+</head>
+
+<body>
+
+    <!-- Add Friend Form -->
+<div id="addFriendForm">
+    <div class="modal-content">
+        <h2>Add Friend</h2>
+        <form id="friendForm">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" placeholder="Enter full name" required>
+            
+            <label for="lastSpoken">Last Time Spoken:</label>
+            <input type="date" id="lastSpoken" name="lastSpoken" required>
+            
+            <label for="experience">Experience:</label>
+            <select id="experience" name="experience" required>
+                <option value="***">Great!</option>
+                <option value="**">Okay</option>
+                <option value="*">Bad</option>
+            </select>
+
+            <label for="lastSpoken">Hours Spoken:</label>
+            <input type="number" id="hours" name="Hours" required min="0" max="24" step="0.01">
+            
+            <label for="dob">Date of Birth:</label>
+            <input type="date" id="dob" name="dob">
+            
+            <div class="form-buttons">
+                <button type="submit" class="button">Submit</button>
+                <a href="index.html" class="button">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="container fixed-top-container">
+    <h1>Knowledge Tracker</h1>
+
+    <!-- Input Form Container for Adding New Knowledge -->
+    <div class="input-form-container">
+        <h2>Add New Knowledge</h2>
+        <form id="knowledgeForm">
+            <label for="factInput">Fact:</label>
+            <textarea id="factInput" rows="3" placeholder="Enter your new knowledge here..."></textarea>
+            
+            <label for="importanceInput">Importance:</label>
+            <input type="number" id="importanceInput" placeholder="Rate the importance">
+            
+            <button type="submit" class="button" id="addKnowledgeBtn">Add Knowledge</button>
+        </form>
+    </div>
+    
+    <!-- Table for displaying knowledge data -->
+    <table id="knowledgeTable">
+        <thead>
+            <tr>
+                <th>Fact</th>
+                <th>Importance</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dynamic content will be added here -->
+        </tbody>
+    </table>
+
+    
+</div>
+
+    <!-- Link to external JavaScript -->
+    <script type="module" src="facts.js"></script>
+
+    <!-- Link to external JavaScript -->
+    <script type="module" src="addForm.js"></script>
+</body>
+
+</html>
