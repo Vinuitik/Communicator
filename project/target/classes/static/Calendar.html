@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Relationship Management System</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+    
+    .calendar-container {
+      display: flex;
+      width: 100%;
+      overflow-x: auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+    
+    .day-column {
+      flex: 1;
+      min-width: 120px;
+      padding: 15px;
+      border-right: 1px solid #ecf0f1;
+    }
+    
+    .day-column:last-child {
+      border-right: none;
+    }
+    
+    .previous-column {
+      min-width: 120px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-right: 1px solid #ecf0f1;
+    }
+    
+    .day-header {
+      text-align: center;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #3498db;
+      margin-bottom: 15px;
+    }
+    
+    .day-name {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    
+    .day-date {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      margin-top: 3px;
+    }
+    
+    .friend-box {
+      background-color: #3498db;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .friend-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .friend-box.dow-jones {
+      background-color: #e74c3c;
+    }
+    
+    .friend-box.personal {
+      background-color: #2ecc71;
+    }
+    
+    .friend-box.family {
+      background-color: #9b59b6;
+    }
+    
+    .friend-box.work {
+      background-color: #f39c12;
+    }
+    
+    .friend-name {
+      font-weight: bold;
+    }
+    
+    .friend-time {
+      font-size: 0.8rem;
+      margin-top: 3px;
+      opacity: 0.9;
+    }
+    
+    .add-friend {
+      text-align: center;
+      padding: 10px;
+      background-color: #ecf0f1;
+      border-radius: 5px;
+      color: #7f8c8d;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    
+    .add-friend:hover {
+      background-color: #d6dbdf;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Friend Relationship Management</h1>
+    <div class="subtitle">Keep track of your social connections</div>
+  </header>
+  
+  <div class="calendar-container">
+    <div class="previous-column">
+      <div class="day-header">
+        <div class="day-name">Previous</div>
+        <div class="day-date">Context</div>
+      </div>
+      
+      <div class="friend-box work">
+        <div class="friend-name">John Smith</div>
+        <div class="friend-time">Last week: Coffee</div>
+      </div>
+      
+      <div class="friend-box personal">
+        <div class="friend-name">Alice Johnson</div>
+        <div class="friend-time">2 weeks ago: Phone call</div>
+      </div>
+      
+      <div class="friend-box family">
+        <div class="friend-name">Dad</div>
+        <div class="friend-time">Last month: Dinner</div>
+      </div>
+      
+      <div class="add-friend">+ Add Context</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Monday</div>
+        <div class="day-date">Mar 17</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Dow Jones Check</div>
+        <div class="friend-time">9:30 AM - Market Open</div>
+      </div>
+      
+      <div class="friend-box personal">
+        <div class="friend-name">Michael Brown</div>
+        <div class="friend-time">12:30 PM - Lunch</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Tuesday</div>
+        <div class="day-date">Mar 18</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Dow Jones Review</div>
+        <div class="friend-time">4:00 PM - Market Close</div>
+      </div>
+      
+      <div class="friend-box work">
+        <div class="friend-name">Sarah Wilson</div>
+        <div class="friend-time">6:30 PM - Dinner</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Wednesday</div>
+        <div class="day-date">Mar 19</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Dow Jones Analysis</div>
+        <div class="friend-time">10:30 AM - Trading Strategy</div>
+      </div>
+      
+      <div class="friend-box family">
+        <div class="friend-name">Mom</div>
+        <div class="friend-time">7:00 PM - Phone call</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Thursday</div>
+        <div class="day-date">Mar 20</div>
+      </div>
+      
+      <div class="friend-box personal">
+        <div class="friend-name">Emma Davis</div>
+        <div class="friend-time">5:30 PM - Coffee</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Dow Tech Stocks</div>
+        <div class="friend-time">2:00 PM - Portfolio Review</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Friday</div>
+        <div class="day-date">Mar 21</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Dow Weekly Report</div>
+        <div class="friend-time">3:30 PM - Week Summary</div>
+      </div>
+      
+      <div class="friend-box work">
+        <div class="friend-name">Tom Jackson</div>
+        <div class="friend-time">6:00 PM - Happy Hour</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Saturday</div>
+        <div class="day-date">Mar 22</div>
+      </div>
+      
+      <div class="friend-box personal">
+        <div class="friend-name">Jessica Miller</div>
+        <div class="friend-time">11:00 AM - Brunch</div>
+      </div>
+      
+      <div class="friend-box family">
+        <div class="friend-name">Sister</div>
+        <div class="friend-time">4:00 PM - Shopping</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+    
+    <div class="day-column">
+      <div class="day-header">
+        <div class="day-name">Sunday</div>
+        <div class="day-date">Mar 23</div>
+      </div>
+      
+      <div class="friend-box family">
+        <div class="friend-name">Family Dinner</div>
+        <div class="friend-time">5:00 PM - Home</div>
+      </div>
+      
+      <div class="friend-box dow-jones">
+        <div class="friend-name">Market Week Ahead</div>
+        <div class="friend-time">7:00 PM - Planning</div>
+      </div>
+      
+      <div class="add-friend">+ Add Friend</div>
+    </div>
+  </div>
+</body>
+</html>

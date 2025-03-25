@@ -35,13 +35,13 @@ public class GroupMember {
 
     @ManyToOne
     @JoinColumn(name = "group_id")
-    @JsonBackReference
+    @JsonBackReference("group-members")
     @ToString.Exclude
     private SocialGroup group;
 
     @ManyToOne
     @JoinColumn(name = "friend_id")
-    @JsonBackReference
+    @JsonBackReference("friends")
     @ToString.Exclude
     private Friend friend;
 }

@@ -43,7 +43,7 @@ public class SocialGroup {
     private List<GroupKnowledge> knowledge;
 
     @OneToMany(mappedBy = "group",cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("group-members")
     private List<GroupMember> members;
 
     @OneToMany(mappedBy = "group",cascade = CascadeType.ALL, orphanRemoval = true)

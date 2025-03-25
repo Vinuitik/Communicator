@@ -77,7 +77,7 @@ public class Friend {
     private List<FriendPermission> permissions;
 
     @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("friends")
     private List<GroupMember> members;
 
     @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)

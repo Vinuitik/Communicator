@@ -10,7 +10,7 @@ public class PostgresBackupService {
     private static final String DB_NAME = "my_database";
     private static final String DB_USER = "root";
     private static final String DB_PASSWORD = "example";
-    private static final String DB_HOST = "localhost";
+    private static final String DB_HOST = "postgresDB";
     private static final String BACKUP_TOOL = "pg_dump"; // Ensure pg_dump is installed
 
     public static void main(String[] args) {

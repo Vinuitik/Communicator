@@ -20,6 +20,7 @@ communicate\Friend\FriendService\PhotosService.class
 communicate\Support\WebController.class
 communicate\Friend\FriendEntities\Photos$PhotosBuilder.class
 communicate\Friend\FriendEntities\FriendKnowledge.class
+communicate\AI\Embedding.class
 communicate\Group\GroupEntities\GroupPermission$GroupPermissionBuilder.class
 communicate\Friend\DTOs\FriendDTO.class
 communicate\Friend\FriendRepositories\AnalyticsRepository.class
@@ -49,6 +50,7 @@ communicate\Connections\ConnectionsRepositories\ConnectionsKnowledgeRepository.c
 communicate\Friend\FriendControllers\FriendController.class
 communicate\Friend\FriendControllers\FriendAnalyticsController.class
 communicate\Friend\FriendService\FriendService.class
+communicate\AI\VectorConverter.class
 communicate\Group\GroupEntities\GroupPermission$GroupPermissionBuilderImpl.class
 communicate\Friend\FriendRepositories\FriendPermissionRepository.class
 communicate\Friend\FriendEntities\FriendPermission$FriendPermissionBuilderImpl.class
