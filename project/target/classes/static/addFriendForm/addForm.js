@@ -1,4 +1,4 @@
-import { collectKnowledgeData } from '/facts.js';
+import { collectKnowledgeData } from '../facts/facts.js';
 
 
 document.getElementById('friendForm').addEventListener('submit', function(event) {

@@ -37,6 +37,11 @@ public class WebController {
         return "forward:/analytics/analytics.html";
     }
 
+    @GetMapping("profile/{id}")
+    public String profile(@PathVariable Integer id) {
+        return "forward:/profile/profile.html";
+    }
+
     @GetMapping("knowledge/{id}")
     //@ResponseBody
     public String knowledge(@PathVariable(required = true) Integer id, Model model) {

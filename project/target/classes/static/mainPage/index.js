@@ -22,7 +22,7 @@ async function viewRequest(endpoint) {
                 <td>
                     <button class="button delete-button">Delete</button>
                     <a href="talked/${friend.id}" class="button">Talked</a>
-                    <a href="knowledge/${friend.id}" class="button">Knowledge</button>
+                    <a href="profile/${friend.id}" class="button">Profile</button>
                 </td>
             `;
             tbody.appendChild(row);
