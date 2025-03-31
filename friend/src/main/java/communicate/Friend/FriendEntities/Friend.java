@@ -29,11 +29,6 @@ import jakarta.validation.constraints.Size;
 import communicate.Friend.FriendEntities.FriendKnowledge;
 import communicate.Friend.FriendEntities.FriendPermission;
 import communicate.Friend.FriendEntities.Social;
-<<<<<<<< HEAD:friend/src/main/java/communicate/Friend/FriendEntities/Friend.java
-========
-import communicate.Support.GroupMember;
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Friend/FriendEntities/Friend.java
-
 
 @Getter
 @AllArgsConstructor

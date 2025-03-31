@@ -1,8 +1,5 @@
-<<<<<<<< HEAD:friend/src/main/java/communicate/WebController.java
 package communicate;
-========
-package communicate.Support;
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Support/WebController.java
+
 
 import java.util.List;
 
@@ -39,14 +36,11 @@ public class WebController {
     @GetMapping("stats")
     public String stats() {
         return "forward:/analytics/analytics.html";
-<<<<<<<< HEAD:friend/src/main/java/communicate/WebController.java
     }
 
     @GetMapping("profile/{id}")
     public String profile(@PathVariable Integer id) {
         return "forward:/profile/profile.html";
-========
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Support/WebController.java
     }
 
     @GetMapping("knowledge/{id}")

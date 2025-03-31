@@ -1,8 +1,5 @@
-<<<<<<<< HEAD:friend/src/main/java/communicate/Friend/FriendEntities/FriendKnowledge.java
 package communicate.Friend.FriendEntities;
-========
-package communicate.Support;
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Support/Knowledge.java
+
 
 import java.time.LocalDate;
 
@@ -23,7 +20,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-<<<<<<<< HEAD:friend/src/main/java/communicate/Friend/FriendEntities/FriendKnowledge.java
 import communicate.Friend.FriendEntities.Friend;
 
 @Entity
@@ -33,18 +29,6 @@ import communicate.Friend.FriendEntities.Friend;
 @NoArgsConstructor
 @Builder
 public class FriendKnowledge  {
-========
-import lombok.experimental.SuperBuilder;
-
-@Data
-@SuperBuilder
-@Entity
-@AllArgsConstructor
-@NoArgsConstructor
-@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
-public abstract class Knowledge {
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Support/Knowledge.java
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
@@ -64,12 +48,10 @@ public abstract class Knowledge {
     
     private Integer interval;
 
-<<<<<<<< HEAD:friend/src/main/java/communicate/Friend/FriendEntities/FriendKnowledge.java
+
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference
     @ToString.Exclude
     private Friend friend;
-========
->>>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/src/main/java/communicate/Support/Knowledge.java
 }
