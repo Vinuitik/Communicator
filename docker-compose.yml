@@ -16,7 +16,7 @@ services:
 
   java-app:
     build:
-      context: ./project  # Build the image from the current directory using the Dockerfile
+      context: ./friend  # Build the image from the current directory using the Dockerfile
     container_name: javaApp
     ports:
       - "8085:8085"  # Ensure port consistency
@@ -34,6 +34,36 @@ services:
         context: ./backup
         dockerfile: Dockerfile
       container_name: backupService
+      depends_on:
+        - postgres
+      restart: unless-stopped
+
+  group:
+      build: 
+        context: ./group
+        dockerfile: Dockerfile
+      container_name: groupService
+      ports:
+      - "8086:8086"  # Ensure port consistency
+      environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
+        SPRING_DATASOURCE_USERNAME: root
+        SPRING_DATASOURCE_PASSWORD: example
+      depends_on:
+        - postgres
+      restart: unless-stopped
+
+  connections:
+      build: 
+        context: ./connections
+        dockerfile: Dockerfile
+      container_name: groupService
+      ports:
+      - "8087:8087"  # Ensure port consistency
+      environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
+        SPRING_DATASOURCE_USERNAME: root
+        SPRING_DATASOURCE_PASSWORD: example
       depends_on:
         - postgres
       restart: unless-stopped
