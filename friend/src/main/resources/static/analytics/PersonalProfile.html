@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Profile - James Wilson</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .profile-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+    
+    .profile-header img {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 30px;
+      border: 4px solid #3498db;
+    }
+    
+    .profile-header-text h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.2rem;
+    }
+    
+    .profile-subtitle {
+      color: #7f8c8d;
+      font-size: 1.1rem;
+      margin-bottom: 15px;
+    }
+    
+    .quick-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 15px;
+    }
+    
+    .stat-item {
+      padding: 8px 15px;
+      background-color: #f1f5f9;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #616161;
+    }
+    
+    .stat-item i {
+      margin-right: 5px;
+      color: #3498db;
+    }
+    
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    
+    .profile-section {
+      background-color: white;
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+    
+    .section-title {
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      color: #2c3e50;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .section-title button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    
+    .media-gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    
+    .media-item {
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+      aspect-ratio: 1/1;
+    }
+    
+    .media-item img, .media-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+    
+    .media-item:hover img, .media-item:hover video {
+      transform: scale(1.05);
+    }
+    
+    .media-item.video::after {
+      content: "▶";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      background-color: rgba(0,0,0,0.7);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+    
+    .social-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .social-link {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      background-color: #f5f7fa;
+      border-radius: 8px;
+      text-decoration: none;
+      color: #333;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    
+    .social-link:hover {
+      transform: translateY(-3px);
+      background-color: #e6e9ed;
+    }
+    
+    .social-link i {
+      margin-right: 10px;
+      color: #3498db;
+      font-size: 1.2rem;
+    }
+    
+    .social-link.instagram i { color: #e1306c; }
+    .social-link.facebook i { color: #4267B2; }
+    .social-link.twitter i { color: #1DA1F2; }
+    .social-link.linkedin i { color: #0077B5; }
+    .social-link.github i { color: #333; }
+    
+    .groups-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .group-tag {
+      padding: 8px 15px;
+      background-color: #e3f2fd;
+      color: #1565c0;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+    
+    .knowledge-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    
+    .knowledge-table th, .knowledge-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #e1e4e8;
+    }
+    
+    .knowledge-table th {
+      background-color: #f5f7fa;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .knowledge-table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .relationship-section {
+      margin-top: 20px;
+    }
+    
+    .relationship-card {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      background-color: #f5f7fa;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .relationship-card img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-right: 15px;
+      object-fit: cover;
+    }
+    
+    .relationship-name {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .relationship-detail {
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+    
+    .relationship-quality {
+      margin-left: auto;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    
+    .quality-great {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    .quality-good {
+      background-color: #e3f2fd;
+      color: #0d47a1;
+    }
+    
+    .quality-neutral {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    
+    .quality-complicated {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    
+    .note-section {
+      background-color: #fffde7;
+      border-left: 4px solid #fdd835;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 0 8px 8px 0;
+    }
+    
+    .note-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #5d4037;
+    }
+    
+    .upcoming-meetings {
+      margin-top: 20px;
+    }
+    
+    .meeting-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 10px;
+      background-color: #f5f7fa;
+      border-radius: 8px;
+    }
+    
+    .meeting-date {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #3498db;
+      color: white;
+      border-radius: 8px;
+      margin-right: 15px;
+    }
+    
+    .meeting-month {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+    
+    .meeting-day {
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    
+    .meeting-details {
+      flex: 1;
+    }
+    
+    .meeting-title {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    
+    .meeting-info {
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+    
+    @media (max-width: 768px) {
+      .profile-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .profile-header {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .profile-header img {
+        margin-right: 0;
+        margin-bottom: 20px;
+      }
+      
+      .media-gallery {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <img src="/api/placeholder/400/400" alt="James Wilson">
+      <div class="profile-header-text">
+        <h1>James Wilson</h1>
+        <div class="profile-subtitle">College friend • Known since 2018</div>
+        <div class="quick-stats">
+          <div class="stat-item"><i>📅</i> Last met: 2 weeks ago</div>
+          <div class="stat-item"><i>🗓️</i> Next: March 25, 2025</div>
+          <div class="stat-item"><i>🏆</i> Close friend</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main content grid -->
+    <div class="profile-grid">
+      <!-- Left column -->
+      <div class="left-column">
+        <!-- Media Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Photos & Videos
+            <button>Add Media</button>
+          </div>
+          <div class="media-gallery">
+            <div class="media-item">
+              <img src="/api/placeholder/300/300" alt="Hiking trip">
+            </div>
+            <div class="media-item">
+              <img src="/api/placeholder/300/300" alt="Birthday party">
+            </div>
+            <div class="media-item video">
+              <img src="/api/placeholder/300/300" alt="Concert video">
+            </div>
+            <div class="media-item">
+              <img src="/api/placeholder/300/300" alt="Beach day">
+            </div>
+            <div class="media-item">
+              <img src="/api/placeholder/300/300" alt="Dinner gathering">
+            </div>
+            <div class="media-item video">
+              <img src="/api/placeholder/300/300" alt="Road trip video">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Social Links -->
+        <div class="profile-section">
+          <div class="section-title">
+            Social Media
+            <button>Add Social</button>
+          </div>
+          <div class="social-links">
+            <a href="#" class="social-link instagram">
+              <i>📸</i> Instagram: @james_wilson
+            </a>
+            <a href="#" class="social-link facebook">
+              <i>👤</i> Facebook: jameswilson
+            </a>
+            <a href="#" class="social-link twitter">
+              <i>🐦</i> Twitter: @jwilson_tech
+            </a>
+            <a href="#" class="social-link linkedin">
+              <i>💼</i> LinkedIn: james-wilson-dev
+            </a>
+            <a href="#" class="social-link github">
+              <i>💻</i> GitHub: jwilson-code
+            </a>
+          </div>
+        </div>
+        
+        <!-- Knowledge Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Knowledge About James
+            <button>Add Info</button>
+          </div>
+          <table class="knowledge-table">
+            <tr>
+              <th>Birthday</th>
+              <td>April 15, 1995</td>
+            </tr>
+            <tr>
+              <th>Occupation</th>
+              <td>Software Developer at TechCorp</td>
+            </tr>
+            <tr>
+              <th>Favorite Food</th>
+              <td>Thai curry, especially Panang</td>
+            </tr>
+            <tr>
+              <th>Hobbies</th>
+              <td>Rock climbing, photography, hiking</td>
+            </tr>
+            <tr>
+              <th>Coffee Order</th>
+              <td>Black Americano, no sugar</td>
+            </tr>
+            <tr>
+              <th>Allergies</th>
+              <td>Peanuts (mild), shellfish</td>
+            </tr>
+            <tr>
+              <th>Gift Ideas</th>
+              <td>Photography accessories, climbing gear</td>
+            </tr>
+            <tr>
+              <th>Pet Peeves</th>
+              <td>Being late, loud chewing</td>
+            </tr>
+          </table>
+        </div>
+        
+        <!-- Relationship Knowledge -->
+        <div class="profile-section relationship-section">
+          <div class="section-title">
+            Relationship Knowledge
+            <button>Add Relationship</button>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Sarah Johnson">
+            <div>
+              <div class="relationship-name">Sarah Johnson</div>
+              <div class="relationship-detail">Dating for 2 years, met at work</div>
+            </div>
+            <span class="relationship-quality quality-great">Great</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Mike Peterson">
+            <div>
+              <div class="relationship-name">Mike Peterson</div>
+              <div class="relationship-detail">Best friend since college, roommate for 1 year</div>
+            </div>
+            <span class="relationship-quality quality-good">Good</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Lisa Wang">
+            <div>
+              <div class="relationship-name">Lisa Wang</div>
+              <div class="relationship-detail">Coworker, occasional climbing partner</div>
+            </div>
+            <span class="relationship-quality quality-neutral">Neutral</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Alex Thompson">
+            <div>
+              <div class="relationship-name">Alex Thompson</div>
+              <div class="relationship-detail">Former roommate, had a disagreement over rent</div>
+            </div>
+            <span class="relationship-quality quality-complicated">Complicated</span>
+          </div>
+          
+          <div class="note-section">
+            <div class="note-title">Important Note:</div>
+            <p>Don't mention the surprise birthday party being planned by Sarah for April. James doesn't know about it yet!</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right column -->
+      <div class="right-column">
+        <!-- Groups Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Groups
+            <button>Add Group</button>
+          </div>
+          <div class="groups-list">
+            <div class="group-tag">College Friends</div>
+            <div class="group-tag">Rock Climbing Club</div>
+            <div class="group-tag">Weekend Hikers</div>
+            <div class="group-tag">Tech Meetup</div>
+            <div class="group-tag">Book Club</div>
+            <div class="group-tag">Photography Enthusiasts</div>
+          </div>
+        </div>
+        
+        <!-- Upcoming Meetings -->
+        <div class="profile-section">
+          <div class="section-title">
+            Upcoming Meetings
+            <button>Add Meeting</button>
+          </div>
+          <div class="upcoming-meetings">
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">Mar</span>
+                <span class="meeting-day">25</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Coffee Catchup</div>
+                <div class="meeting-info">3:30 PM • Downtown Café</div>
+              </div>
+            </div>
+            
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">Apr</span>
+                <span class="meeting-day">15</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Birthday Dinner</div>
+                <div class="meeting-info">7:00 PM • Italian Restaurant</div>
+              </div>
+            </div>
+            
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">May</span>
+                <span class="meeting-day">3</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Hiking Trip</div>
+                <div class="meeting-info">9:00 AM • Eagle Mountain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Notes Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Recent Interactions
+            <button>Add Note</button>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #2c3e50;">March 5, 2025</div>
+            <p>Met for dinner at Sakura Japanese restaurant. Talked about his recent promotion and upcoming travel plans to Portugal. He mentioned wanting to get into cycling.</p>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #2c3e50;">February 18, 2025</div>
+            <p>Quick coffee meetup. He was stressed about a work deadline. Mentioned his parents are visiting next month and he's looking for recommendations for activities.</p>
+          </div>
+          
+          <div>
+            <div style="font-weight: 600; color: #2c3e50;">January 27, 2025</div>
+            <p>Weekend hiking trip with the group. James brought his new camera and took amazing landscape photos. He shared some photography tips and mentioned wanting to do a photography course.</p>
+          </div>
+        </div>
+        
+        <!-- Topics to Discuss -->
+        <div class="profile-section">
+          <div class="section-title">
+            Topics to Discuss
+            <button>Add Topic</button>
+          </div>
+          
+          <ul style="list-style-type: none; padding-left: 0;">
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic1" style="margin-right: 10px;">
+                <label for="topic1">Ask about Portugal trip planning</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic2" style="margin-right: 10px;">
+                <label for="topic2">Share cycling route recommendations</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic3" style="margin-right: 10px;">
+                <label for="topic3">Follow up on photography course interest</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic4" style="margin-right: 10px;">
+                <label for="topic4">Invite to Alex's housewarming party</label>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
