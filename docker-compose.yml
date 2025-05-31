@@ -7,22 +7,22 @@ services:
     ports:
       - "5433:5432"  # Expose PostgreSQL on local port 5433
     environment:
-      POSTGRES_USER: root
+      POSTGRES_USER: myapp_user
       POSTGRES_PASSWORD: example
       POSTGRES_DB: my_database
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  java-app:
+  friend:
     build:
       context: ./friend  # Build the image from the current directory using the Dockerfile
-    container_name: javaApp
+    container_name: friend
     ports:
       - "8085:8085"  # Ensure port consistency
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
-      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_USERNAME: myapp_user
       SPRING_DATASOURCE_PASSWORD: example
     depends_on:
       - postgres
@@ -47,7 +47,7 @@ services:
       - "8086:8086"  # Ensure port consistency
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
-        SPRING_DATASOURCE_USERNAME: root
+        SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
       depends_on:
         - postgres
@@ -57,12 +57,12 @@ services:
       build: 
         context: ./connections
         dockerfile: Dockerfile
-      container_name: groupService
+      container_name: connectionService
       ports:
-      - "8087:8087"  # Ensure port consistency
+      - "8088:8088"  # Ensure port consistency
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
-        SPRING_DATASOURCE_USERNAME: root
+        SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
       depends_on:
         - postgres

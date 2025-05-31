@@ -18,10 +18,10 @@ import java.util.Optional;
 public interface FriendKnowledgeRepository extends JpaRepository<FriendKnowledge, Integer> {
     public List<FriendKnowledge> findByFriendId(Integer friendId);
 
-    @Query("SELECT k FROM Knowledge k ORDER BY k.priority ASC")
+    @Query("SELECT k FROM FriendKnowledge k ORDER BY k.priority ASC")
     List<FriendKnowledge> findAllSortedByPriority();
 
-    @Query("SELECT k FROM Knowledge k WHERE k.friend.id = :friendId ORDER BY k.priority DESC")
+    @Query("SELECT k FROM FriendKnowledge k WHERE k.friend.id = :friendId ORDER BY k.priority DESC")
     List<FriendKnowledge> findAllSortedByFriendIdAndPriority(@Param("friendId") Integer friendId);
 
     Optional<FriendKnowledge> findById(Integer id);

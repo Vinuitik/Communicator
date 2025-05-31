@@ -1,0 +1,84 @@
+1. Architecture Enhancements
+1.1 Add NGINX as API Gateway + Load Balancer
+ Create a Docker service for NGINX
+
+ Configure routing to microservices via NGINX (reverse proxy setup)
+
+ Add basic load balancing (round robin or IP hash)
+
+ Add HTTPS support with self-signed certs or Let's Encrypt (optional)
+
+1.2 Improve Microservice Communication
+ Ensure each service registers with NGINX (if dynamic service discovery is needed)
+
+ Add health check endpoints for services
+
+ Add basic monitoring (Prometheus + Grafana - optional)
+
+2. Data Model Adjustments / Clarification
+2.1 Current Entities
+Friend
+
+FriendKnowledge (1-to-Many from Friend)
+
+Group (Many-to-Many with Friend)
+
+GroupKnowledge
+
+Connection (Friend ↔ Friend) + Knowledge
+
+2.2 Enhancements (if not already done)
+ Normalize Connection so each is bidirectional (or has directional metadata)
+
+ Ensure Knowledge has timestamp + expiration/reminder date
+
+ Optional: Add InteractionLog entity to log history of talks/check-ins
+
+3. UI/UX Redesign: Weekly Pane
+3.1 New View Structure
+ Display 8 slots:
+
+7 = This week (1 per day or category)
+
+1 = “Missed” = friends you missed check-ins with
+
+3.2 Filtering & Grouping
+ Backend API: return friends by planned interaction date (sorted by week/day)
+
+ Frontend: render "cards" or "slots" per category
+
+ Highlight overdue interactions (maybe red badge?)
+
+3.3 UI Technologies
+What stack are you using? (React / Vue / Angular / Svelte?)
+
+I’d recommend React + TailwindCSS (can help scaffold it)
+
+3.4. Staticstic update:
+
+Instead of of having the same discount rate in stats page, we will have a discount rate that is dependent on the last iteration. Like 0.99 if great, 0.97 if good and 0.95 if bad
+
+4. Backend Logic
+4.1 New API Endpoints
+ GET /friends/schedule/weekly – return 8-slot data
+
+ GET /friends/missed – return those whose deadline has passed
+
+ POST /interactions – log a completed interaction (optional)
+
+
+
+
+5. DevOps / Docker Tasks
+5.1 Docker Enhancements
+ Add Dockerfile and docker-compose config for NGINX
+
+ Use .env for shared config across services
+
+ Define networks so microservices can talk to each other securely
+
+5.2 CI/CD (if needed)
+ GitHub Actions / GitLab CI for image building & testing
+
+ DockerHub / private registry push (optional)
+

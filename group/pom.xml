@@ -115,11 +115,7 @@
         </plugin>
     </plugins>
     <!-- Set the final name for the JAR -->
-<<<<<<< HEAD:group/pom.xml
     <finalName>Group</finalName>
-=======
-    <finalName>FriendCRM</finalName>
->>>>>>> 03fd665330737eb66cd80b3a789af0caba8d5c8c:project/tempCodeRunnerFile.xml
 </build>
 
 

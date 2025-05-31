@@ -8,7 +8,7 @@ import java.util.TimerTask;
 public class PostgresBackupService {
     private static final String BACKUP_DIR = "/app/backups";
     private static final String DB_NAME = "my_database";
-    private static final String DB_USER = "root";
+    private static final String DB_USER = "myapp_user";
     private static final String DB_PASSWORD = "example";
     private static final String DB_HOST = "postgresDB";
     private static final String BACKUP_TOOL = "pg_dump";
@@ -42,6 +42,7 @@ public class PostgresBackupService {
                 "sh", "-c",
                 "PGPASSWORD=" + DB_PASSWORD + " " + BACKUP_TOOL +
                 " -h " + DB_HOST +           // Specify host
+                " -p 5432" +             // Specify port (default is 5432, but using 5433 as per your example)
                 " -U " + DB_USER +           // Specify user
                 " -d " + DB_NAME +           // Specify database
                 " -v " +                     // Verbose output

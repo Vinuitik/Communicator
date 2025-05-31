@@ -1,14 +1,28 @@
-# Use a Java base image to build the app
-FROM openjdk:21-slim as build
+# Use Maven to build the app, then use a slim Java image to run it
 
-# Set the working directory in the container
+# Build stage
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
 WORKDIR /app
 
-# Copy your project’s JAR file into the container
-COPY target/FriendCRM.jar app.jar
+# Copy pom.xml and download dependencies (for better caching)
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Expose the port your app will run on
+# Copy the rest of the source code
+COPY src ./src
+
+# Build the application
+RUN mvn clean package -DskipTests
+
+# Runtime stage
+FROM openjdk:21-slim
+
+WORKDIR /app
+
+# Copy the built jar from the build stage
+COPY --from=build /app/target/FriendCRM.jar app.jar
+
 EXPOSE 8085
 
-# Command to run your app
 ENTRYPOINT ["java", "-jar", "app.jar"]
