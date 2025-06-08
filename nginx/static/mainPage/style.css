@@ -1,0 +1,192 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.6;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Container styles */
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    overflow: visible;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #2d3436;
+}
+
+/* Table styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 8px;
+    overflow: visible;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #6c5ce7;
+    color: white;
+    font-weight: 500;
+}
+
+tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Button styles */
+.button-container {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.button {
+    background-color: #6c5ce7;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1rem;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.button:hover {
+    background-color: #5f4dd0;
+    transform: translateY(-2px);
+}
+
+/* Action buttons in table */
+.delete-button, .profile-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 0 0.25rem;
+    color: white;
+}
+
+.profile-button {
+    background-color: #6c5ce7;
+}
+
+/* Experience stars */
+.experience {
+    color: #f1c40f;
+}
+
+/* Planned speaking time */
+.speaking-time {
+    color: #2ecc71;
+    font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .navbar-links {
+        margin-top: 1rem;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .button-container {
+        flex-direction: column;
+    }
+    
+    .button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* Dropdown styles */
+.actions-cell {
+    position: relative;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #6c5ce7;
+}
+
+.dropdown-button:hover {
+    background-color: #f0f0f0;
+    border-radius: 4px;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: white;
+    min-width: 160px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    z-index: 1;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.dropdown-content.show {
+    display: block;
+}
+
+.dropdown-item {
+    color: #333;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.dropdown-item.delete-button {
+    color: #e74c3c;
+}
+
+.dropdown-item.delete-button:hover {
+    background-color: #fee;
+}

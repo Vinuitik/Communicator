@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.PutMapping;
 
 
@@ -36,7 +37,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequiredArgsConstructor
-@CrossOrigin
+@CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class FriendController {
     private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;

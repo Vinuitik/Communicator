@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Tracker</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="mainPage/style.css">
+    <link rel="stylesheet" href="mainPage/buttonList.css">
+    <link rel="stylesheet" href="navigation/navigation.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Friends Tracker</div>
+        <ul class="navbar-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="addFriendForm/addForm.html">Add Friend</a></li>
+            <li><a href="/" id="navAllFriends">All Friends</a></li>
+            <li><a href="/" id="navWeek">This Week</a></li>
+            <li><a href="/stats">Stats</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Friends Tracker</h1>
+        <!-- Table for displaying friend data -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Planned Speaking Time</th>
+                    <th>Experience</th>
+                    <th>Date of Birth</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Sample data for now; replace with dynamic content later -->
+            </tbody>
+        </table>
+
+        <!-- Buttons at the bottom -->
+        <div class="button-container">
+            <a href="addFriendForm/addForm.html" class="button">Add Friend</a>
+            <button class="button" id="viewAllFriends">View All Friends</button>
+            <button class="button" id="viewWeek">View This Week Planned</button>
+            <a href="api/friend/stats" class="button" id="viewStats">View Stats</a>
+        </div>
+    </div>
+
+    <!-- Link to external JavaScript -->
+    <script src="mainPage/index.js"></script>
+</body>
+
+</html>

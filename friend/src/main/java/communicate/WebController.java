@@ -5,8 +5,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
@@ -16,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @Controller
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class WebController {
 
     private final FriendService friendService;
@@ -26,16 +29,6 @@ public class WebController {
         Friend friend = friendService.findById(id);
         model.addAttribute("friend", friend);
         return "talkedForm"; // Your Thymeleaf template name
-    }
-
-    @GetMapping("index")
-    public String index() {
-        return "forward:/index.html";
-    }
-
-    @GetMapping("stats")
-    public String stats() {
-        return "forward:/analytics/analytics.html";
     }
 
     @GetMapping("profile/{id}")

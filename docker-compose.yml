@@ -19,7 +19,9 @@ services:
       context: ./friend  # Build the image from the current directory using the Dockerfile
     container_name: friend
     ports:
-      - "8085:8085"  # Ensure port consistency
+      - "8085"  # Ensure port consistency
+    expose:
+      - "8085"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
       SPRING_DATASOURCE_USERNAME: myapp_user
@@ -44,7 +46,9 @@ services:
         dockerfile: Dockerfile
       container_name: groupService
       ports:
-      - "8086:8086"  # Ensure port consistency
+      - "8086"  # Ensure port consistency
+      expose:
+      - "8086"  # Expose port 8086 for internal communication
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
@@ -59,7 +63,9 @@ services:
         dockerfile: Dockerfile
       container_name: connectionService
       ports:
-      - "8088:8088"  # Ensure port consistency
+      - "8088"  # Ensure port consistency
+      expose:
+        - "8088"  # Expose port 8088 for the connections service
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
@@ -67,6 +73,19 @@ services:
       depends_on:
         - postgres
       restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    ports:
+      - "8090:80"  # Expose Nginx on port 80
+    depends_on:
+      - friend
+      - group
+      - connections
+    restart: unless-stopped
 
 volumes:
   postgres-data:
