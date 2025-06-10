@@ -61,11 +61,11 @@ async function viewRequest(endpoint) {
                         <button class="dropdown-button">⋮</button>
                         <div class="dropdown-content">
                             <a href="#" class="dropdown-item delete-button">Delete</a>
-                            <a href="talked/${friend.id}" class="dropdown-item">Talked</a>
-                            <a href="profile/${friend.id}" class="dropdown-item">Profile</a>
-                            <a href="knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
-                            <a href="groups/${friend.id}" class="dropdown-item">Groups</a>
-                            <a href="connections/${friend.id}" class="dropdown-item">Connections</a>
+                            <a href="/api/friend/talked/${friend.id}" class="dropdown-item">Talked</a>
+                            <a href="api/friend/profile/${friend.id}" class="dropdown-item">Profile</a>
+                            <a href="api/friend/knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
+                            <a href="api/group/groups/${friend.id}" class="dropdown-item">Groups</a>
+                            <a href="api/connections/${friend.id}" class="dropdown-item">Connections</a>
                         </div>
                     </div>
                 </td>
