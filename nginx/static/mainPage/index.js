@@ -132,3 +132,10 @@ document.getElementById('viewAllFriends').addEventListener('click', fetchAllFrie
 document.getElementById('viewWeek').addEventListener('click', fetchWeekFriends);
 
 window.onload = fetchWeekFriends;
+
+document.querySelectorAll('.samePage').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    // Your click handling code here
+  });
+});
