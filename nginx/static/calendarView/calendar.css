@@ -1,0 +1,127 @@
+* {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+    
+    .calendar-container {
+      display: flex;
+      width: 100%;
+      overflow-x: auto;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+    
+    .day-column {
+      flex: 1;
+      min-width: 120px;
+      padding: 15px;
+      border-right: 1px solid #ecf0f1;
+    }
+    
+    .day-column:last-child {
+      border-right: none;
+    }
+    
+    .previous-column {
+      min-width: 120px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-right: 1px solid #ecf0f1;
+    }
+    
+    .day-header {
+      text-align: center;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #3498db;
+      margin-bottom: 15px;
+    }
+    
+    .day-name {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    
+    .day-date {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      margin-top: 3px;
+    }
+    
+    .friend-box {
+      background-color: #3498db;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .friend-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .friend-box.dow-jones {
+      background-color: #e74c3c;
+    }
+    
+    .friend-box.personal {
+      background-color: #2ecc71;
+    }
+    
+    .friend-box.family {
+      background-color: #9b59b6;
+    }
+    
+    .friend-box.work {
+      background-color: #f39c12;
+    }
+    
+    .friend-name {
+      font-weight: bold;
+    }
+    
+    .friend-time {
+      font-size: 0.8rem;
+      margin-top: 3px;
+      opacity: 0.9;
+    }
+    
+    .add-friend {
+      text-align: center;
+      padding: 10px;
+      background-color: #ecf0f1;
+      border-radius: 5px;
+      color: #7f8c8d;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    
+    .add-friend:hover {
+      background-color: #d6dbdf;
+    }

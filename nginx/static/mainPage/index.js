@@ -129,7 +129,10 @@ async function fetchWeekFriends() {
 
 // Event listeners for buttons
 document.getElementById('viewAllFriends').addEventListener('click', fetchAllFriends);
-document.getElementById('viewWeek').addEventListener('click', fetchWeekFriends);
+const weekViews = document.getElementsByClassName('viewWeek');
+for (let i = 0; i < weekViews.length; i++) {
+  weekViews[i].addEventListener('click', fetchWeekFriends);
+}
 
 window.onload = fetchWeekFriends;
 
