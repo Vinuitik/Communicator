@@ -171,7 +171,7 @@ function createFriendBox(friend) {
     
     // Add click handler to view friend details
     box.addEventListener('click', () => {
-        window.location.href = `api/friend/profile/${friend.id}`;
+        window.location.href = `/api/friend/profile/${friend.id}`;
     });
     
     return box;
