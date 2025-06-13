@@ -134,7 +134,7 @@ for (let i = 0; i < weekViews.length; i++) {
   weekViews[i].addEventListener('click', fetchWeekFriends);
 }
 
-window.onload = fetchWeekFriends;
+window.onload = fetchAllFriends;
 
 document.querySelectorAll('.samePage').forEach(link => {
   link.addEventListener('click', function(e) {
