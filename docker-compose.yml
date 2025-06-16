@@ -10,6 +10,7 @@ services:
       POSTGRES_USER: myapp_user
       POSTGRES_PASSWORD: example
       POSTGRES_DB: my_database
+      TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -26,6 +27,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
       SPRING_DATASOURCE_USERNAME: myapp_user
       SPRING_DATASOURCE_PASSWORD: example
+      TZ: ${HOST_TIMEZONE:-UTC}
     depends_on:
       - postgres
     command: java -jar app.jar  # Match the JAR name specified in the Dockerfile
@@ -36,6 +38,8 @@ services:
         context: ./backup
         dockerfile: Dockerfile
       container_name: backupService
+      environment:
+        TZ: ${HOST_TIMEZONE:-UTC}
       depends_on:
         - postgres
       restart: unless-stopped
@@ -53,6 +57,7 @@ services:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
+        TZ: ${HOST_TIMEZONE:-UTC}
       depends_on:
         - postgres
       restart: unless-stopped
@@ -70,6 +75,7 @@ services:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
+        TZ: ${HOST_TIMEZONE:-UTC}
       depends_on:
         - postgres
       restart: unless-stopped
@@ -79,6 +85,8 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     container_name: nginx
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}=value
     ports:
       - "8090:80"  # Expose Nginx on port 80
     depends_on:
