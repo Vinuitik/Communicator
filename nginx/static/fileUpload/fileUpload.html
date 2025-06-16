@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Files - Friends Tracker</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/mainPage/style.css">
+    <link rel="stylesheet" href="/navigation/navigation.css">
+    <link rel="stylesheet" href="/fileUpload/fileUpload.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Friends Tracker</div>
+        <ul class="navbar-links">
+            <li><a href="/calendarView/calendar.html">Home</a></li>
+            <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
+            <li><a href="/" id="viewAllFriends" class="samePage">All Friends</a></li>
+            <li><a href="/" class="samePage viewWeek">This Week</a></li>
+            <li><a href="/stats">Stats</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Add Files</h1>
+        
+        <div class="upload-container">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Drag & Drop Files Here</h3>
+                <p>or</p>
+                <button type="button" class="browse-btn" onclick="document.getElementById('fileInput').click()">
+                    Browse Files
+                </button>
+                <input type="file" id="fileInput" multiple accept="image/*,video/*" hidden>
+                <p class="file-types">Supported: Images (JPG, PNG, GIF) and Videos (MP4, MOV, AVI)</p>
+            </div>
+
+            <div class="file-list" id="fileList">
+                <h3>Selected Files</h3>
+                <div class="files-container" id="filesContainer">
+                    <!-- Selected files will appear here -->
+                </div>
+            </div>
+
+            <div class="upload-actions">
+                <button type="button" class="upload-btn" id="uploadBtn" disabled>
+                    Upload Files
+                </button>
+                <button type="button" class="clear-btn" id="clearBtn">
+                    Clear All
+                </button>
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <span class="progress-text" id="progressText">0%</span>
+        </div>
+    </div>
+
+    <!-- Link to external JavaScript -->
+    <script src="/fileUpload/fileUpload.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,283 @@
+/* File Upload Specific Styles */
+.upload-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.upload-area {
+    border: 2px dashed #6c5ce7;
+    border-radius: 8px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background-color: #f8f9ff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-bottom: 2rem;
+}
+
+.upload-area:hover,
+.upload-area.dragover {
+    border-color: #5f4dd0;
+    background-color: #f0f0ff;
+    transform: translateY(-2px);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: #6c5ce7;
+}
+
+.upload-area h3 {
+    color: #2d3436;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.upload-area p {
+    color: #636e72;
+    margin: 0.5rem 0;
+}
+
+.browse-btn {
+    background-color: #6c5ce7;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    margin: 1rem 0;
+}
+
+.browse-btn:hover {
+    background-color: #5f4dd0;
+    transform: translateY(-2px);
+}
+
+.file-types {
+    font-size: 0.9rem;
+    color: #74b9ff;
+    margin-top: 1rem !important;
+}
+
+/* File List Styles */
+.file-list {
+    margin-bottom: 2rem;
+}
+
+.file-list h3 {
+    color: #2d3436;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.files-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid #eee;
+    background-color: white;
+    margin-bottom: 1px;
+}
+
+.file-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.file-icon {
+    font-size: 1.5rem;
+}
+
+.file-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-name {
+    font-weight: 500;
+    color: #2d3436;
+    margin-bottom: 0.25rem;
+}
+
+.file-size {
+    font-size: 0.85rem;
+    color: #636e72;
+}
+
+.remove-file {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.remove-file:hover {
+    background-color: #c0392b;
+    transform: scale(1.1);
+}
+
+/* Upload Actions */
+.upload-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.upload-btn, .clear-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.upload-btn {
+    background-color: #00b894;
+    color: white;
+}
+
+.upload-btn:hover:not(:disabled) {
+    background-color: #00a085;
+    transform: translateY(-2px);
+}
+
+.upload-btn:disabled {
+    background-color: #ddd;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.clear-btn {
+    background-color: #636e72;
+    color: white;
+}
+
+.clear-btn:hover {
+    background-color: #2d3436;
+    transform: translateY(-2px);
+}
+
+/* Progress Bar */
+.progress-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    padding: 2rem;
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #6c5ce7;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.progress-text {
+    font-weight: 500;
+    color: #2d3436;
+    font-size: 1.1rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #636e72;
+    font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upload-container {
+        padding: 1rem;
+    }
+    
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+    
+    .upload-icon {
+        font-size: 3rem;
+    }
+    
+    .upload-actions {
+        flex-direction: column;
+    }
+    
+    .upload-btn, .clear-btn {
+        width: 100%;
+    }
+    
+    .file-item {
+        padding: 0.75rem;
+    }
+    
+    .file-info {
+        gap: 0.5rem;
+    }
+    
+    .file-icon {
+        font-size: 1.25rem;
+    }
+}
+
+/* File Type Icons */
+.file-item[data-type="image"] .file-icon::before {
+    content: "🖼️";
+}
+
+.file-item[data-type="video"] .file-icon::before {
+    content: "🎥";
+}
+
+.file-item[data-type="pdf"] .file-icon::before {
+    content: "📄";
+}
+
+.file-item[data-type="audio"] .file-icon::before {
+    content: "🎵";
+}
+
+.file-item[data-type="default"] .file-icon::before {
+    content: "📁";
+}
