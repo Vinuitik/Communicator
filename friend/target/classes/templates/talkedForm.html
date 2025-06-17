@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends Tracker</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/updateForm/talkedForm.css">
+    <link rel="stylesheet" href="/navigation/navigation.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Friends Tracker</div>
+        <ul class="navbar-links">
+            <li><a href="/calendarView/calendar.html">Home</a></li>
+            <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
+            <li><a href="/" id="navAllFriends">All Friends</a></li>
+            <li><a href="/" id="navWeek">This Week</a></li>
+            <li><a href="/stats">Stats</a></li>
+        </ul>
+    </nav>
+
+    <!-- Add Friend Form -->
+    <div id="addFriendForm">
+        <div class="modal-content">
+            <h2 th:text="${friend != null} ? 'Edit Friend' : 'Add Friend'"></h2>
+            <form id="friendForm">
+                <!-- Hidden field to hold ID -->
+                <input type="hidden" id="friend-id" name="id" th:value="${friend.id}">
+
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" placeholder="Enter full name" 
+                       th:value="${friend.name}" required>
+
+                <label for="experience">Experience:</label>
+                <select id="experience" name="experience">
+                    <option th:selected="${friend.experience == '***'}" value="***">Great!</option>
+                    <option th:selected="${friend.experience == '**'}" value="**">Okay</option>
+                    <option th:selected="${friend.experience == '*'}" value="*">Bad</option>
+                </select>
+
+                <label for="Hours">Hours Spoken:</label>
+                <input type="number" id="hours" name="Hours" required min="0" max="24" step="0.01">
+
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" th:value="${friend.dateOfBirth != null ? friend.dateOfBirth : ''}">
+
+                <div class="form-buttons">
+                    <button type="submit" class="button">Submit</button>
+                    <a class="button" href="/index" >Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="container fixed-top-container">
+        <h1>Knowledge Tracker</h1>
+
+        <!-- Input Form Container for Adding New Knowledge -->
+        <div class="input-form-container">
+            <h2>Add New Knowledge</h2>
+            <form id="knowledgeForm">
+                <label for="factInput">Fact:</label>
+                <textarea id="factInput" rows="3" placeholder="Enter your new knowledge here..."></textarea>
+                
+                <label for="importanceInput">Importance:</label>
+                <input type="number" id="importanceInput" placeholder="Rate the importance">
+                
+                <button type="submit" class="button" id="addKnowledgeBtn">Add Knowledge</button>
+            </form>
+        </div>
+        
+        <!-- Table for displaying knowledge data -->
+        <table id="knowledgeTable">
+            <thead>
+                <tr>
+                    <th>Fact</th>
+                    <th>Importance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamic content will be added here -->
+            </tbody>
+        </table>
+
+        
+    </div>
+
+    <!-- Link to external JavaScript -->
+    <script type = "module" src="/facts/facts.js"></script>
+
+    <!-- Link to external JavaScript -->
+    <script type="module" src="/updateForm/talkedForm.js"></script>
+</body>
+
+</html>
