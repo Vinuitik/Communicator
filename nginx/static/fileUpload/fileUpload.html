@@ -8,6 +8,8 @@
 
     <!-- Link to Google Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Link to external CSS -->
     <link rel="stylesheet" href="/mainPage/style.css">
@@ -38,20 +40,22 @@
         
         <div class="upload-container">
             <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
+                <div class="upload-icon"><i class="fas fa-folder-open"></i></div>
                 <h3>Drag & Drop Files Here</h3>
                 <p>or</p>
                 <button type="button" class="browse-btn" onclick="document.getElementById('fileInput').click()">
                     Browse Files
                 </button>
-                <input type="file" id="fileInput" multiple accept="image/*,video/*" hidden>
-                <p class="file-types">Supported: Images (JPG, PNG, GIF) and Videos (MP4, MOV, AVI)</p>
+                <input type="file" id="fileInput" multiple accept="image/*,video/*,.pdf,.doc,.docx" hidden>
+                <p class="file-types">Supported: Images (JPG, PNG, GIF), Videos (MP4, MOV, AVI), Documents (PDF, DOC)</p>
             </div>
 
             <div class="file-list" id="fileList">
-                <h3>Selected Files</h3>
+                <h3>Selected Files (<span id="fileCount">0</span>)</h3>
                 <div class="files-container" id="filesContainer">
-                    <!-- Selected files will appear here -->
+                    <div class="empty-state" id="emptyState">
+                        No files selected yet
+                    </div>
                 </div>
             </div>
 
@@ -70,6 +74,35 @@
                 <div class="progress-fill" id="progressFill"></div>
             </div>
             <span class="progress-text" id="progressText">0%</span>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div class="modal" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="previewFileName">File Preview</h3>
+                <span class="modal-close" id="closeModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="preview-container" id="previewContainer">
+                    <!-- Preview content will be inserted here -->
+                </div>
+                <div class="file-info-detail">
+                    <p><strong>Name:</strong> <span id="modalFileName"></span></p>
+                    <p><strong>Size:</strong> <span id="modalFileSize"></span></p>
+                    <p><strong>Type:</strong> <span id="modalFileType"></span></p>
+                    <p><strong>Last Modified:</strong> <span id="modalFileDate"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="fileUploader.removeFileFromPreview()">
+                    <i class="fas fa-trash"></i> Remove File
+                </button>
+                <button class="btn btn-secondary" onclick="fileUploader.closePreview()">
+                    Close
+                </button>
+            </div>
         </div>
     </div>
 
