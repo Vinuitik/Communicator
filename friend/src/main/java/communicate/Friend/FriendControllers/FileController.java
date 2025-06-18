@@ -58,10 +58,25 @@ public class FileController {
         
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(resource.getMimeType()));
-        headers.setContentDisposition(ContentDisposition.attachment().filename(resource.getResourceName()).build());
+        headers.setContentDisposition(ContentDisposition.inline().filename(resource.getResourceName()).build());
         
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(resource.getResourceData());
+    }
+
+    @GetMapping("/all/{friendId}")
+    public ResponseEntity<byte[]> downloadAllResourcesAsZip(@PathVariable Integer friendId) {
+        byte[] zipData = fileService.createCompressedZipForFriend(friendId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.valueOf("application/zip"));
+        String filename = "friend_" + friendId + "_resources.zip";
+        headers.setContentDisposition(ContentDisposition.attachment().filename(filename).build());
+        headers.setContentLength(zipData.length);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(zipData);
     }
 }
