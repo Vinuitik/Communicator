@@ -28,7 +28,11 @@ public class Videos {
     private Integer id;
     
     @Lob  // Large object for storing images
-    private byte[] imageData;
+    private byte[] videoData;
+
+    private String videoName;
+
+    private String mimeType;
 
     @ManyToOne
     @JoinColumn(name = "friend_id")

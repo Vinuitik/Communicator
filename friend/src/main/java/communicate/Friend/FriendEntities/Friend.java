@@ -85,6 +85,10 @@ public class Friend {
     @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Photos> photos;
+
+    @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<PersonalResource> resources;
     
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {

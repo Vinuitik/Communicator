@@ -1,11 +1,34 @@
 package communicate.Friend.FriendRepositories;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Photos;
 
 @Repository
 public interface PhotosRepository extends JpaRepository<Photos, Integer> {
-
+     // Find all photos for a specific friend
+    List<Photos> findByFriendId(Integer friendId);
+    
+    // Find photos by name (partial match)
+    List<Photos> findByPhotoNameContainingIgnoreCase(String photoName);
+    
+    // Get photo metadata (without actual data) for efficiency
+    @Query("SELECT new Photos(p.id, null, p.photoName, p.mimeType, p.friend) " +
+           "FROM Photos p WHERE p.friend.id = :friendId")
+    List<Photos> findPhotoMetadataByFriendId(@Param("friendId") Integer friendId);
+    
+    // Count photos for a friend
+    long countByFriendId(Integer friendId);
+    
+    // Check if photo exists by name for a friend
+    boolean existsByFriendIdAndPhotoName(Integer friendId, String photoName);
+    
+    // Find by friend and photo name
+    Optional<Photos> findByFriendIdAndPhotoName(Integer friendId, String photoName);
 }

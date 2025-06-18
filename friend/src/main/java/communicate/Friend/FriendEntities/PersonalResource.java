@@ -4,10 +4,10 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -16,24 +16,26 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import jakarta.persistence.Lob;
 
 @Entity
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Photos {
-
+public class PersonalResource {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
     
     @Lob  // Large object for storing images
-    private byte[] imageData;
+    private byte[] resourceData;
 
+    @Column(nullable = false)
+    private String resourceName;
+
+    @Column(nullable = false)
     private String mimeType;
-
-    private String photoName;
 
     @ManyToOne
     @JoinColumn(name = "friend_id")
@@ -41,6 +43,3 @@ public class Photos {
     @ToString.Exclude
     private Friend friend;
 }
-
-
-
