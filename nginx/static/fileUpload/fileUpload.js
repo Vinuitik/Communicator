@@ -1,64 +1,137 @@
-class FileUploader {
+class FileUtilities {
+    static formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    static truncateFileName(fileName, maxLength = 30) {
+        if (fileName.length <= maxLength) return fileName;
+        const extension = fileName.split('.').pop();
+        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
+        return truncatedName + '.' + extension;
+    }
+    
+    static getFileCategory(mimeType) {
+        if (mimeType.startsWith('image/')) return 'image';
+        if (mimeType.startsWith('video/')) return 'video';
+        if (mimeType.startsWith('audio/')) return 'audio';
+        if (mimeType === 'application/pdf') return 'pdf';
+        return 'default';
+    }
+    
+    static getFileIcon(category) {
+        const icons = {
+            image: '<i class="fas fa-file-image"></i>',
+            video: '<i class="fas fa-file-video"></i>',
+            audio: '<i class="fas fa-file-audio"></i>',
+            pdf: '<i class="fas fa-file-pdf"></i>',
+            default: '<i class="fas fa-file"></i>'
+        };
+        return icons[category] || icons.default;
+    }
+}
+
+// File validation logic
+class FileValidator {
+    constructor(maxFiles = 10, maxFileSize = 50 * 1024 * 1024) {
+        this.maxFiles = maxFiles;
+        this.maxFileSize = maxFileSize;
+    }
+    
+    validateFile(file, existingFiles) {
+        // Check file count limit
+        if (existingFiles.length >= this.maxFiles) {
+            alert(`Maximum ${this.maxFiles} files allowed`);
+            return false;
+        }
+        
+        // Check file size
+        if (file.size > this.maxFileSize) {
+            alert(`File "${file.name}" is too large. Maximum size is 50MB.`);
+            return false;
+        }
+        
+        // Check if file already exists
+        const exists = existingFiles.some(f => f.name === file.name && f.size === file.size);
+        if (exists) {
+            alert(`File "${file.name}" is already selected.`);
+            return false;
+        }
+        
+        return true;
+    }
+}
+
+// File collection management
+class FileCollection {
     constructor() {
         this.files = [];
-        this.maxFiles = 10;
-        this.maxFileSize = 50 * 1024 * 1024; // 50MB
-        this.currentPreviewFile = null;
+        this.listeners = [];
+    }
+    
+    addListener(callback) {
+        this.listeners.push(callback);
+    }
+    
+    notifyListeners() {
+        this.listeners.forEach(callback => callback(this.files));
+    }
+    
+    addFile(file) {
+        const fileObj = {
+            id: Date.now() + Math.random().toString(36).substr(2, 9),
+            file: file,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            category: FileUtilities.getFileCategory(file.type),
+            lastModified: new Date(file.lastModified)
+        };
         
-        // Get DOM elements
-        this.fileInput = document.getElementById('fileInput');
-        this.uploadArea = document.getElementById('uploadArea');
-        this.filesContainer = document.getElementById('filesContainer');
-        this.uploadBtn = document.getElementById('uploadBtn');
-        this.clearBtn = document.getElementById('clearBtn');
-        this.fileCount = document.getElementById('fileCount');
-        this.emptyState = document.getElementById('emptyState');
-        this.progressContainer = document.getElementById('progressContainer');
-        this.progressFill = document.getElementById('progressFill');
-        this.progressText = document.getElementById('progressText');
-        
-        // Modal elements
-        this.previewModal = document.getElementById('previewModal');
-        this.previewContainer = document.getElementById('previewContainer');
-        this.previewFileName = document.getElementById('previewFileName');
-        this.closeModal = document.getElementById('closeModal');
-        
+        this.files.push(fileObj);
+        this.notifyListeners();
+        return fileObj;
+    }
+    
+    removeFile(fileId) {
+        this.files = this.files.filter(file => file.id !== fileId);
+        this.notifyListeners();
+    }
+    
+    clearAll() {
+        this.files = [];
+        this.notifyListeners();
+    }
+    
+    getFile(fileId) {
+        return this.files.find(f => f.id === fileId);
+    }
+    
+    getFiles() {
+        return this.files;
+    }
+    
+    getCount() {
+        return this.files.length;
+    }
+}
+
+// Drag and drop handling
+class DragDropHandler {
+    constructor(uploadArea, onFilesDropped) {
+        this.uploadArea = uploadArea;
+        this.onFilesDropped = onFilesDropped;
         this.init();
     }
     
     init() {
-        // File input change event
-        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
-        
-        // Drag and drop events
         this.uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
         this.uploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
         this.uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
-        
-        // Button events
-        this.uploadBtn.addEventListener('click', () => this.uploadFiles());
-        this.clearBtn.addEventListener('click', () => this.clearAllFiles());
-        
-        // Modal events
-        this.closeModal.addEventListener('click', () => this.closePreview());
-        this.previewModal.addEventListener('click', (e) => {
-            if (e.target === this.previewModal) this.closePreview();
-        });
-        
-        // Keyboard events
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.previewModal.style.display === 'block') {
-                this.closePreview();
-            }
-        });
-        
-        this.updateUI();
-    }
-    
-    handleFileSelect(event) {
-        const files = Array.from(event.target.files);
-        this.addFiles(files);
-        event.target.value = ''; // Reset input
     }
     
     handleDragOver(event) {
@@ -75,70 +148,21 @@ class FileUploader {
         event.preventDefault();
         this.uploadArea.classList.remove('dragover');
         const files = Array.from(event.dataTransfer.files);
-        this.addFiles(files);
+        this.onFilesDropped(files);
+    }
+}
+
+// File list UI rendering
+class FileListRenderer {
+    constructor(container, onFileClick, onFileRemove) {
+        this.container = container;
+        this.onFileClick = onFileClick;
+        this.onFileRemove = onFileRemove;
     }
     
-    addFiles(files) {
-        files.forEach(file => {
-            if (this.validateFile(file)) {
-                const fileObj = {
-                    id: Date.now() + Math.random().toString(36).substr(2, 9),
-                    file: file,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    category: this.getFileCategory(file.type),
-                    lastModified: new Date(file.lastModified)
-                };
-                
-                this.files.push(fileObj);
-                this.createFileItem(fileObj);
-            }
-        });
-        
-        this.updateUI();
-    }
-    
-    validateFile(file) {
-        // Check file count limit
-        if (this.files.length >= this.maxFiles) {
-            alert(`Maximum ${this.maxFiles} files allowed`);
-            return false;
-        }
-        
-        // Check file size
-        if (file.size > this.maxFileSize) {
-            alert(`File "${file.name}" is too large. Maximum size is 50MB.`);
-            return false;
-        }
-        
-        // Check if file already exists
-        const exists = this.files.some(f => f.name === file.name && f.size === file.size);
-        if (exists) {
-            alert(`File "${file.name}" is already selected.`);
-            return false;
-        }
-        
-        return true;
-    }
-    
-    getFileCategory(mimeType) {
-        if (mimeType.startsWith('image/')) return 'image';
-        if (mimeType.startsWith('video/')) return 'video';
-        if (mimeType.startsWith('audio/')) return 'audio';
-        if (mimeType === 'application/pdf') return 'pdf';
-        return 'default';
-    }
-    
-    getFileIcon(category) {
-        const icons = {
-            image: '<i class="fas fa-file-image"></i>',
-            video: '<i class="fas fa-file-video"></i>',
-            audio: '<i class="fas fa-file-audio"></i>',
-            pdf: '<i class="fas fa-file-pdf"></i>',
-            default: '<i class="fas fa-file"></i>'
-        };
-        return icons[category] || icons.default;
+    render(files) {
+        this.container.innerHTML = '';
+        files.forEach(fileObj => this.createFileItem(fileObj));
     }
     
     createFileItem(fileObj) {
@@ -150,37 +174,64 @@ class FileUploader {
         
         fileItem.innerHTML = `
             <div class="file-info">
-                <div class="file-icon">${this.getFileIcon(fileObj.category)}</div>
+                <div class="file-icon">${FileUtilities.getFileIcon(fileObj.category)}</div>
                 <div class="file-details">
-                    <div class="file-name" title="${fileObj.name}">${this.truncateFileName(fileObj.name)}</div>
-                    <div class="file-size">${this.formatFileSize(fileObj.size)}</div>
+                    <div class="file-name" title="${fileObj.name}">${FileUtilities.truncateFileName(fileObj.name)}</div>
+                    <div class="file-size">${FileUtilities.formatFileSize(fileObj.size)}</div>
                 </div>
             </div>
-            <button class="remove-file" onclick="event.stopPropagation(); fileUploader.removeFile('${fileObj.id}')" title="Remove file">
-                ×
-            </button>
+            <button class="remove-file" title="Remove file">×</button>
         `;
         
-        // Add click event for preview
+        // Add click events
         fileItem.addEventListener('click', (e) => {
             if (!e.target.classList.contains('remove-file')) {
-                this.showPreview(fileObj.id);
+                this.onFileClick(fileObj.id);
             }
         });
         
-        this.filesContainer.appendChild(fileItem);
+        const removeBtn = fileItem.querySelector('.remove-file');
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.onFileRemove(fileObj.id);
+        });
+        
+        this.container.appendChild(fileItem);
+    }
+}
+
+// Preview modal management
+class PreviewManager {
+    constructor(modal, container, fileName) {
+        this.modal = modal;
+        this.container = container;
+        this.fileName = fileName;
+        this.currentFile = null;
+        this.init();
     }
     
-    showPreview(fileId) {
-        const fileObj = this.files.find(f => f.id === fileId);
-        if (!fileObj) return;
+    init() {
+        const closeModal = document.getElementById('closeModal');
+        closeModal.addEventListener('click', () => this.close());
         
-        this.currentPreviewFile = fileObj;
+        this.modal.addEventListener('click', (e) => {
+            if (e.target === this.modal) this.close();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.modal.style.display === 'block') {
+                this.close();
+            }
+        });
+    }
+    
+    show(fileObj) {
+        this.currentFile = fileObj;
         
         // Update modal title and file info
-        this.previewFileName.textContent = fileObj.name;
+        this.fileName.textContent = fileObj.name;
         document.getElementById('modalFileName').textContent = fileObj.name;
-        document.getElementById('modalFileSize').textContent = this.formatFileSize(fileObj.size);
+        document.getElementById('modalFileSize').textContent = FileUtilities.formatFileSize(fileObj.size);
         document.getElementById('modalFileType').textContent = fileObj.type || 'Unknown';
         document.getElementById('modalFileDate').textContent = fileObj.lastModified.toLocaleString();
         
@@ -188,8 +239,8 @@ class FileUploader {
         this.generatePreviewContent(fileObj);
         
         // Show modal
-        this.previewModal.style.display = 'block';
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        this.modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
     }
     
     generatePreviewContent(fileObj) {
@@ -254,16 +305,16 @@ class FileUploader {
                 break;
         }
         
-        this.previewContainer.innerHTML = previewHTML;
+        this.container.innerHTML = previewHTML;
     }
     
-    closePreview() {
-        this.previewModal.style.display = 'none';
-        document.body.style.overflow = 'auto'; // Restore scrolling
-        this.currentPreviewFile = null;
+    close() {
+        this.modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        this.currentFile = null;
         
         // Clean up object URLs to prevent memory leaks
-        const mediaElements = this.previewContainer.querySelectorAll('img, video, audio, iframe');
+        const mediaElements = this.container.querySelectorAll('img, video, audio, iframe');
         mediaElements.forEach(el => {
             if (el.src && el.src.startsWith('blob:')) {
                 URL.revokeObjectURL(el.src);
@@ -271,62 +322,45 @@ class FileUploader {
         });
     }
     
-    removeFileFromPreview() {
-        if (this.currentPreviewFile) {
-            this.removeFile(this.currentPreviewFile.id);
-            this.closePreview();
-        }
+    getCurrentFile() {
+        return this.currentFile;
+    }
+}
+
+// Progress tracking
+class ProgressTracker {
+    constructor(container, fill, text) {
+        this.container = container;
+        this.fill = fill;
+        this.text = text;
     }
     
-    removeFile(fileId) {
-        // Remove from files array
-        this.files = this.files.filter(file => file.id !== fileId);
-        
-        // Remove from DOM
-        const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
-        if (fileElement) {
-            fileElement.remove();
-        }
-        
-        this.updateUI();
+    show() {
+        this.container.style.display = 'block';
     }
     
-    clearAllFiles() {
-        this.files = [];
-        this.filesContainer.innerHTML = '';
-        this.closePreview();
-        this.updateUI();
+    hide() {
+        this.container.style.display = 'none';
     }
     
-    updateUI() {
-        const fileCount = this.files.length;
-        
-        // Update file count
-        this.fileCount.textContent = fileCount;
-        
-        // Show/hide empty state
-        if (fileCount === 0) {
-            this.emptyState.style.display = 'block';
-            this.uploadBtn.disabled = true;
-        } else {
-            this.emptyState.style.display = 'none';
-            this.uploadBtn.disabled = false;
-        }
-        
-        // Update upload button text
-        this.uploadBtn.textContent = fileCount === 0 ? 'Upload Files' : 
-            `Upload ${fileCount} File${fileCount === 1 ? '' : 's'}`;
+    update(percent) {
+        this.fill.style.width = `${percent}%`;
+        this.text.textContent = `${percent}%`;
+    }
+}
+
+// Upload controller
+class UploadController {
+    constructor(progressTracker) {
+        this.progressTracker = progressTracker;
     }
     
-    async uploadFiles() {
-        if (this.files.length === 0) return;
-        
-        this.uploadBtn.disabled = true;
-        this.progressContainer.style.display = 'block';
+    async upload(files) {
+        this.progressTracker.show();
         
         try {
             const formData = new FormData();
-            this.files.forEach((fileObj, index) => {
+            files.forEach((fileObj, index) => {
                 formData.append(`files[${index}]`, fileObj.file);
             });
             
@@ -338,43 +372,152 @@ class FileUploader {
             if (response.ok) {
                 const result = await response.json();
                 alert('Files uploaded successfully!');
-                this.clearAllFiles();
+                return true;
             } else {
                 throw new Error('Upload failed');
             }
         } catch (error) {
             alert('Upload failed: ' + error.message);
+            return false;
         } finally {
+            this.progressTracker.hide();
+            this.progressTracker.update(0);
+        }
+    }
+}
+
+// UI state management
+class UIStateManager {
+    constructor(fileCount, emptyState, uploadBtn) {
+        this.fileCount = fileCount;
+        this.emptyState = emptyState;
+        this.uploadBtn = uploadBtn;
+    }
+    
+    update(files) {
+        const count = files.length;
+        
+        // Update file count
+        this.fileCount.textContent = count;
+        
+        // Show/hide empty state
+        if (count === 0) {
+            this.emptyState.style.display = 'block';
+            this.uploadBtn.disabled = true;
+        } else {
+            this.emptyState.style.display = 'none';
             this.uploadBtn.disabled = false;
-            this.progressContainer.style.display = 'none';
-            this.updateProgress(0);
+        }
+        
+        // Update upload button text
+        this.uploadBtn.textContent = count === 0 ? 'Upload Files' : 
+            `Upload ${count} File${count === 1 ? '' : 's'}`;
+    }
+}
+
+// Main FileUploader class - now acts as a coordinator
+class FileUploader {
+    constructor() {
+        this.initializeComponents();
+        this.setupEventListeners();
+    }
+    
+    initializeComponents() {
+        // Initialize DOM elements
+        this.fileInput = document.getElementById('fileInput');
+        this.uploadArea = document.getElementById('uploadArea');
+        this.filesContainer = document.getElementById('filesContainer');
+        this.uploadBtn = document.getElementById('uploadBtn');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.fileCount = document.getElementById('fileCount');
+        this.emptyState = document.getElementById('emptyState');
+        this.progressContainer = document.getElementById('progressContainer');
+        this.progressFill = document.getElementById('progressFill');
+        this.progressText = document.getElementById('progressText');
+        this.previewModal = document.getElementById('previewModal');
+        this.previewContainer = document.getElementById('previewContainer');
+        this.previewFileName = document.getElementById('previewFileName');
+        
+        // Initialize components
+        this.fileValidator = new FileValidator();
+        this.fileCollection = new FileCollection();
+        this.dragDropHandler = new DragDropHandler(this.uploadArea, (files) => this.addFiles(files));
+        this.fileListRenderer = new FileListRenderer(
+            this.filesContainer,
+            (fileId) => this.showPreview(fileId),
+            (fileId) => this.removeFile(fileId)
+        );
+        this.previewManager = new PreviewManager(this.previewModal, this.previewContainer, this.previewFileName);
+        this.progressTracker = new ProgressTracker(this.progressContainer, this.progressFill, this.progressText);
+        this.uploadController = new UploadController(this.progressTracker);
+        this.uiStateManager = new UIStateManager(this.fileCount, this.emptyState, this.uploadBtn);
+        
+        // Listen to file collection changes
+        this.fileCollection.addListener((files) => {
+            this.fileListRenderer.render(files);
+            this.uiStateManager.update(files);
+        });
+        
+        // Initial UI update
+        this.uiStateManager.update([]);
+    }
+    
+    setupEventListeners() {
+        // File input change event
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        
+        // Button events
+        this.uploadBtn.addEventListener('click', () => this.uploadFiles());
+        this.clearBtn.addEventListener('click', () => this.clearAllFiles());
+    }
+    
+    handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        this.addFiles(files);
+        event.target.value = ''; // Reset input
+    }
+    
+    addFiles(files) {
+        files.forEach(file => {
+            if (this.fileValidator.validateFile(file, this.fileCollection.getFiles())) {
+                this.fileCollection.addFile(file);
+            }
+        });
+    }
+    
+    removeFile(fileId) {
+        this.fileCollection.removeFile(fileId);
+    }
+    
+    clearAllFiles() {
+        this.fileCollection.clearAll();
+        this.previewManager.close();
+    }
+    
+    showPreview(fileId) {
+        const fileObj = this.fileCollection.getFile(fileId);
+        if (fileObj) {
+            this.previewManager.show(fileObj);
         }
     }
     
-    updateProgress(percent) {
-        this.progressFill.style.width = `${percent}%`;
-        this.progressText.textContent = `${percent}%`;
-    }
-    
-    truncateFileName(fileName, maxLength = 30) {
-        if (fileName.length <= maxLength) return fileName;
-        const extension = fileName.split('.').pop();
-        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-        const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
-        return truncatedName + '.' + extension;
-    }
-    
-    formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    async uploadFiles() {
+        const files = this.fileCollection.getFiles();
+        if (files.length === 0) return;
+        
+        this.uploadBtn.disabled = true;
+        const success = await this.uploadController.upload(files);
+        
+        if (success) {
+            this.clearAllFiles();
+        }
+        
+        this.uploadBtn.disabled = false;
     }
     
     // Public method to get all files
     getFiles() {
-        return this.files;
+        return this.fileCollection.getFiles();
     }
 }
 
