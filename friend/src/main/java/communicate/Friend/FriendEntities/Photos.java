@@ -27,9 +27,6 @@ public class Photos {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-    
-    @Lob  // Large object for storing images
-    private byte[] imageData;
 
     private String mimeType;
 

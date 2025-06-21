@@ -98,3 +98,5 @@ services:
 volumes:
   postgres-data:
     driver: local
+  redis-files-data:
+    driver: local

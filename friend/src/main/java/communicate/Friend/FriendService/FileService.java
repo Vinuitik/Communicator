@@ -46,19 +46,19 @@ public class FileService {
             // Add photos
             List<Photos> photos = photoRepository.findByFriendId(friendId);
             for (Photos photo : photos) {
-                addToZip(zipOut, "photos/" + photo.getPhotoName(), photo.getImageData());
+                addToZip(zipOut, "photos/" + photo.getPhotoName(), getPhotoData(photo));
             }
             
             // Add videos
             List<Videos> videos = videoRepository.findByFriendId(friendId);
             for (Videos video : videos) {
-                addToZip(zipOut, "videos/" + video.getVideoName(), video.getVideoData());
+                addToZip(zipOut, "videos/" + video.getVideoName(), getVideoData(video));
             }
             
             // Add resources
             List<PersonalResource> resources = resourceRepository.findByFriendId(friendId);
             for (PersonalResource resource : resources) {
-                addToZip(zipOut, "documents/" + resource.getResourceName(), resource.getResourceData());
+                addToZip(zipOut, "documents/" + resource.getResourceName(), getResourceData(resource));
             }
             
             zipOut.close();
@@ -67,6 +67,17 @@ public class FileService {
         } catch (IOException e) {
             throw new RuntimeException("ZIP creation failed", e);
         }
+    }
+
+    public byte[] getPhotoData(Photos photo) {
+        return null; // to be implemented
+    }
+
+    public byte[] getVideoData(Videos videos) {
+        return null; // to be implemented
+    }
+    public byte[] getResourceData(PersonalResource resource) {
+        return null; // to be implemented
     }
     
     private void addToZip(ZipOutputStream zipOut, String fileName, byte[] content) throws IOException {

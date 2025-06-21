@@ -27,9 +27,6 @@ public class PersonalResource {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-    
-    @Lob  // Large object for storing images
-    private byte[] resourceData;
 
     @Column(nullable = false)
     private String resourceName;

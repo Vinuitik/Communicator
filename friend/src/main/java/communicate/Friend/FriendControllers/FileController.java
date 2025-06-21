@@ -35,20 +35,20 @@ public class FileController {
         
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(photo.getImageData());
+                .body(fileService.getPhotoData(photo));
     }
 
     @GetMapping("/video/{id}")
     public ResponseEntity<byte[]> getVideo(@PathVariable Integer id) {
-        Videos photo = fileService.getVideo(id);
+        Videos video = fileService.getVideo(id);
         
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(photo.getMimeType()));
-        headers.setContentDisposition(ContentDisposition.inline().filename(photo.getVideoName()).build());
+        headers.setContentType(MediaType.parseMediaType(video.getMimeType()));
+        headers.setContentDisposition(ContentDisposition.inline().filename(video.getVideoName()).build());
         
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(photo.getVideoData());
+                .body(fileService.getVideoData(video));
     }
     
     // Serve PDFs
@@ -62,7 +62,7 @@ public class FileController {
         
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(resource.getResourceData());
+                .body(fileService.getResourceData(resource));
     }
 
     @GetMapping("/all/{friendId}")

@@ -1,1 +1,6 @@
 backup/service-account-key.json
+
+resourceRepository/photos/**
+resourceRepository/videos/**
+resourceRepository/voice/**
+resourceRepository/personalResources/**

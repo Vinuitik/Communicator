@@ -26,9 +26,6 @@ public class Videos {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-    
-    @Lob  // Large object for storing images
-    private byte[] videoData;
 
     private String videoName;
 
