@@ -8,7 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.Photos;
+import communicate.Friend.FriendEntities.Videos;
 
 @Repository
 public interface PhotosRepository extends JpaRepository<Photos, Integer> {
@@ -31,4 +33,6 @@ public interface PhotosRepository extends JpaRepository<Photos, Integer> {
     
     // Find by friend and photo name
     Optional<Photos> findByFriendIdAndPhotoName(Integer friendId, String photoName);
+
+    List<Photos> findAllByFriend(Friend friend);
 }

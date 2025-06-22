@@ -4,6 +4,12 @@ import { collectKnowledgeData } from '/facts/facts.js';
 document.getElementById('friendForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Prevent default form submission
 
+    // Get the submit button and disable it
+    const submitButton = document.querySelector('#friendForm button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Updating...'; // Optional: Change button text
+    }
 
     const today = formatDate(new Date());
 
@@ -52,7 +58,7 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
         if (response.ok) {
             return response.text(); // Read response body as plain text
         } else {
-            throw new Error('Failed to add friend.'); // Trigger catch block for non-2xx status
+            throw new Error('Failed to update friend.'); // Trigger catch block for non-2xx status
         }
     })
     .then(data => {
@@ -65,7 +71,14 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     })
     .catch(error => {
         console.error('Error:', error);
-        //alert('Failed to add friend: ' + error.message); // Include specific error message
+        //alert('Failed to update friend: ' + error.message); // Include specific error message
+    })
+    .finally(() => {
+        // Re-enable the button regardless of success or failure
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Update Friend'; // Reset button text (adjust as needed)
+        }
     });
 });
 

@@ -27,6 +27,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
       SPRING_DATASOURCE_USERNAME: myapp_user
       SPRING_DATASOURCE_PASSWORD: example
+      FILE_REPOSITORY_SERVICE_URL: http://fileRepository:5000
       TZ: ${HOST_TIMEZONE:-UTC}
     depends_on:
       - postgres
@@ -95,8 +96,30 @@ services:
       - connections
     restart: unless-stopped
 
+  fileRepository:
+    build:
+      context: ./resourceRepository
+      dockerfile: Dockerfile
+    container_name: fileRepository
+    ports:
+      - "5001:5000"
+    volumes:
+      - file-repo-photos:/app/photos
+      - file-repo-videos:/app/videos
+      - file-repo-voice:/app/voice
+      - file-repo-personal:/app/personalResources
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+    restart: unless-stopped
+
 volumes:
   postgres-data:
     driver: local
-  redis-files-data:
+  file-repo-photos:
+    driver: local
+  file-repo-videos:
+    driver: local
+  file-repo-voice:
+    driver: local
+  file-repo-personal:
     driver: local

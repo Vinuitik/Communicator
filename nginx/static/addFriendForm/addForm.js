@@ -4,6 +4,13 @@ import { collectKnowledgeData } from '../facts/facts.js';
 document.getElementById('friendForm').addEventListener('submit', function(event) {
     event.preventDefault(); // Prevent default form submission
 
+    // Get the submit button and disable it
+    const submitButton = document.querySelector('#friendForm button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Adding Friend...'; // Optional: Change button text
+    }
+
     // Get today's date in the correct format
     const today = formatDate(new Date());
 
@@ -61,6 +68,13 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     .catch(error => {
         console.error('Error:', error);
         //alert('Failed to add friend: ' + error.message); // Include specific error message
+    })
+    .finally(() => {
+        // Re-enable the button regardless of success or failure
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Add Friend'; // Reset button text
+        }
     });
 });
 
@@ -72,10 +86,3 @@ function formatDate(dateString) {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
-
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowLeft') {
-        const knowledge = collectKnowledgeData();
-        console.log(knowledge);
-    }
-});
