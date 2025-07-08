@@ -81,6 +81,12 @@
             <version>42.6.1</version> <!-- Correct driver version -->
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+
 
     </dependencies>
 

@@ -32,8 +32,10 @@ public class WebController {
     }
 
     @GetMapping("profile/{id}")
-    public String profile(@PathVariable Integer id) {
-        return "forward:/profile/profile.html";
+    public String profile(@PathVariable Integer id, Model model) {
+        // Add the friend ID to the model if you want to use it in the template later
+        model.addAttribute("friendId", id);
+        return "profile"; // This will serve profile.html from templates folder
     }
 
     @GetMapping("knowledge/{id}")

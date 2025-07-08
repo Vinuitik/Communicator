@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.PersonalResource;
@@ -34,7 +36,7 @@ public class FileReadService {
     private final PhotosRepository photoRepository;
     private final VideosRepository videoRepository;
     private final PersonalResourceRepository resourceRepository;
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
 
     @Value("${file.repository.service.url:http://localhost:8080/files}")
     private String fileRepositoryServiceUrl;
@@ -97,8 +99,6 @@ public class FileReadService {
         if (friend == null) {
             throw new IllegalStateException("Cannot fetch " + type + " data without a friend context.");
         }
-        // The @Value property is the base URL, append the specific endpoint.
-        String url = fileRepositoryServiceUrl + "/files";
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("friendId", friend.getId());
@@ -106,10 +106,19 @@ public class FileReadService {
         requestBody.put("filenames", filenames);
 
         try {
-            byte[] zipContent = restTemplate.postForObject(url, requestBody, byte[].class);
+            byte[] zipContent = webClient
+                .post()
+                .uri("/files/files")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .block(); // Use block() to maintain synchronous behavior
+                
             return zipContent != null ? zipContent : new byte[0];
-        } catch (HttpClientErrorException e) {
+        } catch (WebClientResponseException e) {
             throw new RuntimeException("Failed to fetch " + type + " files from repository service. Status: " + e.getStatusCode(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch " + type + " files from repository service", e);
         }
     }
     

@@ -4,15 +4,11 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.BodyInserters;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.PersonalResource;
@@ -32,7 +28,7 @@ public class FileWriteService {
     private final VideosRepository videoRepository;
     private final PersonalResourceRepository resourceRepository;
     private final FriendRepository friendRepository;
-    private final RestTemplate restTemplate;
+    private final WebClient webTemplate;
 
     @Value("${file.repository.service.url:http://localhost:5000}")
     private String fileRepositoryServiceUrl;
@@ -96,29 +92,28 @@ public class FileWriteService {
 
     private void saveFilesToRepository(List<MultipartFile> files, Friend friend) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            
-            // Add friend information
-            body.add("friendName", friend.getName());
-            body.add("friendId", friend.getId().toString());
-
-            // Add files
-            for (MultipartFile file : files) {
-                body.add("files", file.getResource());
-            }
-
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            
             // Use the @Value configured URL with the upload endpoint
             String uploadUrl = fileRepositoryServiceUrl + "/upload";
-            ResponseEntity<String> response = restTemplate.postForEntity(uploadUrl, requestEntity, String.class);
             
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("Failed to save files to repository: " + response.getBody());
+            // Create multipart form data using WebClient
+            var bodyBuilder = BodyInserters.fromMultipartData("friendName", friend.getName())
+                    .with("friendId", friend.getId().toString());
+            
+            // Add files to the multipart form
+            for (MultipartFile file : files) {
+                bodyBuilder = bodyBuilder.with("files", file.getResource());
             }
+            
+            String response = webTemplate.post()
+                    .uri(uploadUrl)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(bodyBuilder)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(); // Block to wait for response
+            
+            // WebClient throws exceptions for non-2xx responses by default
+            
         } catch (Exception e) {
             throw new RuntimeException("Error saving files to repository: " + e.getMessage(), e);
         }
