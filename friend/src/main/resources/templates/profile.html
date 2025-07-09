@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Friend Profile - James Wilson</title>
-  <link rel="stylesheet" href="/profile.css">
+  <link rel="stylesheet" href="/profile/profile.css">
   <link rel="stylesheet" href="/navigation/navigation.css">
 
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
@@ -46,7 +46,7 @@
         <div class="profile-section">
           <div class="section-title">
             Photos & Videos
-            <button>Add Media</button>
+            <button onclick="window.location.href='/fileUpload/' + window.location.pathname.split('/').pop()">Add Media</button> 
           </div>
           <div class="media-gallery">
             <div class="media-item">
@@ -74,7 +74,7 @@
         <div class="profile-section">
           <div class="section-title">
             Social Media
-            <button>Add Social</button>
+            <button onclick="">Add Social</button>
           </div>
           <div class="social-links">
             <a href="#" class="social-link instagram">
