@@ -96,10 +96,10 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-danger" onclick="fileUploader.removeFileFromPreview()">
+                <button class="btn btn-danger" onclick="removeFileFromPreview()">
                     <i class="fas fa-trash"></i> Remove File
                 </button>
-                <button class="btn btn-secondary" onclick="fileUploader.closePreview()">
+                <button class="btn btn-secondary" id="closeButton">
                     Close
                 </button>
             </div>
@@ -108,7 +108,7 @@
 
     <script src="/fileUpload/JS_Classes/FileValidator.js"></script>
     <script src="/fileUpload/JS_Classes/FileCollection.js"></script>
-    <script src="/fileUpload/JS_Classes/DragDropHandler.js"></script>
+    <script src="/fileUpload/JS_Classes/DragAndDropHandler.js"></script>
     <script src="/fileUpload/JS_Classes/FileListRenderer.js"></script>
     <script src="/fileUpload/JS_Classes/FileUtilities.js"></script>
     <script src="/fileUpload/JS_Classes/PreviewManager.js"></script>

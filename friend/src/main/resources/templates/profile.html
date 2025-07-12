@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,26 +46,21 @@
         <div class="profile-section">
           <div class="section-title">
             Photos & Videos
-            <button onclick="window.location.href='/fileUpload/' + window.location.pathname.split('/').pop()">Add Media</button> 
+            <button id="mediaUploadButton">Add Media</button> 
           </div>
-          <div class="media-gallery">
-            <div class="media-item">
-              <img src="/api/placeholder/300/300" alt="Hiking trip">
+           <div class="media-gallery">
+            <!-- Dynamic media items -->
+            <div th:each="media : ${friend.mediaItems}" 
+                 th:class="${media.type == 'video'} ? 'media-item video' : 'media-item'">
+              <img th:src="${media.thumbnailUrl != null ? media.thumbnailUrl : '/api/placeholder/300/300'}" 
+                   th:alt="${media.description}"
+                   th:onclick="|viewMedia(${media.id})|">
+              <div th:if="${media.type == 'video'}" class="video-indicator">▶</div>
             </div>
-            <div class="media-item">
-              <img src="/api/placeholder/300/300" alt="Birthday party">
-            </div>
-            <div class="media-item video">
-              <img src="/api/placeholder/300/300" alt="Concert video">
-            </div>
-            <div class="media-item">
-              <img src="/api/placeholder/300/300" alt="Beach day">
-            </div>
-            <div class="media-item">
-              <img src="/api/placeholder/300/300" alt="Dinner gathering">
-            </div>
-            <div class="media-item video">
-              <img src="/api/placeholder/300/300" alt="Road trip video">
+            
+            <!-- Fallback for no media -->
+            <div th:if="${#lists.isEmpty(friend.mediaItems)}" class="no-media-placeholder">
+              <p>No photos or videos yet. Click "Add Media" to get started!</p>
             </div>
           </div>
         </div>

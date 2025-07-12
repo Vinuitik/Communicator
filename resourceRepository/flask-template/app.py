@@ -25,10 +25,10 @@ for folder in RESOURCE_FOLDERS.values():
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
 # --- Helper Functions ---
-def get_destination_folder(filename, friend_name, friend_id):
+def get_destination_folder(filename, friend_id):
     """Determines the destination folder based on file extension and friend's name and ID."""
     extension = os.path.splitext(filename)[1].lower()
-    safe_friend_identifier = f"{secure_filename(friend_name)}_{secure_filename(str(friend_id))}"
+    safe_friend_identifier = f"{secure_filename(str(friend_id))}"
     
     if extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
         return os.path.join(RESOURCE_FOLDERS['photos'], safe_friend_identifier)
@@ -39,9 +39,9 @@ def get_destination_folder(filename, friend_name, friend_id):
     else:
         return os.path.join(RESOURCE_FOLDERS['personal'], safe_friend_identifier)
 
-def find_file_path(filename, friend_name, friend_id):
+def find_file_path(filename, friend_id):
     """Searches for a file in the specific friend's resource directory."""
-    destination_folder = get_destination_folder(filename, friend_name, friend_id)
+    destination_folder = get_destination_folder(filename, friend_id)
     path = os.path.join(destination_folder, filename)
     if os.path.isfile(path):
         return path
@@ -54,10 +54,9 @@ def upload_files():
     Receives one or more files and saves them asynchronously to a friend-specific folder.
     Expects a multipart/form-data request with 'files', 'friendId', and 'friendName' fields.
     """
-    if 'friendName' not in request.form or 'friendId' not in request.form:
+    if 'friendId' not in request.form:
         return jsonify({'error': 'Missing friendName or friendId in form data'}), 400
     
-    friend_name = request.form['friendName']
     friend_id = request.form['friendId']
 
     if 'files' not in request.files:
@@ -70,7 +69,7 @@ def upload_files():
     for file in files:
         if file:
             filename = secure_filename(file.filename)
-            destination_folder = get_destination_folder(filename, friend_name, friend_id)
+            destination_folder = get_destination_folder(filename, friend_id)
             
             # Create the friend-specific directory if it doesn't exist
             os.makedirs(destination_folder, exist_ok=True)
@@ -79,7 +78,7 @@ def upload_files():
             # Submit the file save operation to the thread pool
             executor.submit(file.save, path)
 
-    return jsonify({'message': f'{len(files)} file(s) for friend "{friend_name}" received and are being processed.'}), 202
+    return jsonify({'message': f'{len(files)} file(s) for friend "{friend_id}" received and are being processed.'}), 202
 
 @app.route('/files', methods=['POST'])
 def get_files_batch():
@@ -90,10 +89,9 @@ def get_files_batch():
     To request all files for a friend, send ["*"] in the filenames list.
     """
     data = request.get_json()
-    if not data or 'friendName' not in data or 'friendId' not in data or 'filenames' not in data:
-        return jsonify({'error': 'Missing "friendName", "friendId", or "filenames" in request body'}), 400
+    if not data  or 'friendId' not in data or 'filenames' not in data:
+        return jsonify({'error': 'Missing "friendId", or "filenames" in request body'}), 400
 
-    friend_name = data['friendName']
     friend_id = data['friendId']
     filenames = data['filenames']
     if not isinstance(filenames, list):
@@ -101,7 +99,7 @@ def get_files_batch():
 
     memory_file = io.BytesIO()
     found_files_count = 0
-    safe_friend_identifier = f"{secure_filename(friend_name)}_{secure_filename(str(friend_id))}"
+    safe_friend_identifier = f"{secure_filename(str(friend_id))}"
 
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
         if filenames == ['*']:

@@ -24,7 +24,7 @@ class UploadController {
             // Add friendId parameter
             formData.append('friendId', this.friendId);
             
-            const response = await fetch('/api/friend/files/upload', {
+            const response = await fetch('/api/fileRepository/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -34,7 +34,8 @@ class UploadController {
                 alert('Files uploaded successfully!');
                 return true;
             } else {
-                throw new Error('Upload failed');
+                const errorData = await response.json();
+                throw new Error(`Upload failed (${response.status}): ${errorData.error || 'Unknown error'}`);
             }
         } catch (error) {
             alert('Upload failed: ' + error.message);

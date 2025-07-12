@@ -11,6 +11,14 @@ class PreviewManager {
     init() {
         const closeModal = document.getElementById('closeModal');
         closeModal.addEventListener('click', () => this.close());
+
+        const closeButton = document.getElementById('closeButton');
+        if (closeButton){
+            closeButton.addEventListener('click', () => this.close());
+        }
+        else {
+            console.warn('Close button not found in the modal.');
+        }
         
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) this.close();
