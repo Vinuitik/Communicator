@@ -32,6 +32,9 @@ public class Photos {
 
     private String photoName;
 
+    @Builder.Default
+    private LocalDate timeBuilt = LocalDate.now();
+
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference

@@ -10,7 +10,9 @@ import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.Photos;
-import communicate.Friend.FriendEntities.Videos;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface PhotosRepository extends JpaRepository<Photos, Integer> {
@@ -35,4 +37,6 @@ public interface PhotosRepository extends JpaRepository<Photos, Integer> {
     Optional<Photos> findByFriendIdAndPhotoName(Integer friendId, String photoName);
 
     List<Photos> findAllByFriend(Friend friend);
+
+    Page<Photos> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
 }
