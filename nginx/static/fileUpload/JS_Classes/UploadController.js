@@ -24,7 +24,7 @@ class UploadController {
             // Add friendId parameter
             formData.append('friendId', this.friendId);
             
-            const response = await fetch('/api/fileRepository/upload', {
+            const response = await fetch('/api/friend/upload', {
                 method: 'POST',
                 body: formData
             });

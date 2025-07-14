@@ -5,8 +5,13 @@ import datetime
 import concurrent.futures
 from flask import Flask, request, jsonify, send_file
 from werkzeug.utils import secure_filename
+from flask_compress import Compress
 
 app = Flask(__name__)
+
+# Enable compression for text-based responses (JSON, HTML, CSS, JS)
+# Images and videos are already compressed, so they won't be affected
+Compress(app)
 
 # --- Configuration ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -51,11 +56,10 @@ def find_file_path(filename, friend_id):
 @app.route('/upload', methods=['POST'])
 def upload_files():
     """
-    Receives one or more files and saves them asynchronously to a friend-specific folder.
-    Expects a multipart/form-data request with 'files', 'friendId', and 'friendName' fields.
+    Receives one or more files and saves them synchronously with rollback on failure.
     """
     if 'friendId' not in request.form:
-        return jsonify({'error': 'Missing friendName or friendId in form data'}), 400
+        return jsonify({'error': 'Missing friendId in form data'}), 400
     
     friend_id = request.form['friendId']
 
@@ -66,72 +70,64 @@ def upload_files():
     if not files or files[0].filename == '':
         return jsonify({'error': 'No files selected for uploading'}), 400
 
+    # Pre-validate all files and prepare paths
+    files_to_save = []
     for file in files:
-        if file:
+        if file and file.filename:
             filename = secure_filename(file.filename)
             destination_folder = get_destination_folder(filename, friend_id)
-            
-            # Create the friend-specific directory if it doesn't exist
-            os.makedirs(destination_folder, exist_ok=True)
-            
             path = os.path.join(destination_folder, filename)
-            # Submit the file save operation to the thread pool
-            executor.submit(file.save, path)
+            
+            # Check if file already exists
+            if os.path.exists(path):
+                return jsonify({'error': f'File {filename} already exists for friend {friend_id}'}), 409
+            
+            files_to_save.append({
+                'file': file,
+                'path': path,
+                'folder': destination_folder,
+                'filename': filename
+            })
 
-    return jsonify({'message': f'{len(files)} file(s) for friend "{friend_id}" received and are being processed.'}), 202
+    # Create directories first
+    try:
+        for file_info in files_to_save:
+            os.makedirs(file_info['folder'], exist_ok=True)
+    except Exception as e:
+        return jsonify({'error': f'Failed to create directories: {str(e)}'}), 500
 
-@app.route('/files', methods=['POST'])
-def get_files_batch():
-    """
-    Receives a list of filenames for a specific friend and returns them as a zip archive.
-    Expects a JSON body like: 
-    {"friendName": "some_friend", "friendId": "123", "filenames": ["file1.jpg", "document.pdf"]}
-    To request all files for a friend, send ["*"] in the filenames list.
-    """
-    data = request.get_json()
-    if not data  or 'friendId' not in data or 'filenames' not in data:
-        return jsonify({'error': 'Missing "friendId", or "filenames" in request body'}), 400
+    # Save files with rollback on failure
+    saved_files = []
+    try:
+        for file_info in files_to_save:
+            file_info['file'].save(file_info['path'])
+            saved_files.append(file_info['path'])
+    except Exception as e:
+        # Rollback: delete any files that were saved
+        for saved_path in saved_files:
+            try:
+                if os.path.exists(saved_path):
+                    os.remove(saved_path)
+            except Exception as cleanup_error:
+                print(f"WARNING: Failed to cleanup {saved_path} during rollback: {cleanup_error}")
+        
+        return jsonify({'error': f'Failed to save files: {str(e)}. Upload cancelled.'}), 500
 
-    friend_id = data['friendId']
-    filenames = data['filenames']
-    if not isinstance(filenames, list):
-        return jsonify({'error': '"filenames" must be a list'}), 400
+    return jsonify({
+        'message': f'Successfully uploaded {len(saved_files)} file(s) for friend "{friend_id}"',
+        'files': [os.path.basename(path) for path in saved_files]
+    }), 201
 
-    memory_file = io.BytesIO()
-    found_files_count = 0
-    safe_friend_identifier = f"{secure_filename(str(friend_id))}"
-
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        if filenames == ['*']:
-            # If '*' is requested, find all files for the friend
-            for resource_folder in RESOURCE_FOLDERS.values():
-                friend_dir = os.path.join(resource_folder, safe_friend_identifier)
-                if os.path.isdir(friend_dir):
-                    for item in os.listdir(friend_dir):
-                        path = os.path.join(friend_dir, item)
-                        if os.path.isfile(path):
-                            zf.write(path, arcname=item)
-                            found_files_count += 1
-        else:
-            # Original logic for specific filenames
-            for filename in filenames:
-                safe_filename = secure_filename(filename)
-                path = find_file_path(safe_filename, friend_name, friend_id)
-                if path:
-                    zf.write(path, arcname=safe_filename)
-                    found_files_count += 1
-
-    memory_file.seek(0)
-
-    if found_files_count == 0:
-        return jsonify({'error': 'None of the requested files were found for the specified friend'}), 404
-
-    return send_file(
-        memory_file,
-        download_name=f'resources_{secure_filename(friend_name)}_{secure_filename(str(friend_id))}.zip',
-        as_attachment=True,
-        mimetype='application/zip'
-    )
+@app.route('/file/<friend_id>/<filename>', methods=['GET'])
+def serve_file(friend_id, filename):
+    """Serves individual files for a specific friend."""
+    safe_filename = secure_filename(filename)
+    path = find_file_path(safe_filename, friend_id)
+    
+    if not path or not os.path.isfile(path):
+        return jsonify({'error': 'File not found'}), 404
+    
+    return send_file(path)
 
 @app.route('/backup', methods=['GET'])
 def backup_all_files():
@@ -169,3 +165,81 @@ def backup_all_files():
         as_attachment=True,
         mimetype='application/zip'
     )
+    
+@app.route('/delete', methods=['POST'])
+def delete_files():
+    """
+    Deletes specific files for a friend as a transaction.
+    Expects a JSON body like: {"fileNames": ["file1.jpg"], "friendId": "123"}
+    If any file cannot be deleted, no files are deleted.
+    """
+    data = request.get_json()
+    if not data or 'fileNames' not in data or 'friendId' not in data:
+        return jsonify({'error': 'Missing "fileNames" or "friendId" in request body'}), 400
+    
+    fileNames = data['fileNames']
+    friend_id = data['friendId']
+
+    if not isinstance(fileNames, list):
+        return jsonify({'error': '"fileNames" must be a list'}), 400
+
+    # Check existing files and read their contents for backup
+    files_to_delete = []
+    
+    for fileName in fileNames:
+        safe_filename = secure_filename(fileName)
+        path = find_file_path(safe_filename, friend_id)
+        
+        if not path or not os.path.isfile(path):
+            # File doesn't exist - consider it already deleted (success case)
+            continue
+        
+        try:
+            # Read file contents for potential rollback
+            with open(path, 'rb') as f:
+                file_content = f.read()
+            files_to_delete.append({
+                'path': path,
+                'content': file_content,
+                'filename': safe_filename
+            })
+        except Exception as e:
+            return jsonify({'error': f'Failed to read file {safe_filename}: {str(e)}'}), 500
+
+    # Try to delete all existing files, rolling back if any fail
+    deleted_files = []
+    try:
+        for file_info in files_to_delete:
+            os.remove(file_info['path'])
+            deleted_files.append(file_info)
+    except Exception as e:
+        # Rollback with multiple attempts: restore any deleted files
+        rollback_successful = True
+        max_rollback_attempts = 3
+        
+        for file_info in deleted_files:
+            rollback_attempt = 0
+            fileRolledBack = False
+            while rollback_attempt < max_rollback_attempts and ~fileRolledBack:
+                try:
+                    with open(file_info['path'], 'wb') as f:
+                        f.write(file_info['content'])
+                    fileRolledBack = True
+                except Exception as restore_error:
+                    rollback_attempt += 1
+                    if rollback_attempt >= max_rollback_attempts:
+                        # Critical failure - couldn't restore after multiple attempts
+                        print(f"CRITICAL: Failed to restore {file_info['path']} after {max_rollback_attempts} attempts: {restore_error}")
+                        rollback_successful = False
+        
+        if not rollback_successful:
+            return jsonify({
+                'error': f'Failed to delete all files AND rollback failed. Data may be corrupted. Original error: {str(e)}'
+            }), 500
+        else:
+            return jsonify({'error': f'Failed to delete all files. Error: {str(e)}. Operation rolled back successfully.'}), 500
+
+    total_processed = len(deleted_files)
+    message = f'Successfully processed {total_processed} file(s) for friend {friend_id}.'
+    
+    return jsonify({'message': message}), 200
