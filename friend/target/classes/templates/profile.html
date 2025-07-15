@@ -54,7 +54,9 @@
             <div th:each="photo : ${photos}" class="media-item">
               <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
                    th:alt="${photo.photoName}"
-                   th:onclick="|viewMedia('${photo.photoName}', 'photo')|">
+                   th:data-photo-name="${photo.photoName}"
+                   data-media-type="photo"
+                   onclick="viewMedia(this.getAttribute('data-photo-name'), this.getAttribute('data-media-type'))">
               <div class="media-overlay">
                 <span class="media-type">📷</span>
                 <span class="media-name" th:text="${photo.photoName}">Photo Name</span>
@@ -76,20 +78,21 @@
             
             <!-- Personal Resources -->
             <div th:each="resource : ${resources}" class="media-item resource">
-              <div class="resource-item" 
-                   th:onclick="|viewResource('${resource.resourceName}')|">
-                <!-- Determine icon based on mime type -->
-                <div class="resource-icon">
-                  <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
-                  <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
-                  <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
-                  <span th:if="${resource.mimeType.contains('text')}">📋</span>
-                  <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
-                </div>
-                <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
-                <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
+                  <div class="resource-item" 
+                      th:data-resource-name="${resource.resourceName}" 
+                      onclick="viewResource(this.getAttribute('data-resource-name'))">
+                      <!-- Determine icon based on mime type -->
+                      <div class="resource-icon">
+                          <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
+                          <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
+                          <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
+                          <span th:if="${resource.mimeType.contains('text')}">📋</span>
+                          <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
+                      </div>
+                      <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
+                      <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
+                  </div>
               </div>
-            </div>
             
             <!-- Pagination Controls -->
             <div class="pagination-controls" th:if="${photos.size() > 0 or videos.size() > 0 or resources.size() > 0}">
