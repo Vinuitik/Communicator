@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.PersonalResource;
+import communicate.Friend.FriendEntities.Videos;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,4 +47,6 @@ public interface PersonalResourceRepository extends JpaRepository<PersonalResour
     List<PersonalResource> findAllByFriend(Friend friend);
 
     Page<PersonalResource> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
+
+    Optional<PersonalResource> findByResourceNameAndFriend(String resourceName, Friend friend);
 }

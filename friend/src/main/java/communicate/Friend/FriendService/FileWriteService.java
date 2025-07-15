@@ -1,7 +1,9 @@
 package communicate.Friend.FriendService;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -140,6 +142,82 @@ public class FileWriteService {
         } catch (Exception e) {
             log.error("Failed to save files to repository: {}", e.getMessage(), e);
             throw new RuntimeException("Error saving files to repository: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public void deleteFiles(List<String> fileNames, Integer friendId) {
+        Optional<Friend> friendOpt = friendRepository.findById(friendId);
+        if (friendOpt.isEmpty()) {
+            throw new RuntimeException("Friend not found with id: " + friendId);
+        }
+
+        Friend friend = friendOpt.get();
+
+        try {
+            // Step 1: Delete from file repository first
+            deleteFilesFromRepository(fileNames, friend);
+            
+            // Step 2: Delete metadata from database (within transaction)
+            for (String fileName : fileNames) {
+                deleteFileMetadata(fileName, friend);
+            }
+            
+            // Force flush to ensure deletion is persisted
+            flushMetadata();
+            
+            log.info("Successfully deleted {} files for friend {}", fileNames.size(), friendId);
+            
+        } catch (Exception e) {
+            log.error("Failed to delete files, rolling back for friend {}", friendId, e);
+            // @Transactional will automatically rollback database changes
+            throw new RuntimeException("Error deleting files: " + e.getMessage(), e);
+        }
+    }
+
+    private void deleteFileMetadata(String fileName, Friend friend) {
+        String extension = getFileExtension(fileName).toLowerCase();
+        String category = getFileCategory(extension);
+        
+        switch (category) {
+            case "photo":
+                photoRepository.findByPhotoNameAndFriend(fileName, friend)
+                    .ifPresent(photoRepository::delete);
+                break;
+                
+            case "video":
+                videoRepository.findByVideoNameAndFriend(fileName, friend)
+                    .ifPresent(videoRepository::delete);
+                break;
+                
+            default:
+                resourceRepository.findByResourceNameAndFriend(fileName, friend)
+                    .ifPresent(resourceRepository::delete);
+                break;
+        }
+    }
+
+    private void deleteFilesFromRepository(List<String> fileNames, Friend friend) {
+        try {
+            String deleteUrl = fileRepositoryServiceUrl + "/delete";
+            
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("fileNames", fileNames);
+            requestBody.put("friendId", friend.getId().toString());
+            
+            String response = webTemplate.post()
+                    .uri(deleteUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            
+            log.debug("File repository delete response: {}", response);
+            
+        } catch (Exception e) {
+            log.error("Failed to delete files from repository: {}", e.getMessage(), e);
+            throw new RuntimeException("Error deleting files from repository: " + e.getMessage(), e);
         }
     }
 

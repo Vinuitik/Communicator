@@ -55,8 +55,9 @@
               <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
                    th:alt="${photo.photoName}"
                    th:data-photo-name="${photo.photoName}"
+                   th:data-friend-id="${friendId}"
                    data-media-type="photo"
-                   onclick="viewMedia(this.getAttribute('data-photo-name'), this.getAttribute('data-media-type'))">
+                   onclick="openMediaModal(this.getAttribute('data-photo-name'), this.getAttribute('data-media-type'), this.getAttribute('data-friend-id'))">
               <div class="media-overlay">
                 <span class="media-type">📷</span>
                 <span class="media-name" th:text="${photo.photoName}">Photo Name</span>
@@ -66,8 +67,9 @@
             <!-- Videos -->
             <div th:each="video : ${videos}" class="media-item video">
               <div class="video-thumbnail" 
-                   th:onclick="|viewMedia('${video.videoName}', 'video')|">
-                <!-- You might want to generate thumbnails or use a default video icon -->
+                   th:data-video-name="${video.videoName}"
+                   th:data-friend-id="${friendId}"
+                   th:onclick="|openMediaModal('${video.videoName}', 'video', '${friendId}')|">
                 <div class="video-placeholder">
                   <span class="video-icon">🎥</span>
                   <span class="video-name" th:text="${video.videoName}">Video Name</span>
@@ -78,31 +80,59 @@
             
             <!-- Personal Resources -->
             <div th:each="resource : ${resources}" class="media-item resource">
-                  <div class="resource-item" 
-                      th:data-resource-name="${resource.resourceName}" 
-                      onclick="viewResource(this.getAttribute('data-resource-name'))">
-                      <!-- Determine icon based on mime type -->
-                      <div class="resource-icon">
-                          <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
-                          <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
-                          <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
-                          <span th:if="${resource.mimeType.contains('text')}">📋</span>
-                          <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
-                      </div>
-                      <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
-                      <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
-                  </div>
+              <div class="resource-item" 
+                   th:data-resource-name="${resource.resourceName}" 
+                   th:data-friend-id="${friendId}"
+                   th:data-mime-type="${resource.mimeType}"
+                   onclick="openMediaModal(this.getAttribute('data-resource-name'), 'resource', this.getAttribute('data-friend-id'), this.getAttribute('data-mime-type'))">
+                <div class="resource-icon">
+                    <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
+                    <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
+                    <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
+                    <span th:if="${resource.mimeType.contains('text')}">📋</span>
+                    <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
+                </div>
+                <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
+                <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
               </div>
+            </div>
             
             <!-- Pagination Controls -->
-            <div class="pagination-controls" th:if="${photos.size() > 0 or videos.size() > 0 or resources.size() > 0}">
+            <div class="pagination-controls" th:if="${totalPages > 1}">
               <a th:if="${currentPage > 0}" 
                  th:href="@{/profile/{id}(id=${friendId}, page=${currentPage - 1})}" 
                  class="pagination-btn">← Previous</a>
               
-              <span class="current-page" th:text="'Page ' + ${currentPage + 1}">Page 1</span>
+              <div class="pagination-dots">
+                <!-- First page -->
+                <a th:if="${currentPage > 2}" 
+                   th:href="@{/profile/{id}(id=${friendId}, page=0)}"
+                   class="pagination-dot"
+                   th:title="'Page 1'"></a>
+                
+                <!-- Ellipsis before current range -->
+                <span th:if="${currentPage > 3}" class="pagination-ellipsis">...</span>
+                
+                <!-- Current page range -->
+                <th:block th:each="page : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 1), T(java.lang.Math).min(totalPages - 1, currentPage + 1))}">
+                  <a th:href="@{/profile/{id}(id=${friendId}, page=${page})}"
+                     th:class="${page == currentPage} ? 'pagination-dot active' : 'pagination-dot'"
+                     th:title="'Page ' + ${page + 1}"></a>
+                </th:block>
+                
+                <!-- Ellipsis after current range -->
+                <span th:if="${currentPage < totalPages - 4}" class="pagination-ellipsis">...</span>
+                
+                <!-- Last page -->
+                <a th:if="${currentPage < totalPages - 3}" 
+                   th:href="@{/profile/{id}(id=${friendId}, page=${totalPages - 1})}"
+                   class="pagination-dot"
+                   th:title="'Page ' + ${totalPages}"></a>
+              </div>
               
-              <a th:if="${photos.size() == 4 or videos.size() == 4 or resources.size() == 4}" 
+              <span class="current-page" th:text="'Page ' + ${currentPage + 1} + ' of ' + ${totalPages}">Page 1</span>
+              
+              <a th:if="${currentPage < totalPages - 1}" 
                  th:href="@{/profile/{id}(id=${friendId}, page=${currentPage + 1})}" 
                  class="pagination-btn">Next →</a>
             </div>
@@ -349,6 +379,34 @@
             </li>
           </ul>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Modal -->
+  <div class="media-modal" id="mediaModal">
+    <div class="media-modal-content">
+      <div class="media-modal-header">
+        <h3 id="mediaModalTitle">Media Preview</h3>
+        <span class="media-modal-close" id="closeMediaModal">&times;</span>
+      </div>
+      <div class="media-modal-body">
+        <div class="media-preview-container" id="mediaPreviewContainer">
+          <!-- Media content will be inserted here -->
+        </div>
+        <div class="media-info-detail" id="mediaInfoDetail">
+          <p><strong>Name:</strong> <span id="modalMediaName"></span></p>
+          <p><strong>Type:</strong> <span id="modalMediaType"></span></p>
+          <p><strong>Size:</strong> <span id="modalMediaSize"></span></p>
+        </div>
+      </div>
+      <div class="media-modal-footer">
+        <button class="media-btn media-btn-danger" id="deleteMediaBtn">
+          <i>🗑️</i> Delete
+        </button>
+        <button class="media-btn media-btn-secondary" id="closeMediaBtn">
+          Close
+        </button>
       </div>
     </div>
   </div>

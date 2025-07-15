@@ -56,4 +56,21 @@ public class FileController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+    @PostMapping("/delete")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> deleteFiles(
+            @RequestParam("files") List<String> files,
+            @RequestParam("friendId") Integer friendId) {
+        
+        Map<String, String> response = new HashMap<>();
+        
+        try {
+            fileWriteService.deleteFiles(files, friendId);
+            response.put("message", "Files uploaded successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", "Error uploading files: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
 }

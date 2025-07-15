@@ -39,4 +39,6 @@ public interface VideosRepository extends JpaRepository<Videos, Integer>{
     List<Videos> findAllByFriend(Friend friend);
 
     Page<Videos> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
+
+    Optional<Videos> findByVideoNameAndFriend(String videoName, Friend friend);
 }
