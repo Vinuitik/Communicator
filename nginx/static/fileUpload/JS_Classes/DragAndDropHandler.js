@@ -64,21 +64,16 @@ class DragDropHandler {
         this.dragCounter = 0;
         this.uploadArea.classList.remove('dragover');
         
-        console.log('Drop event triggered', event); // Debug log
         
         // Firefox and Chrome compatibility
         let files = [];
         
         if (event.dataTransfer && event.dataTransfer.files) {
             files = Array.from(event.dataTransfer.files);
-            console.log('Files found:', files.length); // Debug log
         }
         
         if (files.length > 0) {
-            console.log('Calling onFilesDropped with files:', files); // Debug log
             this.onFilesDropped(files);
-        } else {
-            console.log('No files found in drop event'); // Debug log
         }
     }
     

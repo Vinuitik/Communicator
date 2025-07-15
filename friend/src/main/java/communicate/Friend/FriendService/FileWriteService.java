@@ -1,11 +1,13 @@
 package communicate.Friend.FriendService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -19,9 +21,11 @@ import communicate.Friend.FriendRepositories.PersonalResourceRepository;
 import communicate.Friend.FriendRepositories.PhotosRepository;
 import communicate.Friend.FriendRepositories.VideosRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FileWriteService {
 
     private final PhotosRepository photoRepository;
@@ -33,6 +37,7 @@ public class FileWriteService {
     @Value("${file.repository.service.url:http://localhost:5000}")
     private String fileRepositoryServiceUrl;
 
+    @Transactional
     public void saveFiles(List<MultipartFile> files, Integer friendId) {
         Optional<Friend> friendOpt = friendRepository.findById(friendId);
         if (friendOpt.isEmpty()) {
@@ -41,16 +46,32 @@ public class FileWriteService {
 
         Friend friend = friendOpt.get();
 
-        // Save metadata in database
-        for (MultipartFile file : files) {
-            saveFileMetadata(file, friend);
+        // Step 1: Save metadata in database (within transaction)
+        List<Object> savedEntities = new ArrayList<>();
+        try {
+            for (MultipartFile file : files) {
+                Object savedEntity = saveFileMetadata(file, friend);
+                savedEntities.add(savedEntity);
+            }
+            
+            // Force flush to database to ensure metadata is persisted
+            // before attempting file repository save
+            flushMetadata();
+            
+            // Step 2: Save files to Flask repository (outside of transaction scope)
+            saveFilesToRepository(files, friend);
+            
+            log.info("Successfully saved {} files for friend {}", files.size(), friendId);
+            
+        } catch (Exception e) {
+            log.error("Failed to save files to repository, rolling back metadata for friend {}", friendId, e);
+            // The @Transactional annotation will automatically rollback the database transaction
+            // when an exception is thrown from this method
+            throw new RuntimeException("Error saving files: " + e.getMessage(), e);
         }
-
-        // Save files to Flask repository
-        saveFilesToRepository(files, friend);
     }
 
-    private void saveFileMetadata(MultipartFile file, Friend friend) {
+    private Object saveFileMetadata(MultipartFile file, Friend friend) {
         String originalFilename = file.getOriginalFilename();
         String mimeType = file.getContentType();
         
@@ -67,8 +88,7 @@ public class FileWriteService {
                     .mimeType(mimeType)
                     .friend(friend)
                     .build();
-                photoRepository.save(photo);
-                break;
+                return photoRepository.save(photo);
                 
             case "video":
                 Videos video = Videos.builder()
@@ -76,8 +96,7 @@ public class FileWriteService {
                     .mimeType(mimeType)
                     .friend(friend)
                     .build();
-                videoRepository.save(video);
-                break;
+                return videoRepository.save(video);
                 
             default:
                 PersonalResource resource = PersonalResource.builder()
@@ -85,21 +104,25 @@ public class FileWriteService {
                     .mimeType(mimeType)
                     .friend(friend)
                     .build();
-                resourceRepository.save(resource);
-                break;
+                return resourceRepository.save(resource);
         }
+    }
+
+    private void flushMetadata() {
+        // Force the EntityManager to flush changes to database
+        // This ensures metadata is persisted before file repository call
+        photoRepository.flush();
+        videoRepository.flush();
+        resourceRepository.flush();
     }
 
     private void saveFilesToRepository(List<MultipartFile> files, Friend friend) {
         try {
-            // Use the @Value configured URL with the upload endpoint
             String uploadUrl = fileRepositoryServiceUrl + "/upload";
             
-            // Create multipart form data using WebClient
             var bodyBuilder = BodyInserters.fromMultipartData("friendName", friend.getName())
                     .with("friendId", friend.getId().toString());
             
-            // Add files to the multipart form
             for (MultipartFile file : files) {
                 bodyBuilder = bodyBuilder.with("files", file.getResource());
             }
@@ -110,11 +133,12 @@ public class FileWriteService {
                     .body(bodyBuilder)
                     .retrieve()
                     .bodyToMono(String.class)
-                    .block(); // Block to wait for response
+                    .block();
             
-            // WebClient throws exceptions for non-2xx responses by default
+            log.debug("File repository response: {}", response);
             
         } catch (Exception e) {
+            log.error("Failed to save files to repository: {}", e.getMessage(), e);
             throw new RuntimeException("Error saving files to repository: " + e.getMessage(), e);
         }
     }

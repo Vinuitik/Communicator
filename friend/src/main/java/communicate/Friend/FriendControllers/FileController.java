@@ -1,6 +1,8 @@
 package communicate.Friend.FriendControllers;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,16 +40,20 @@ public class FileController {
 
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadFiles(
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadFiles(
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam("friendId") Integer friendId) {
         
+        Map<String, String> response = new HashMap<>();
+        
         try {
             fileWriteService.saveFiles(files, friendId);
-            return ResponseEntity.ok("Files uploaded successfully");
+            response.put("message", "Files uploaded successfully");
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body("Error uploading files: " + e.getMessage());
+            response.put("error", "Error uploading files: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 }

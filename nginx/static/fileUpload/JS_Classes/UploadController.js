@@ -2,7 +2,9 @@
 class UploadController {
     constructor(progressTracker) {
         this.progressTracker = progressTracker;
-        this.friendId = 205;
+        // Extract friendId from the current URL (last segment after '/')
+        const urlParts = window.location.pathname.split('/');
+        this.friendId = urlParts[urlParts.length - 1];
     }
 
     // Method to change friendId if needed
@@ -23,8 +25,10 @@ class UploadController {
             
             // Add friendId parameter
             formData.append('friendId', this.friendId);
+
+            console.log('Uploading files:', formData, 'to friendId:', this.friendId);
             
-            const response = await fetch('/api/friend/upload', {
+            const response = await fetch('/api/friend/files/upload', {
                 method: 'POST',
                 body: formData
             });
