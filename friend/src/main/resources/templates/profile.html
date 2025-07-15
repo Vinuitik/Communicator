@@ -53,27 +53,24 @@
             <!-- Photos -->
             <div th:each="photo : ${photos}" class="media-item">
               <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
-                   th:alt="${photo.photoName}"
-                   th:data-photo-name="${photo.photoName}"
-                   th:data-friend-id="${friendId}"
-                   data-media-type="photo"
-                   onclick="openMediaModal(this.getAttribute('data-photo-name'), this.getAttribute('data-media-type'), this.getAttribute('data-friend-id'))">
-              <div class="media-overlay">
-                <span class="media-type">📷</span>
-                <span class="media-name" th:text="${photo.photoName}">Photo Name</span>
-              </div>
+                  th:alt="${photo.photoName}"
+                  th:data-photo-name="${photo.photoName}"
+                  th:data-friend-id="${friendId}"
+                  th:data-photo-id="${photo.id}"
+                  th:data-media-id="${photo.id}"
+                  data-media-type="photo"
+                  onclick="openMediaModalFromElement(this)">
             </div>
-            
+
             <!-- Videos -->
             <div th:each="video : ${videos}" class="media-item video">
               <div class="video-thumbnail" 
-                   th:data-video-name="${video.videoName}"
-                   th:data-friend-id="${friendId}"
-                   th:onclick="|openMediaModal('${video.videoName}', 'video', '${friendId}')|">
-                <div class="video-placeholder">
-                  <span class="video-icon">🎥</span>
-                  <span class="video-name" th:text="${video.videoName}">Video Name</span>
-                </div>
+                  th:data-video-name="${video.videoName}"
+                  th:data-friend-id="${friendId}"
+                  th:data-video-id="${video.id}"
+                  th:data-media-id="${video.id}"
+                  data-media-type="video"
+                  onclick="openMediaModalFromElement(this)">
                 <div class="video-indicator">▶</div>
               </div>
             </div>
@@ -81,10 +78,13 @@
             <!-- Personal Resources -->
             <div th:each="resource : ${resources}" class="media-item resource">
               <div class="resource-item" 
-                   th:data-resource-name="${resource.resourceName}" 
-                   th:data-friend-id="${friendId}"
-                   th:data-mime-type="${resource.mimeType}"
-                   onclick="openMediaModal(this.getAttribute('data-resource-name'), 'resource', this.getAttribute('data-friend-id'), this.getAttribute('data-mime-type'))">
+                th:data-resource-name="${resource.resourceName}" 
+                th:data-friend-id="${friendId}"
+                th:data-mime-type="${resource.mimeType}"
+                th:data-resource-id="${resource.id}"
+                th:data-media-id="${resource.id}"
+                data-media-type="resource"
+                onclick="openMediaModalFromElement(this)">
                 <div class="resource-icon">
                     <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
                     <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>

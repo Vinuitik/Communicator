@@ -3,6 +3,7 @@ let currentMediaName = '';
 let currentMediaType = '';
 let currentFriendId = '';
 let currentMimeType = '';
+let currentMediaId = '';
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -65,45 +66,6 @@ function isModalVisible() {
            (modal.style.display === '' && window.getComputedStyle(modal).display === 'block'));
 }
 
-// Open media modal
-function openMediaModal(fileName, type, friendId, mimeType = '') {
-    currentMediaName = fileName;
-    currentMediaType = type;
-    currentFriendId = friendId;
-    currentMimeType = mimeType;
-
-    const modal = document.getElementById('mediaModal');
-    const modalTitle = document.getElementById('mediaModalTitle');
-    const previewContainer = document.getElementById('mediaPreviewContainer');
-    const mediaName = document.getElementById('modalMediaName');
-    const mediaType = document.getElementById('modalMediaType');
-    const mediaSize = document.getElementById('modalMediaSize');
-
-    if (!modal || !previewContainer) {
-        console.error('Modal elements not found');
-        return;
-    }
-
-    // Update modal title and info
-    modalTitle.textContent = fileName;
-    mediaName.textContent = fileName;
-    mediaType.textContent = type === 'resource' ? (mimeType || 'Unknown') : type;
-    
-    // Generate preview content
-    generateMediaPreview(fileName, type, friendId, mimeType);
-    
-    // Fetch and display file size
-    fetchMediaInfo(fileName, friendId);
-
-    // Show modal
-    modal.style.display = 'block';
-    document.body.style.overflow = 'hidden';
-    
-    // Force reflow for better browser compatibility
-    modal.offsetHeight;
-}
-
-// Generate media preview content
 function generateMediaPreview(fileName, type, friendId, mimeType) {
     const previewContainer = document.getElementById('mediaPreviewContainer');
     const fileUrl = `/api/fileRepository/file/${friendId}/${fileName}`;
@@ -190,15 +152,6 @@ async function fetchMediaInfo(fileName, friendId) {
     }
 }
 
-// Format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 // Close media modal
 function closeMediaModal() {
     const modal = document.getElementById('mediaModal');
@@ -226,9 +179,59 @@ function closeMediaModal() {
     currentMimeType = '';
 }
 
-// Delete current media
+// Even cleaner approach - let's create a new function that can be called with just the clicked element
+function openMediaModalFromElement(element) {
+    const mediaType = element.getAttribute('data-media-type') || 
+                     element.closest('[data-media-type]')?.getAttribute('data-media-type');
+    
+    if (!mediaType) {
+        console.error('No media type found on clicked element');
+        return;
+    }
+
+    const fileName = element.getAttribute(`data-${mediaType}-name`);
+    const friendId = element.getAttribute('data-friend-id');
+    const mediaId = element.getAttribute(`data-media-id`);
+    const mimeType = element.getAttribute('data-mime-type') || '';
+
+    currentMediaName = fileName;
+    currentMediaType = mediaType;
+    currentFriendId = friendId;
+    currentMimeType = mimeType;
+    currentMediaId = mediaId;
+
+    const modal = document.getElementById('mediaModal');
+    const modalTitle = document.getElementById('mediaModalTitle');
+    const previewContainer = document.getElementById('mediaPreviewContainer');
+    const mediaName = document.getElementById('modalMediaName');
+    const mediaTypeSpan = document.getElementById('modalMediaType');
+
+    if (!modal || !previewContainer) {
+        console.error('Modal elements not found');
+        return;
+    }
+
+    // Update modal title and info
+    modalTitle.textContent = fileName;
+    mediaName.textContent = fileName;
+    mediaTypeSpan.textContent = mediaType === 'resource' ? (mimeType || 'Unknown') : mediaType;
+    
+    // Generate preview content
+    generateMediaPreview(fileName, mediaType, friendId, mimeType);
+    
+    // Fetch and display file size
+    fetchMediaInfo(fileName, friendId);
+
+    // Show modal
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    modal.offsetHeight;
+}
+
+// Delete current media - much simpler now
 async function deleteCurrentMedia() {
-    if (!currentMediaName || !currentFriendId) {
+    if (!currentMediaName || !currentFriendId || !currentMediaId) {
         console.error('No media selected for deletion');
         return;
     }
@@ -240,17 +243,43 @@ async function deleteCurrentMedia() {
 
     try {
         const formData = new FormData();
-        formData.append('files', currentMediaName);
+        
+        // Initialize empty arrays for all media types
+        const photoIds = [];
+        const videoIds = [];
+        const resourceIds = [];
+        
+        // Add the current media ID to the appropriate array based on type
+        switch (currentMediaType) {
+            case 'photo':
+                photoIds.push(currentMediaId);
+                break;
+            case 'video':
+                videoIds.push(currentMediaId);
+                break;
+            case 'resource':
+                resourceIds.push(currentMediaId);
+                break;
+            default:
+                console.error('Unknown media type:', currentMediaType);
+                return;
+        }
+        
+        // Add all arrays to form data
+        formData.append('photos', photoIds);
+        formData.append('videos', videoIds);
+        formData.append('resources', resourceIds);
         formData.append('friendId', currentFriendId);
 
-        const response = await fetch(`/api/friend/files/delete`, {
+        const response = await fetch('/files/delete', {
             method: 'POST',
             body: formData
         });
 
         if (response.ok) {
+            const result = await response.json();
+            console.log('Delete response:', result);
             closeMediaModal();
-            // Reload the page to update the media gallery
             window.location.reload();
         } else {
             const error = await response.text();
@@ -260,15 +289,4 @@ async function deleteCurrentMedia() {
         console.error('Error deleting media:', error);
         alert('Failed to delete media. Please try again.');
     }
-}
-
-// Legacy functions for backward compatibility (in case they're called from somewhere else)
-function viewMedia(fileName, type) {
-    const friendId = window.location.pathname.split('/').pop();
-    openMediaModal(fileName, type, friendId);
-}
-
-function viewResource(fileName) {
-    const friendId = window.location.pathname.split('/').pop();
-    openMediaModal(fileName, 'resource', friendId);
 }

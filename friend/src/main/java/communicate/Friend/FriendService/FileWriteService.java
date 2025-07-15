@@ -146,7 +146,7 @@ public class FileWriteService {
     }
 
     @Transactional
-    public void deleteFiles(List<String> fileNames, Integer friendId) {
+    public void deleteFiles(List<Integer> photoIds, List<Integer> videoIds, List<Integer> resourceIds, Integer friendId) {
         Optional<Friend> friendOpt = friendRepository.findById(friendId);
         if (friendOpt.isEmpty()) {
             throw new RuntimeException("Friend not found with id: " + friendId);
@@ -155,16 +155,25 @@ public class FileWriteService {
         Friend friend = friendOpt.get();
 
         try {
+            // Collect all file names to delete
+            List<String> fileNames = new ArrayList<>();
+            
+            // Get entities and collect file names
+            List<Photos> photos = photoRepository.findAllById(photoIds);
+            List<Videos> videos = videoRepository.findAllById(videoIds);
+            List<PersonalResource> resources = resourceRepository.findAllById(resourceIds);
+
+            photos.forEach(photo -> fileNames.add(photo.getPhotoName()));
+            videos.forEach(video -> fileNames.add(video.getVideoName()));
+            resources.forEach(resource -> fileNames.add(resource.getResourceName()));
+
             // Step 1: Delete from file repository first
             deleteFilesFromRepository(fileNames, friend);
             
-            // Step 2: Delete metadata from database (within transaction)
-            for (String fileName : fileNames) {
-                deleteFileMetadata(fileName, friend);
-            }
-            
-            // Force flush to ensure deletion is persisted
-            flushMetadata();
+            // Step 2: Delete metadata from database by IDs (within transaction)
+            photoRepository.deleteAllById(photoIds);
+            videoRepository.deleteAllById(videoIds);
+            resourceRepository.deleteAllById(resourceIds);
             
             log.info("Successfully deleted {} files for friend {}", fileNames.size(), friendId);
             
@@ -172,28 +181,6 @@ public class FileWriteService {
             log.error("Failed to delete files, rolling back for friend {}", friendId, e);
             // @Transactional will automatically rollback database changes
             throw new RuntimeException("Error deleting files: " + e.getMessage(), e);
-        }
-    }
-
-    private void deleteFileMetadata(String fileName, Friend friend) {
-        String extension = getFileExtension(fileName).toLowerCase();
-        String category = getFileCategory(extension);
-        
-        switch (category) {
-            case "photo":
-                photoRepository.findByPhotoNameAndFriend(fileName, friend)
-                    .ifPresent(photoRepository::delete);
-                break;
-                
-            case "video":
-                videoRepository.findByVideoNameAndFriend(fileName, friend)
-                    .ifPresent(videoRepository::delete);
-                break;
-                
-            default:
-                resourceRepository.findByResourceNameAndFriend(fileName, friend)
-                    .ifPresent(resourceRepository::delete);
-                break;
         }
     }
 
