@@ -33,6 +33,7 @@ public class FileController {
     private final FileMetaDataReadService fileReadService;
     private final FileWriteService fileWriteService;
 
+    // in future implement an endpoint to be returning pages for profile page
 
 
     @PostMapping("/upload")

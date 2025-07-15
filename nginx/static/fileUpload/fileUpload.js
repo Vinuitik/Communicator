@@ -61,6 +61,7 @@ class FileUploader {
     }
     
     addFiles(files) {
+        
         files.forEach(file => {
             if (this.fileValidator.validateFile(file, this.fileCollection.getFiles())) {
                 this.fileCollection.addFile(file);
