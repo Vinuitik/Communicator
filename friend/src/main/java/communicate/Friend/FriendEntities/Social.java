@@ -28,6 +28,8 @@ public class Social {
 
     private String URL;
 
+    
+
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference

@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import communicate.Friend.FriendEntities.PersonalResource;
 import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendEntities.Videos;
-import communicate.Friend.FriendService.FileReadService;
+import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FileWriteService;
 import lombok.RequiredArgsConstructor;
 
@@ -30,51 +30,11 @@ import lombok.RequiredArgsConstructor;
 public class FileController {
     
     
-    private final FileReadService fileReadService;
+    private final FileMetaDataReadService fileReadService;
     private final FileWriteService fileWriteService;
 
+    // in future implement an endpoint to be returning pages for profile page
 
-    
-    // Serve photos
-    @GetMapping("/photo/{id}")
-    public ResponseEntity<byte[]> getPhoto(@PathVariable Integer id) {
-        Photos photo = fileReadService.getPhoto(id);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(photo.getMimeType()));
-        headers.setContentDisposition(ContentDisposition.inline().filename(photo.getPhotoName()).build());
-        
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(fileReadService.getPhotoData(photo));
-    }
-
-    @GetMapping("/video/{id}")
-    public ResponseEntity<byte[]> getVideo(@PathVariable Integer id) {
-        Videos video = fileReadService.getVideo(id);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(video.getMimeType()));
-        headers.setContentDisposition(ContentDisposition.inline().filename(video.getVideoName()).build());
-        
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(fileReadService.getVideoData(video));
-    }
-    
-    // Serve PDFs
-    @GetMapping("/resource/{id}")
-    public ResponseEntity<byte[]> getResource(@PathVariable Integer id) {
-        PersonalResource resource = fileReadService.getResource(id);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(resource.getMimeType()));
-        headers.setContentDisposition(ContentDisposition.inline().filename(resource.getResourceName()).build());
-        
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(fileReadService.getResourceData(resource));
-    }
 
     @PostMapping("/upload")
     public ResponseEntity<String> uploadFiles(

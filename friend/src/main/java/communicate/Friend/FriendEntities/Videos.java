@@ -31,6 +31,9 @@ public class Videos {
 
     private String mimeType;
 
+    @Builder.Default
+    private LocalDate timeBuilt = LocalDate.now();
+
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference

@@ -10,25 +10,33 @@ class PreviewManager {
     
     init() {
         const closeModal = document.getElementById('closeModal');
-        closeModal.addEventListener('click', () => this.close());
+        if (closeModal) {
+            closeModal.addEventListener('click', () => this.close());
+        }
 
-        const closeButton = document.getElementById('closeButton');
-        if (closeButton){
-            closeButton.addEventListener('click', () => this.close());
-        }
-        else {
-            console.warn('Close button not found in the modal.');
-        }
-        
+        // Use event delegation for better reliability across browsers
         this.modal.addEventListener('click', (e) => {
-            if (e.target === this.modal) this.close();
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.modal.style.display === 'block') {
+            // Close on X button or close button click
+            if (e.target.id === 'closeModal' || 
+                e.target.id === 'closeButton' || 
+                e.target.classList.contains('modal-close') ||
+                e.target === this.modal) {
                 this.close();
             }
         });
+        
+        // Keyboard event with better browser compatibility
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isModalVisible()) {
+                this.close();
+            }
+        });
+    }
+    
+    isModalVisible() {
+        return this.modal.style.display === 'block' || 
+               this.modal.style.display === '' && 
+               window.getComputedStyle(this.modal).display === 'block';
     }
     
     show(fileObj) {
@@ -44,9 +52,12 @@ class PreviewManager {
         // Generate preview content
         this.generatePreviewContent(fileObj);
         
-        // Show modal
+        // Show modal with better cross-browser support
         this.modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        
+        // Force reflow for better browser compatibility
+        this.modal.offsetHeight;
     }
     
     generatePreviewContent(fileObj) {

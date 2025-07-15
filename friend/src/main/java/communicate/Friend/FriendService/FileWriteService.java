@@ -127,7 +127,7 @@ public class FileWriteService {
         return filename.substring(lastDotIndex);
     }
 
-    private String getFileCategory(String extension) {
+    public String getFileCategory(String extension) {
         switch (extension) {
             case ".jpg":
             case ".jpeg":

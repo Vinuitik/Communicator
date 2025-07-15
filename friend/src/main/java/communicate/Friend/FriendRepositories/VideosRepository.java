@@ -11,6 +11,9 @@ import org.springframework.stereotype.Repository;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.Videos;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 @Repository
 public interface VideosRepository extends JpaRepository<Videos, Integer>{
     // Find all videos for a specific friend
@@ -34,4 +37,6 @@ public interface VideosRepository extends JpaRepository<Videos, Integer>{
     Optional<Videos> findByFriendIdAndVideoName(Integer friendId, String videoName);
 
     List<Videos> findAllByFriend(Friend friend);
+
+    Page<Videos> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
 }

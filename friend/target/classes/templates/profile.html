@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Friend Profile - James Wilson</title>
+  <title th:text="'Friend Profile - ' + ${friend.name}">Friend Profile</title>
   <link rel="stylesheet" href="/profile/profile.css">
   <link rel="stylesheet" href="/navigation/navigation.css">
 
@@ -26,10 +26,10 @@
   <div class="container">
     <!-- Profile Header -->
     <div class="profile-header">
-      <img src="/api/placeholder/400/400" alt="James Wilson">
+      <img src="/api/placeholder/400/400" th:alt="${friend.name}">
       <div class="profile-header-text">
-        <h1>James Wilson</h1>
-        <div class="profile-subtitle">College friend • Known since 2018</div>
+        <h1 th:text="${friend.name}">Friend Name</h1>
+        <div class="profile-subtitle" th:text="${friend.relationshipType + ' • Known since ' + friend.dateMet}">Relationship info</div>
         <div class="quick-stats">
           <div class="stat-item"><i>📅</i> Last met: 2 weeks ago</div>
           <div class="stat-item"><i>🗓️</i> Next: March 25, 2025</div>
@@ -48,19 +48,66 @@
             Photos & Videos
             <button id="mediaUploadButton">Add Media</button> 
           </div>
-           <div class="media-gallery">
-            <!-- Dynamic media items -->
-            <div th:each="media : ${friend.mediaItems}" 
-                 th:class="${media.type == 'video'} ? 'media-item video' : 'media-item'">
-              <img th:src="${media.thumbnailUrl != null ? media.thumbnailUrl : '/api/placeholder/300/300'}" 
-                   th:alt="${media.description}"
-                   th:onclick="|viewMedia(${media.id})|">
-              <div th:if="${media.type == 'video'}" class="video-indicator">▶</div>
+          <div class="media-gallery">
+            
+            <!-- Photos -->
+            <div th:each="photo : ${photos}" class="media-item">
+              <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
+                   th:alt="${photo.photoName}"
+                   th:onclick="|viewMedia('${photo.photoName}', 'photo')|">
+              <div class="media-overlay">
+                <span class="media-type">📷</span>
+                <span class="media-name" th:text="${photo.photoName}">Photo Name</span>
+              </div>
+            </div>
+            
+            <!-- Videos -->
+            <div th:each="video : ${videos}" class="media-item video">
+              <div class="video-thumbnail" 
+                   th:onclick="|viewMedia('${video.videoName}', 'video')|">
+                <!-- You might want to generate thumbnails or use a default video icon -->
+                <div class="video-placeholder">
+                  <span class="video-icon">🎥</span>
+                  <span class="video-name" th:text="${video.videoName}">Video Name</span>
+                </div>
+                <div class="video-indicator">▶</div>
+              </div>
+            </div>
+            
+            <!-- Personal Resources -->
+            <div th:each="resource : ${resources}" class="media-item resource">
+              <div class="resource-item" 
+                   th:onclick="|viewResource('${resource.resourceName}')|">
+                <!-- Determine icon based on mime type -->
+                <div class="resource-icon">
+                  <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
+                  <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
+                  <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
+                  <span th:if="${resource.mimeType.contains('text')}">📋</span>
+                  <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
+                </div>
+                <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
+                <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
+              </div>
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="pagination-controls" th:if="${photos.size() > 0 or videos.size() > 0 or resources.size() > 0}">
+              <a th:if="${currentPage > 0}" 
+                 th:href="@{/profile/{id}(id=${friendId}, page=${currentPage - 1})}" 
+                 class="pagination-btn">← Previous</a>
+              
+              <span class="current-page" th:text="'Page ' + ${currentPage + 1}">Page 1</span>
+              
+              <a th:if="${photos.size() == 4 or videos.size() == 4 or resources.size() == 4}" 
+                 th:href="@{/profile/{id}(id=${friendId}, page=${currentPage + 1})}" 
+                 class="pagination-btn">Next →</a>
             </div>
             
             <!-- Fallback for no media -->
-            <div th:if="${#lists.isEmpty(friend.mediaItems)}" class="no-media-placeholder">
-              <p>No photos or videos yet. Click "Add Media" to get started!</p>
+            <div th:if="${#lists.isEmpty(photos) and #lists.isEmpty(videos) and #lists.isEmpty(resources)}" 
+                 class="no-media-placeholder">
+              <p>No photos, videos, or resources yet. Click "Add Media" to get started!</p>
             </div>
           </div>
         </div>
@@ -302,5 +349,7 @@
       </div>
     </div>
   </div>
+
+  <script src="/profile/profile.js"></script>
 </body>
 </html>

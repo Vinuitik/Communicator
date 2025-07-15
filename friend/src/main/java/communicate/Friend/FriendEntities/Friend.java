@@ -46,6 +46,12 @@ public class Friend {
     @Size(min = 1, max = 50, message = "Name must be between 1 and 50 characters")
     private String name;
 
+    // Add these new fields
+    @Size(max = 50, message = "Relationship type must not exceed 50 characters")
+    private String relationshipType; // e.g., "Close friend", "Colleague", "Family friend"
+    
+    private LocalDate dateMet; // When you first met this person
+
     @NotNull(message = "Date is Required")
     private LocalDate plannedSpeakingTime;
 

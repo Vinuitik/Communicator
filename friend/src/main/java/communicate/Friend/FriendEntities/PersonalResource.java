@@ -23,7 +23,7 @@ import jakarta.persistence.Lob;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class PersonalResource {
+public class PersonalResource { // these can be pdf for that person, some texts he published, his internet behavior etc.
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
@@ -33,6 +33,9 @@ public class PersonalResource {
 
     @Column(nullable = false)
     private String mimeType;
+
+    @Builder.Default
+    private LocalDate timeBuilt = LocalDate.now();
 
     @ManyToOne
     @JoinColumn(name = "friend_id")
