@@ -800,6 +800,28 @@
   transform: translateY(-1px);
 }
 
+.success-notification {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+}
+
+.notification-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Media item transition for smooth deletion */
+.media-item {
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+/* Loading state for delete button */
+.media-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .pagination-info {
   font-size: 13px;
   color: #7f8c8d;

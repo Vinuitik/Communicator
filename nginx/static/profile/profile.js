@@ -229,7 +229,7 @@ function openMediaModalFromElement(element) {
     modal.offsetHeight;
 }
 
-// Delete current media - much simpler now
+// Delete current media - improved version without page reload
 async function deleteCurrentMedia() {
     if (!currentMediaName || !currentFriendId || !currentMediaId) {
         console.error('No media selected for deletion');
@@ -240,6 +240,12 @@ async function deleteCurrentMedia() {
     if (!confirmed) {
         return;
     }
+
+    // Show loading state on delete button
+    const deleteBtn = document.getElementById('deleteMediaBtn');
+    const originalBtnText = deleteBtn.innerHTML;
+    deleteBtn.disabled = true;
+    deleteBtn.innerHTML = '<i>⏳</i> Deleting...';
 
     try {
         const formData = new FormData();
@@ -271,16 +277,28 @@ async function deleteCurrentMedia() {
         formData.append('resources', resourceIds);
         formData.append('friendId', currentFriendId);
 
-        const response = await fetch('/files/delete', {
+        console.log("formData being sent:", formData);
+
+        const response = await fetch('/api/friend/files/delete', {
             method: 'POST',
             body: formData
         });
 
+        console.log("Response status:", response.status);
+
         if (response.ok) {
             const result = await response.json();
             console.log('Delete response:', result);
+            
+            // Close modal first
             closeMediaModal();
-            window.location.reload();
+            
+            // Remove the media item from DOM
+            removeMediaFromDOM(currentMediaId, currentMediaType);
+            
+            // Show success feedback
+            showSuccessMessage(`"${currentMediaName}" has been deleted successfully.`);
+            
         } else {
             const error = await response.text();
             alert('Failed to delete media: ' + error);
@@ -288,5 +306,185 @@ async function deleteCurrentMedia() {
     } catch (error) {
         console.error('Error deleting media:', error);
         alert('Failed to delete media. Please try again.');
+    } finally {
+        // Restore delete button
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalBtnText;
     }
+}
+
+// Remove media item from DOM
+function removeMediaFromDOM(mediaId, mediaType) {
+    // Find the media element by data-media-id
+    const mediaElement = document.querySelector(`[data-media-id="${mediaId}"]`);
+    
+    if (mediaElement) {
+        // Find the parent container (.media-item) that needs to be removed
+        const mediaContainer = mediaElement.closest('.media-item');
+        
+        if (mediaContainer) {
+            // Add fade out animation to the container
+            mediaContainer.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            mediaContainer.style.opacity = '0';
+            mediaContainer.style.transform = 'scale(0.8)';
+            
+            // Remove container after animation
+            setTimeout(() => {
+                mediaContainer.remove();
+                
+                // Check if gallery is now empty and update accordingly
+                updateGalleryState();
+                
+                // Update pagination if needed
+                updatePaginationAfterDelete();
+                
+            }, 300);
+        } else {
+            // Fallback: remove the media element directly if no container found
+            mediaElement.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            mediaElement.style.opacity = '0';
+            mediaElement.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                mediaElement.remove();
+                updateGalleryState();
+                updatePaginationAfterDelete();
+            }, 300);
+        }
+    } else {
+        console.warn('Media element not found in DOM, falling back to page reload');
+        window.location.reload();
+    }
+}
+
+// Update gallery state after deletion
+function updateGalleryState() {
+    const mediaGallery = document.querySelector('.media-gallery');
+    if (!mediaGallery) return;
+    
+    // Count remaining media items
+    const remainingPhotos = mediaGallery.querySelectorAll('[data-media-type="photo"]').length;
+    const remainingVideos = mediaGallery.querySelectorAll('[data-media-type="video"]').length;
+    const remainingResources = mediaGallery.querySelectorAll('[data-media-type="resource"]').length;
+    
+    const totalRemaining = remainingPhotos + remainingVideos + remainingResources;
+    
+    // If no media left, show placeholder
+    if (totalRemaining === 0) {
+        showEmptyGalleryPlaceholder();
+    }
+    
+    // Update any counters or section headers if they exist
+    updateMediaCounts(remainingPhotos, remainingVideos, remainingResources);
+}
+
+// Show empty gallery placeholder
+function showEmptyGalleryPlaceholder() {
+    const mediaGallery = document.querySelector('.media-gallery');
+    if (!mediaGallery) return;
+    
+    // Remove existing placeholder if any
+    const existingPlaceholder = mediaGallery.querySelector('.no-media-placeholder');
+    if (existingPlaceholder) {
+        existingPlaceholder.remove();
+    }
+    
+    // Create new placeholder
+    const placeholder = document.createElement('div');
+    placeholder.className = 'no-media-placeholder';
+    placeholder.innerHTML = '<p>No photos, videos, or resources yet. Click "Add Media" to get started!</p>';
+    
+    mediaGallery.appendChild(placeholder);
+}
+
+// Update media counts (if you have counters displayed anywhere)
+function updateMediaCounts(photoCount, videoCount, resourceCount) {
+    // Update section title or any counters you might have
+    const sectionTitle = document.querySelector('.media-gallery').closest('.profile-section')?.querySelector('.section-title');
+    if (sectionTitle && !sectionTitle.textContent.includes('Media Gallery')) {
+        // Only update if there are actual counters to update
+        console.log(`Updated counts - Photos: ${photoCount}, Videos: ${videoCount}, Resources: ${resourceCount}`);
+    }
+}
+
+// Update pagination after deletion
+function updatePaginationAfterDelete() {
+    // Check if pagination.js is loaded and update
+    if (typeof updatePaginationData === 'function') {
+        // Decrease total items by 1
+        const newTotalItems = Math.max(0, totalItems - 1);
+        
+        // Recalculate total pages (assuming items per page, you might need to adjust this)
+        const itemsPerPage = 12; // Adjust based on your pagination setup
+        const newTotalPages = Math.max(1, Math.ceil(newTotalItems / itemsPerPage));
+        
+        // Check if current page is now empty and should go to previous page
+        let newCurrentPage = currentPage;
+        if (currentPage > newTotalPages) {
+            newCurrentPage = newTotalPages;
+        }
+        
+        // Update pagination
+        updatePaginationData(newCurrentPage, newTotalPages, newTotalItems);
+    }
+}
+
+// Show success message
+function showSuccessMessage(message) {
+    // Create success notification
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.innerHTML = `
+        <div class="notification-content">
+            <i style="color: #22c55e;">✅</i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #f0f9ff;
+        border: 1px solid #22c55e;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 10000;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Animate out and remove
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Format file size helper function (if not already defined)
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
