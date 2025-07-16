@@ -18,6 +18,7 @@ import communicate.Friend.FriendEntities.Videos;
 import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.PaginationLogicService;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -28,6 +29,7 @@ public class WebController {
     private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;
     private final FileMetaDataReadService fileMetaDataReadService;
+    private final PaginationLogicService paginationLogicService;
 
     @GetMapping("/talked/{id}")
     public String showFriendForm(@PathVariable(required = true) Integer id, Model model) {
@@ -44,6 +46,8 @@ public class WebController {
         int page = 0; // You can change this to get different pages
 
         Friend friend = friendService.findById(id);
+
+        List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page);
 
         List<Photos> photos = fileMetaDataReadService.getPhotosByFriendIdPageableWithMetadata(id, page).getContent();
         List<Videos> videos = fileMetaDataReadService.getVideosByFriendIdPageableWithMetadata(id, page).getContent();

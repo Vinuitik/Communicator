@@ -45,7 +45,7 @@
         <!-- Media Section -->
         <div class="profile-section">
           <div class="section-title">
-            Photos & Videos
+            Media Gallery
             <button id="mediaUploadButton">Add Media</button> 
           </div>
           <div class="media-gallery">
@@ -97,50 +97,40 @@
               </div>
             </div>
             
-            <!-- Pagination Controls -->
-            <div class="pagination-controls" th:if="${totalPages > 1}">
-              <a th:if="${currentPage > 0}" 
-                 th:href="@{/profile/{id}(id=${friendId}, page=${currentPage - 1})}" 
-                 class="pagination-btn">← Previous</a>
-              
-              <div class="pagination-dots">
-                <!-- First page -->
-                <a th:if="${currentPage > 2}" 
-                   th:href="@{/profile/{id}(id=${friendId}, page=0)}"
-                   class="pagination-dot"
-                   th:title="'Page 1'"></a>
-                
-                <!-- Ellipsis before current range -->
-                <span th:if="${currentPage > 3}" class="pagination-ellipsis">...</span>
-                
-                <!-- Current page range -->
-                <th:block th:each="page : ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 1), T(java.lang.Math).min(totalPages - 1, currentPage + 1))}">
-                  <a th:href="@{/profile/{id}(id=${friendId}, page=${page})}"
-                     th:class="${page == currentPage} ? 'pagination-dot active' : 'pagination-dot'"
-                     th:title="'Page ' + ${page + 1}"></a>
-                </th:block>
-                
-                <!-- Ellipsis after current range -->
-                <span th:if="${currentPage < totalPages - 4}" class="pagination-ellipsis">...</span>
-                
-                <!-- Last page -->
-                <a th:if="${currentPage < totalPages - 3}" 
-                   th:href="@{/profile/{id}(id=${friendId}, page=${totalPages - 1})}"
-                   class="pagination-dot"
-                   th:title="'Page ' + ${totalPages}"></a>
-              </div>
-              
-              <span class="current-page" th:text="'Page ' + ${currentPage + 1} + ' of ' + ${totalPages}">Page 1</span>
-              
-              <a th:if="${currentPage < totalPages - 1}" 
-                 th:href="@{/profile/{id}(id=${friendId}, page=${currentPage + 1})}" 
-                 class="pagination-btn">Next →</a>
-            </div>
-            
             <!-- Fallback for no media -->
             <div th:if="${#lists.isEmpty(photos) and #lists.isEmpty(videos) and #lists.isEmpty(resources)}" 
                  class="no-media-placeholder">
               <p>No photos, videos, or resources yet. Click "Add Media" to get started!</p>
+            </div>
+          </div>
+          
+          <!-- Media Pagination -->
+          <div class="media-pagination" id="mediaPagination">
+            <div class="pagination-container">
+              <button class="pagination-btn pagination-prev" id="prevPageBtn" disabled>
+                <span>‹</span>
+              </button>
+              
+              <div class="pagination-numbers" id="paginationNumbers">
+                <!-- Pagination numbers will be inserted here by JavaScript -->
+                <button class="pagination-number active" data-page="1">1</button>
+                <button class="pagination-number" data-page="2">2</button>
+                <button class="pagination-number" data-page="3">3</button>
+                <div class="pagination-input-container" style="display: none;">
+                  <input type="number" class="pagination-input" id="pageInput" min="1" placeholder="...">
+                  <button class="pagination-go-btn" id="goToPageBtn">Go</button>
+                </div>
+                <button class="pagination-number" data-page="4">4</button>
+                <button class="pagination-number" data-page="5">5</button>
+              </div>
+              
+              <button class="pagination-btn pagination-next" id="nextPageBtn">
+                <span>›</span>
+              </button>
+            </div>
+            
+            <div class="pagination-info">
+              <span id="pageInfo">Page 1 of 5 • 48 items</span>
             </div>
           </div>
         </div>
@@ -412,5 +402,6 @@
   </div>
 
   <script src="/profile/profile.js"></script>
+  <script src="/static/profile/pagination.js"></script>
 </body>
 </html>
