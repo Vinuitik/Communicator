@@ -1,5 +1,7 @@
 package communicate.Friend.FriendService;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,21 +50,18 @@ public class FileMetaDataReadService {
                 .orElseThrow(() -> new RuntimeException("Resource not found with id: " + id));
     }
 
-    // Optional: Return Page object for additional metadata
-    public Page<Photos> getPhotosByFriendIdPageableWithMetadata(int friend_id, int page){
-        Pageable pageable = PageRequest.of(page, imagesPageComponent);
-        return photoRepository.findByFriendIdOrderByTimeBuiltDesc(friend_id, pageable);
-    }
+    // Better approach: Use repository methods with LIMIT and OFFSET
+        public List<Photos> getPhotosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+            return photoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+        }
 
-    public Page<Videos> getVideosByFriendIdPageableWithMetadata(int friend_id, int page){
-        Pageable pageable = PageRequest.of(page, videosPageComponent);
-        return videoRepository.findByFriendIdOrderByTimeBuiltDesc(friend_id, pageable);
-    }
+        public List<Videos> getVideosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+            return videoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+        }
 
-    public Page<PersonalResource> getResourcesByFriendIdPageableWithMetadata(int friend_id, int page){
-        Pageable pageable = PageRequest.of(page, resourcesPageComponent);
-        return resourceRepository.findByFriendIdOrderByTimeBuiltDesc(friend_id, pageable);
-    }
+        public List<PersonalResource> getResourcesByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+            return resourceRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+        }
 
     
 }

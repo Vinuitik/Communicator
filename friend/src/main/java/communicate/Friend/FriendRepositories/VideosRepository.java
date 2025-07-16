@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Friend;
+import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendEntities.Videos;
 
 import org.springframework.data.domain.Page;
@@ -21,11 +22,6 @@ public interface VideosRepository extends JpaRepository<Videos, Integer>{
     
     // Find videos by name (partial match)
     List<Videos> findByVideoNameContainingIgnoreCase(String videoName);
-    
-    // Get video metadata (without actual data) for efficiency
-    @Query("SELECT new Videos(v.id, null, v.videoName, v.mimeType, v.friend) " +
-           "FROM Videos v WHERE v.friend.id = :friendId")
-    List<Videos> findVideoMetadataByFriendId(@Param("friendId") Integer friendId);
     
     // Count videos for a friend
     long countByFriendId(Integer friendId);
@@ -41,4 +37,12 @@ public interface VideosRepository extends JpaRepository<Videos, Integer>{
     Page<Videos> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
 
     Optional<Videos> findByVideoNameAndFriend(String videoName, Friend friend);
+
+    @Query(value = "SELECT * FROM videos WHERE friend_id = :friendId ORDER BY time_built DESC LIMIT :limit OFFSET :offset", 
+           nativeQuery = true)
+    List<Videos> findByFriendIdOrderByTimeBuiltDescWithLimitOffset(
+        @Param("friendId") int friendId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
 }

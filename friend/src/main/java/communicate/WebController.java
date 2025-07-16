@@ -43,15 +43,16 @@ public class WebController {
         // Add the friend ID to the model if you want to use it in the template later
         // Get media with pagination
 
-        int page = 0; // You can change this to get different pages
+        int page = 1; // You can change this to get different pages
 
         Friend friend = friendService.findById(id);
 
-        List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page);
+        List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page,id);
+        List<Integer> mediaOffsets = paginationLogicService.getMediaOffsets(page);
 
-        List<Photos> photos = fileMetaDataReadService.getPhotosByFriendIdPageableWithMetadata(id, page).getContent();
-        List<Videos> videos = fileMetaDataReadService.getVideosByFriendIdPageableWithMetadata(id, page).getContent();
-        List<PersonalResource> resources = fileMetaDataReadService.getResourcesByFriendIdPageableWithMetadata(id, page).getContent();
+        List<Photos> photos = fileMetaDataReadService.getPhotosByFriendIdWithLimitOffset(id, mediaOffsets.get(0),mediaAllocations.get(0));
+        List<Videos> videos = fileMetaDataReadService.getVideosByFriendIdWithLimitOffset(id, mediaOffsets.get(1),mediaAllocations.get(1));
+        List<PersonalResource> resources = fileMetaDataReadService.getResourcesByFriendIdWithLimitOffset(id, mediaOffsets.get(2),mediaAllocations.get(2));
         
         // Add to model
         model.addAttribute("friend", friend);

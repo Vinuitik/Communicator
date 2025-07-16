@@ -23,10 +23,7 @@ public interface PhotosRepository extends JpaRepository<Photos, Integer> {
     // Find photos by name (partial match)
     List<Photos> findByPhotoNameContainingIgnoreCase(String photoName);
     
-    // Get photo metadata (without actual data) for efficiency
-    @Query("SELECT new Photos(p.id, null, p.photoName, p.mimeType, p.friend) " +
-           "FROM Photos p WHERE p.friend.id = :friendId")
-    List<Photos> findPhotoMetadataByFriendId(@Param("friendId") Integer friendId);
+    List<Photos> findPhotoByFriendId(Integer friendId);
     
     // Count photos for a friend
     long countByFriendId(Integer friendId);
@@ -42,4 +39,12 @@ public interface PhotosRepository extends JpaRepository<Photos, Integer> {
     Page<Photos> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
 
     Optional<Photos> findByPhotoNameAndFriend(String photoName, Friend friend);
+
+    @Query(value = "SELECT * FROM photos WHERE friend_id = :friendId ORDER BY time_built DESC LIMIT :limit OFFSET :offset", 
+           nativeQuery = true)
+    List<Photos> findByFriendIdOrderByTimeBuiltDescWithLimitOffset(
+        @Param("friendId") int friendId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
 }

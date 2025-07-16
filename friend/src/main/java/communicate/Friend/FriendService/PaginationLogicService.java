@@ -29,7 +29,7 @@ public class PaginationLogicService {
         return (int) Math.ceil((double) totalItems / itemsPerPage);
     }
 
-    public List<Integer> getMediaAllocations(int page){
+    public List<Integer> getMediaAllocations(int page, int friendId){
         --page; // Adjusting page to be zero-based index
         
         if (page < 0) {
@@ -37,9 +37,9 @@ public class PaginationLogicService {
         }
 
         // Calculate remaining items (ensure non-negative)
-        int totalPhotos = (int) photos.count();
-        int totalVideos = (int) videos.count();
-        int totalResources = (int) personalResource.count();
+        int totalPhotos = (int) photos.countByFriendId(friendId);
+        int totalVideos = (int) videos.countByFriendId(friendId);
+        int totalResources = (int) personalResource.countByFriendId(friendId);
         
         int photosCount = Math.max(0, totalPhotos - page * pageSize);
         int videosCount = Math.max(0, totalVideos - page * pageSize);
@@ -88,6 +88,15 @@ public class PaginationLogicService {
         }
 
         return List.of(photoAlloc, videoAlloc, resourceAlloc);
+    }
+
+    public List<Integer> getMediaOffsets(int page) {
+        --page;
+        return List.of(
+            page * pageSize,
+            page * pageSize,
+            page * pageSize
+        );
     }
 
 }

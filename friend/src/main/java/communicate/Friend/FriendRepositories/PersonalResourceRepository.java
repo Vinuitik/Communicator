@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.PersonalResource;
+import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendEntities.Videos;
 
 import org.springframework.data.domain.Page;
@@ -49,4 +50,12 @@ public interface PersonalResourceRepository extends JpaRepository<PersonalResour
     Page<PersonalResource> findByFriendIdOrderByTimeBuiltDesc(Integer friendId, Pageable pageable);
 
     Optional<PersonalResource> findByResourceNameAndFriend(String resourceName, Friend friend);
+    
+    @Query(value = "SELECT * FROM personal_resource WHERE friend_id = :friendId ORDER BY time_built DESC LIMIT :limit OFFSET :offset", 
+           nativeQuery = true)
+    List<PersonalResource> findByFriendIdOrderByTimeBuiltDescWithLimitOffset(
+        @Param("friendId") int friendId,
+        @Param("offset") int offset,
+        @Param("limit") int limit
+    );
 }
