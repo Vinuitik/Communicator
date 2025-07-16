@@ -34,6 +34,11 @@
     object-fit: cover;
     margin-right: 30px;
     border: 4px solid #3498db;
+    /*background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 24 24" fill="%23bdc3c7"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');*/
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 60%;
+    background-color: #f8f9fa;
   }
   
   .profile-header-text h1 {
@@ -159,7 +164,7 @@
   
   .video-name {
     font-size: 0.8rem;
-    color: #666;
+    color: #667;
     word-break: break-word;
   }
   
@@ -482,7 +487,7 @@
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
-    color: #666;
+    color: #667;
     transition: color 0.2s ease;
   }
   
@@ -494,6 +499,7 @@
     padding: 20px;
     max-height: 60vh;
     overflow-y: auto;
+    position: relative;
   }
   
   .media-preview-container {
@@ -528,7 +534,7 @@
   
   .media-preview-document i {
     font-size: 64px;
-    color: #666;
+    color: #667;
     margin-bottom: 16px;
   }
   
@@ -538,12 +544,31 @@
     font-size: 18px;
   }
   
-  .media-info-detail {
+  /* Media info detail styles */
+.media-info-detail {
+    margin-top: 15px;
+    padding: 12px;
     background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-  }
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.media-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.media-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.media-info-label {
+    font-weight: 600;
+    color: #667;
+    min-width: 50px;
+}
   
   .media-info-detail p {
     margin: 8px 0;
@@ -595,7 +620,56 @@
     background: #545b62;
   }
   
-  /* Pagination Styles */
+  /* Primary Photo Button */
+.media-btn-primary-photo {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    z-index: 1000;
+}
+
+.media-btn-primary-photo:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.media-btn-primary-photo:active {
+    transform: translateY(0);
+}
+
+.media-btn-primary-photo:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.media-btn-primary-photo.primary-active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.media-btn-primary-photo.primary-active:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Ensure modal body is relatively positioned for absolute button positioning */
+.media-modal-body {
+    position: relative;
+}
+
+/* Pagination Styles */
   .pagination-controls {
     display: flex;
     align-items: center;
@@ -698,7 +772,7 @@
   justify-content: center;
   font-size: 16px;
   font-weight: 600;
-  color: #666;
+  color: #667;
   transition: all 0.2s ease;
 }
 
@@ -730,7 +804,7 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: #666;
+  color: #667;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;

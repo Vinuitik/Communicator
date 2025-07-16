@@ -51,17 +51,22 @@ public class FileMetaDataReadService {
     }
 
     // Better approach: Use repository methods with LIMIT and OFFSET
-        public List<Photos> getPhotosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
-            return photoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
-        }
+    public List<Photos> getPhotosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+        return photoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+    }
 
-        public List<Videos> getVideosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
-            return videoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
-        }
+    public List<Videos> getVideosByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+        return videoRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+    }
 
-        public List<PersonalResource> getResourcesByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
-            return resourceRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
-        }
+    public List<PersonalResource> getResourcesByFriendIdWithLimitOffset(Integer friendId, Integer offset, Integer limit) {
+        return resourceRepository.findByFriendIdOrderByTimeBuiltDescWithLimitOffset(friendId, offset, limit);
+    }
+
+    public Photos getPhotoById(Integer id) {
+        return photoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Photo not found with id: " + id));
+    }
 
     
 }

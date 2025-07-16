@@ -46,6 +46,10 @@ public class WebController {
         int page = 1; // You can change this to get different pages
 
         Friend friend = friendService.findById(id);
+        Integer mainPhotoId = friend.getPrimaryPhotoId();
+        Photos mainPhoto = fileMetaDataReadService.getPhotoById(mainPhotoId);
+        String mainPhotoName = mainPhoto.getPhotoName();
+
 
         List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page,id);
         List<Integer> mediaOffsets = paginationLogicService.getMediaOffsets(page);
@@ -56,6 +60,7 @@ public class WebController {
         
         // Add to model
         model.addAttribute("friend", friend);
+        model.addAttribute("mainPhotoName", mainPhotoName);
         model.addAttribute("friendId", id);
         model.addAttribute("photos", photos);
         model.addAttribute("videos", videos);

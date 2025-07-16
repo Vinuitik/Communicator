@@ -121,7 +121,7 @@ function generateMediaPreview(fileName, type, friendId, mimeType) {
         default:
             previewHTML = `
                 <div class="media-preview-document">
-                    <i style="font-size: 64px; color: #666; margin-bottom: 16px;">📁</i>
+                    <i style="font-size: 64px; color: #667; margin-bottom: 16px;">📁</i>
                     <h4>${fileName}</h4>
                     <p>Preview not available for this file type</p>
                 </div>
@@ -130,6 +130,121 @@ function generateMediaPreview(fileName, type, friendId, mimeType) {
     }
 
     previewContainer.innerHTML = previewHTML;
+    
+    // Show/hide primary photo button based on media type
+    updatePrimaryPhotoButton(type);
+}
+
+// Update primary photo button visibility and state
+function updatePrimaryPhotoButton(mediaType) {
+    const primaryPhotoBtn = document.getElementById('setPrimaryPhotoBtn');
+    
+    if (mediaType === 'photo') {
+        primaryPhotoBtn.style.display = 'block';
+        // Check if this photo is already the primary photo
+        checkIfPrimaryPhoto();
+    } else {
+        primaryPhotoBtn.style.display = 'none';
+    }
+}
+
+// Check if current photo is already primary
+async function checkIfPrimaryPhoto() {
+    try {
+        const response = await fetch(`/api/friend/${currentFriendId}/primary-photo`);
+        if (response.ok) {
+            const result = await response.json();
+            const primaryPhotoBtn = document.getElementById('setPrimaryPhotoBtn');
+            
+            if (result.primaryPhotoId && result.primaryPhotoId == currentMediaId) {
+                // This is already the primary photo
+                primaryPhotoBtn.innerHTML = '<i>⭐</i> Primary Photo';
+                primaryPhotoBtn.disabled = true;
+                primaryPhotoBtn.classList.add('primary-active');
+            } else {
+                // Not primary photo
+                primaryPhotoBtn.innerHTML = '<i>⭐</i> Set as Primary';
+                primaryPhotoBtn.disabled = false;
+                primaryPhotoBtn.classList.remove('primary-active');
+            }
+        }
+    } catch (error) {
+        console.warn('Could not check primary photo status:', error);
+    }
+}
+
+// Set current photo as primary
+async function setPrimaryPhoto() {
+    if (!currentMediaId || !currentFriendId || currentMediaType !== 'photo') {
+        console.error('Invalid photo for setting as primary');
+        return;
+    }
+
+    const primaryPhotoBtn = document.getElementById('setPrimaryPhotoBtn');
+    const originalBtnText = primaryPhotoBtn.innerHTML;
+    
+    // Show loading state
+    primaryPhotoBtn.disabled = true;
+    primaryPhotoBtn.innerHTML = '<i>⏳</i> Setting...';
+
+    try {
+        const formData = new FormData();
+        formData.append('friendId', currentFriendId);
+        formData.append('photoId', currentMediaId);
+
+        console.log(formData)
+
+        const response = await fetch('/api/friend/set-primary-photo', {
+            method: 'POST',
+            body: formData
+        });
+
+        console.log(response)
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Primary photo set:', result);
+            
+            // Update button state
+            primaryPhotoBtn.innerHTML = '<i>⭐</i> Primary Photo';
+            primaryPhotoBtn.classList.add('primary-active');
+            
+            // Update profile header image if it exists
+            updateProfileHeaderImage();
+            
+            // Show success message
+            showSuccessMessage(`"${currentMediaName}" is now the primary photo!`);
+            
+        } else {
+            const error = await response.text();
+            alert('Failed to set primary photo: ' + error);
+            // Restore button
+            primaryPhotoBtn.innerHTML = originalBtnText;
+            primaryPhotoBtn.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error setting primary photo:', error);
+        alert('Failed to set primary photo. Please try again.');
+        // Restore button
+        primaryPhotoBtn.innerHTML = originalBtnText;
+        primaryPhotoBtn.disabled = false;
+    }
+}
+
+// Update profile header image with new primary photo
+function updateProfileHeaderImage() {
+    const profileHeaderImg = document.querySelector('.profile-header img');
+    if (profileHeaderImg && currentMediaName) {
+        const newImageUrl = `/api/fileRepository/file/${currentFriendId}/${currentMediaName}`;
+        profileHeaderImg.src = newImageUrl;
+        
+        // Add a subtle animation to indicate change
+        profileHeaderImg.style.transition = 'opacity 0.3s ease-out';
+        profileHeaderImg.style.opacity = '0.7';
+        setTimeout(() => {
+            profileHeaderImg.style.opacity = '1';
+        }, 150);
+    }
 }
 
 // Fetch media file information
@@ -211,10 +326,17 @@ function openMediaModalFromElement(element) {
         return;
     }
 
-    // Update modal title and info
+    // Update modal title
     modalTitle.textContent = fileName;
-    mediaName.textContent = fileName;
-    mediaTypeSpan.textContent = mediaType === 'resource' ? (mimeType || 'Unknown') : mediaType;
+    
+    // Update media info if elements exist
+    if (mediaName) {
+        mediaName.textContent = fileName;
+    }
+    
+    if (mediaTypeSpan) {
+        mediaTypeSpan.textContent = mediaType === 'resource' ? (mimeType || 'Unknown') : mediaType;
+    }
     
     // Generate preview content
     generateMediaPreview(fileName, mediaType, friendId, mimeType);

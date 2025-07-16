@@ -26,7 +26,9 @@
   <div class="container">
     <!-- Profile Header -->
     <div class="profile-header">
-      <img src="/api/placeholder/400/400" th:alt="${friend.name}">
+      <img th:src="'/api/fileRepository/file/' + ${friend.id} + '/' + ${mainPhotoName}" 
+     th:alt="${friend.name + ' profile photo'}"
+     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNiZGMzYzciPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiBmaWxsPSIjZTllY2VmIiBzdHJva2U9IiNkZWUyZTYiIHN0cm9rZS13aWR0aD0iMiIvPjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiIGZpbGw9IiNhZGI1YmQiLz48L3N2Zz4='; this.onerror=null;">
       <div class="profile-header-text">
         <h1 th:text="${friend.name}">Friend Name</h1>
         <div class="profile-subtitle" th:text="${friend.relationshipType + ' • Known since ' + friend.dateMet}">Relationship info</div>
@@ -55,6 +57,7 @@
               <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
                   th:alt="${photo.photoName}"
                   th:data-photo-name="${photo.photoName}"
+                  th:data-media-name="${photo.photoName}"
                   th:data-friend-id="${friendId}"
                   th:data-photo-id="${photo.id}"
                   th:data-media-id="${photo.id}"
@@ -380,13 +383,28 @@
         <span class="media-modal-close" id="closeMediaModal">&times;</span>
       </div>
       <div class="media-modal-body">
+        <!-- Primary Photo Button - positioned in top left -->
+        <button class="media-btn media-btn-primary-photo" id="setPrimaryPhotoBtn" style="display: none;" onclick="setPrimaryPhoto()">
+          <i>⭐</i> Set as Primary
+        </button>
+        
         <div class="media-preview-container" id="mediaPreviewContainer">
-          <!-- Media content will be inserted here -->
         </div>
+        
+        <!-- Add media info section -->
         <div class="media-info-detail" id="mediaInfoDetail">
-          <p><strong>Name:</strong> <span id="modalMediaName"></span></p>
-          <p><strong>Type:</strong> <span id="modalMediaType"></span></p>
-          <p><strong>Size:</strong> <span id="modalMediaSize"></span></p>
+          <div class="media-info-row">
+            <span class="media-info-label">File:</span>
+            <span id="modalMediaName">-</span>
+          </div>
+          <div class="media-info-row">
+            <span class="media-info-label">Type:</span>
+            <span id="modalMediaType">-</span>
+          </div>
+          <div class="media-info-row">
+            <span class="media-info-label">Size:</span>
+            <span id="modalMediaSize">-</span>
+          </div>
         </div>
       </div>
       <div class="media-modal-footer">

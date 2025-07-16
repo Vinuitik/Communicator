@@ -16,8 +16,11 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import javax.print.attribute.standard.Media;
 
 //import org.bson.Document;
 import org.springframework.http.HttpStatus;
@@ -29,6 +32,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PutMapping;
 
 
@@ -138,5 +143,59 @@ public class FriendController {
     @GetMapping("shortList")
     public List<ShortFriendDTO> getShortList(){
         return friendService.getCompressedList();
+    }
+
+    @PostMapping("/set-primary-photo")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> setPrimaryPhoto( // Change from String to Map<String, Object>
+            @RequestParam("photoId") Integer photoId,
+            @RequestParam("friendId") Integer friendId) 
+    {
+
+        try{
+            friendService.setPrimaryPhoto(photoId, friendId);
+            
+            // Return JSON response instead of plain string
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Image with ID " + photoId + " set as primary for friend with ID " + friendId);
+            response.put("photoId", photoId);
+            response.put("friendId", friendId);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error setting primary photo: " + e.getMessage());
+            
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "An error occurred while setting the primary photo.");
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/{friendId}/primary-photo")
+    public ResponseEntity<Map<String, Object>> getPrimaryPhoto(@PathVariable Integer friendId) {
+        try {
+            Friend friend = friendService.findById(friendId);
+            if (friend == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            
+            // Get the primary photo ID if it exists
+            Integer primaryPhotoId = friend.getPrimaryPhotoId();
+            if (primaryPhotoId != null) {
+                response.put("primaryPhotoId", primaryPhotoId);
+            } else {
+                response.put("primaryPhotoId", null);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

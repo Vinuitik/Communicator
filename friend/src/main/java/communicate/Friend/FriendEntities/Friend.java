@@ -55,6 +55,8 @@ public class Friend {
     @NotNull(message = "Date is Required")
     private LocalDate plannedSpeakingTime;
 
+    private Integer primaryPhotoId; // ID of the primary photo for this friend
+
     @NotNull(message = "Experience is required")
     @Size(max = 100, message = "Experience description must not exceed 100 characters")
     private String experience;
