@@ -32,6 +32,8 @@ class UploadController {
                 method: 'POST',
                 body: formData
             });
+
+            console.log('Upload response:', response);
             
             if (response.ok) {
                 const result = await response.json();
