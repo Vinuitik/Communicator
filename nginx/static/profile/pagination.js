@@ -1,9 +1,9 @@
 // Create pagination namespace
 const Pagination = {
     currentPage: 1,
-    totalPages: 5,
-    totalItems: 48,
-    paginationFriendId: null, // Renamed to avoid conflict
+    totalPages: 5, // Will be updated from server
+    totalItems: 48, // Will be updated from server
+    paginationFriendId: null,
     
     init: function() {
         this.initializeMediaPagination();
@@ -12,6 +12,23 @@ const Pagination = {
         const mediaItems = document.querySelectorAll('[data-friend-id]');
         if (mediaItems.length > 0) {
             this.paginationFriendId = mediaItems[0].getAttribute('data-friend-id');
+            
+            // Automatically load the first page to get correct pagination data
+            this.loadInitialPage();
+        }
+    },
+    
+    // Load initial page to get correct pagination metadata
+    async loadInitialPage() {
+        try {
+            const success = await this.loadMediaPage(1, this.paginationFriendId);
+            if (success) {
+                // Pagination will be automatically updated in loadMediaPage
+                console.log(`Pagination initialized: ${this.totalItems} items across ${this.totalPages} pages`);
+            }
+        } catch (error) {
+            console.error('Error loading initial page data:', error);
+            // Keep the hardcoded defaults if server fails
         }
     },
     
@@ -192,8 +209,6 @@ const Pagination = {
         try {
             const response = await fetch(`/api/friend/files/${friendId}/page/${pageId}`);
 
-            console.log(response);
-
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -207,6 +222,9 @@ const Pagination = {
             
             // Update the media gallery with new data
             this.updateMediaGallery(data);
+            
+            // Re-render pagination with updated data
+            this.renderPagination();
             
             return true;
         } catch (error) {
