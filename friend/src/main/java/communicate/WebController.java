@@ -31,6 +31,7 @@ public class WebController {
     private final FileMetaDataReadService fileMetaDataReadService;
     private final PaginationLogicService paginationLogicService;
 
+
     @GetMapping("/talked/{id}")
     public String showFriendForm(@PathVariable(required = true) Integer id, Model model) {
         Friend friend = friendService.findById(id);
@@ -47,10 +48,12 @@ public class WebController {
 
         Friend friend = friendService.findById(id);
         Integer mainPhotoId = friend.getPrimaryPhotoId();
-        Photos mainPhoto = fileMetaDataReadService.getPhotoById(mainPhotoId);
-        String mainPhotoName = mainPhoto.getPhotoName();
-
-
+        Photos mainPhoto = null;
+        String mainPhotoName = null;
+        if(mainPhotoId != null) {
+            mainPhoto = fileMetaDataReadService.getPhotoById(mainPhotoId);
+            mainPhotoName =  mainPhoto.getPhotoName();
+        }
         List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page,id);
         List<Integer> mediaOffsets = paginationLogicService.getMediaOffsets(page);
 
