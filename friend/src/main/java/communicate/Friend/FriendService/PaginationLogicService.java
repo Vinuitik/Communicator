@@ -5,7 +5,10 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import communicate.Friend.DTOs.PaginationDTO;
 import communicate.Friend.FriendEntities.PersonalResource;
+import communicate.Friend.FriendEntities.Photos;
+import communicate.Friend.FriendEntities.Videos;
 import communicate.Friend.FriendRepositories.PersonalResourceRepository;
 import communicate.Friend.FriendRepositories.PhotosRepository;
 import communicate.Friend.FriendRepositories.VideosRepository;
@@ -18,6 +21,7 @@ public class PaginationLogicService {
     private final PhotosRepository photos;
     private final VideosRepository videos;
     private final PersonalResourceRepository personalResource;
+    private final FileMetaDataReadService fileMetaDataReadService;
 
     @Value("${app.media.page-size}")
     private int pageSize;
@@ -27,6 +31,17 @@ public class PaginationLogicService {
             throw new IllegalArgumentException("Items per page must be greater than zero.");
         }
         return (int) Math.ceil((double) totalItems / itemsPerPage);
+    }
+
+    public int getPageSize() {
+        return pageSize;
+    }
+
+    public int totalItems(int friendId) {
+        int totalPhotos = (int) photos.countByFriendId(friendId);
+        int totalVideos = (int) videos.countByFriendId(friendId);
+        int totalResources = (int) personalResource.countByFriendId(friendId);
+        return totalPhotos + totalVideos + totalResources;
     }
 
     public List<Integer> getMediaAllocations(int page, int friendId){
@@ -97,6 +112,23 @@ public class PaginationLogicService {
             page * pageSize,
             page * pageSize
         );
+    }
+
+    public PaginationDTO getPaginationData(int page, int friendId) {
+        List<Integer> mediaAllocations = getMediaAllocations(page, friendId);
+        List<Integer> mediaOffsets = getMediaOffsets(page);
+        List<Photos> photos = fileMetaDataReadService.getPhotosByFriendIdWithLimitOffset(friendId, mediaOffsets.get(0), mediaAllocations.get(0));
+        List<Videos> videos = fileMetaDataReadService.getVideosByFriendIdWithLimitOffset(friendId, mediaOffsets.get(1), mediaAllocations.get(1));
+        List<PersonalResource> resources = fileMetaDataReadService.getResourcesByFriendIdWithLimitOffset(friendId, mediaOffsets.get(2), mediaAllocations.get(2));
+        PaginationDTO dto = new PaginationDTO();
+        dto.setPhotos(photos);
+        dto.setVideos(videos);
+        dto.setResources(resources);
+        dto.setCurrentPage(page);
+        dto.setPageSize(pageSize);
+        dto.setTotalItems(totalItems(friendId));
+        dto.setTotalPages(calculateTotalPages(dto.getTotalItems(), pageSize));
+        return dto;
     }
 
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import communicate.Friend.DTOs.PaginationDTO;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
 import communicate.Friend.FriendEntities.PersonalResource;
@@ -48,19 +49,18 @@ public class WebController {
 
         Friend friend = friendService.findById(id);
         Integer mainPhotoId = friend.getPrimaryPhotoId();
+
         Photos mainPhoto = null;
         String mainPhotoName = null;
         if(mainPhotoId != null) {
             mainPhoto = fileMetaDataReadService.getPhotoById(mainPhotoId);
             mainPhotoName =  mainPhoto.getPhotoName();
         }
-        List<Integer> mediaAllocations = paginationLogicService.getMediaAllocations(page,id);
-        List<Integer> mediaOffsets = paginationLogicService.getMediaOffsets(page);
+        PaginationDTO paginationData = paginationLogicService.getPaginationData(page, id);
 
-        List<Photos> photos = fileMetaDataReadService.getPhotosByFriendIdWithLimitOffset(id, mediaOffsets.get(0),mediaAllocations.get(0));
-        List<Videos> videos = fileMetaDataReadService.getVideosByFriendIdWithLimitOffset(id, mediaOffsets.get(1),mediaAllocations.get(1));
-        List<PersonalResource> resources = fileMetaDataReadService.getResourcesByFriendIdWithLimitOffset(id, mediaOffsets.get(2),mediaAllocations.get(2));
-        
+        List<Photos> photos = paginationData.getPhotos();
+        List<Videos> videos = paginationData.getVideos();
+        List<PersonalResource> resources = paginationData.getResources();
         // Add to model
         model.addAttribute("friend", friend);
         model.addAttribute("mainPhotoName", mainPhotoName);
