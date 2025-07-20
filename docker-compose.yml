@@ -81,19 +81,34 @@ services:
         - postgres
       restart: unless-stopped
 
+  ai-agent:
+      build: 
+        context: ./ai_agent
+        dockerfile: Dockerfile
+      container_name: aiAgentService
+      ports:
+        - "8091:8000"  # Expose AI agent on port 8091 externally, 8000 internally
+      expose:
+        - "8000"  # Expose port 8000 for internal communication
+      environment:
+        GEMINI_API_KEY: ${GEMINI_API_KEY}  # Load from environment variable
+        TZ: ${HOST_TIMEZONE:-UTC}
+      restart: unless-stopped
+
   nginx:
     build:
       context: ./nginx
       dockerfile: Dockerfile
     container_name: nginx
     environment:
-      TZ: ${HOST_TIMEZONE:-UTC}=value
+      TZ: ${HOST_TIMEZONE:-UTC}
     ports:
       - "8090:80"  # Expose Nginx on port 80
     depends_on:
       - friend
       - group
       - connections
+      - ai-agent
     restart: unless-stopped
 
   fileRepository:

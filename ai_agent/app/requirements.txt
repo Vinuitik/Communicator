@@ -1,5 +1,6 @@
+mcp
+aiohttp
 fastapi
 uvicorn
-langchain
-openai
+pydantic
 python-dotenv
