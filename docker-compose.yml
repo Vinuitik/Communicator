@@ -81,19 +81,6 @@ services:
         - postgres
       restart: unless-stopped
 
-  ai-agent:
-      build: 
-        context: ./ai_agent
-        dockerfile: Dockerfile
-      container_name: aiAgentService
-      ports:
-        - "8091:8000"  # Expose AI agent on port 8091 externally, 8000 internally
-      expose:
-        - "8000"  # Expose port 8000 for internal communication
-      environment:
-        GEMINI_API_KEY: ${GEMINI_API_KEY}  # Load from environment variable
-        TZ: ${HOST_TIMEZONE:-UTC}
-      restart: unless-stopped
 
   nginx:
     build:
@@ -108,7 +95,6 @@ services:
       - friend
       - group
       - connections
-      - ai-agent
     restart: unless-stopped
 
   fileRepository:
@@ -127,6 +113,22 @@ services:
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
     restart: unless-stopped
+
+  # MCP Inspector - test any server
+
+  mcp-knowledge-server:
+    build:
+      context: ./knowledgeMCP
+      dockerfile: Dockerfile
+    container_name: mcp-knowledge-server
+    ports:
+      - "8001:8000"
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+      PYTHONUNBUFFERED: 1
+    restart: unless-stopped
+
+
 
 volumes:
   postgres-data:

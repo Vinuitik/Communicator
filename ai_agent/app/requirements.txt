@@ -1,6 +1,0 @@
-mcp
-aiohttp
-fastapi
-uvicorn
-pydantic
-python-dotenv
