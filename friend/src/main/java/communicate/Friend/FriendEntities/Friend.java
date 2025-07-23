@@ -4,12 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 import lombok.Getter;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -23,12 +20,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import communicate.Friend.FriendEntities.FriendKnowledge;
-import communicate.Friend.FriendEntities.FriendPermission;
-import communicate.Friend.FriendEntities.Social;
 
 @Getter
 @AllArgsConstructor

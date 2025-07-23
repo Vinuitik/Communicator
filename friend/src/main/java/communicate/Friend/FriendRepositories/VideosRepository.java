@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import communicate.Friend.FriendEntities.Friend;
-import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendEntities.Videos;
 
 import org.springframework.data.domain.Page;

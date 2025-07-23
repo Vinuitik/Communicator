@@ -4,7 +4,6 @@ import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
-import communicate.Friend.FriendEntities.Friend;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;

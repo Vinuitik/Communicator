@@ -122,7 +122,7 @@ services:
       dockerfile: Dockerfile
     container_name: mcp-knowledge-server
     ports:
-      - "8001:8000"
+      - "8091:8000"
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1

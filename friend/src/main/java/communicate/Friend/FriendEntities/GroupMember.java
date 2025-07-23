@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.Builder;
-import communicate.Friend.FriendEntities.Friend;
 
 @Entity
 @Table(name = "members", uniqueConstraints = {

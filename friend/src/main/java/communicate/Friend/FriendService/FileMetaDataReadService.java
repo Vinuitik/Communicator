@@ -3,11 +3,7 @@ package communicate.Friend.FriendService;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import communicate.Friend.FriendEntities.PersonalResource;
 import communicate.Friend.FriendEntities.Photos;

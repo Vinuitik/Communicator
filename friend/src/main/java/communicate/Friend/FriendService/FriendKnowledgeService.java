@@ -2,6 +2,10 @@ package communicate.Friend.FriendService;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Service;
 import communicate.Friend.FriendEntities.Friend;
@@ -81,6 +85,18 @@ public class FriendKnowledgeService {
            System.out.print("Error saving analytics " + e.toString());
         }
         return new FriendKnowledge();
+    }
+
+    @Transactional
+    public Page<FriendKnowledge> getKnowledgeByFriendIdPaginated(Integer friendId, int page, int size){
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "priority"));
+        return knowledgeRepository.findByFriendId(friendId, pageable);
+    }
+
+    // Overloaded method with default size
+    @Transactional
+    public Page<FriendKnowledge> getKnowledgeByFriendIdPaginated(Integer friendId, int page){
+        return getKnowledgeByFriendIdPaginated(friendId, page, 10); // Default size = 10
     }
 
 }
