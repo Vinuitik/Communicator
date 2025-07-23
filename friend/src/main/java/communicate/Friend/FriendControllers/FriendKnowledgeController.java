@@ -1,5 +1,6 @@
 package communicate.Friend.FriendControllers;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,9 +43,23 @@ public class FriendKnowledgeController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
 
-            // Associate the friend with each knowledge object
+            // Associate the friend with each knowledge object and set default values
             for (FriendKnowledge k : knowledge) {
                 k.setFriend(friend);
+                // Ensure ID is null for new entities
+                k.setId(null);
+                // Set current date if not provided
+                if (k.getDate() == null) {
+                    k.setDate(LocalDate.now());
+                }
+                // Ensure priority is not null
+                if (k.getPriority() == null) {
+                    k.setPriority(5L); // Default priority
+                }
+                // Validate required fields
+                if (k.getText() == null || k.getText().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Knowledge text cannot be null or empty");
+                }
             }
 
             // Save all knowledge objects
@@ -61,7 +76,8 @@ public class FriendKnowledgeController {
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
             System.err.println("Error adding knowledge: " + e.getMessage());
-            response.put("message", "An error occurred while adding the knowledge.");
+            e.printStackTrace(); // Add stack trace for debugging
+            response.put("message", "An error occurred while adding the knowledge: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -119,6 +135,7 @@ public class FriendKnowledgeController {
             List<MCP_Knowledge_DTO> dto_list = knowledge.getContent()
                 .stream()
                 .map(k -> MCP_Knowledge_DTO.builder()
+                    .id(k.getId())
                     .fact(k.getText())
                     .importance(k.getPriority())
                     .build())
@@ -126,6 +143,20 @@ public class FriendKnowledgeController {
             return ResponseEntity.ok(dto_list);
         } catch (Exception e) {
             System.err.println("Error retrieving paginated knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @GetMapping("getKnowledgeById/{id}")
+    public ResponseEntity<FriendKnowledge> getKnowledgeById(@PathVariable Integer id) {
+        try {
+            FriendKnowledge knowledge = knowledgeService.getKnowledgeById(id);
+            if (knowledge.getId() == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+            return ResponseEntity.ok(knowledge);
+        } catch (Exception e) {
+            System.err.println("Error retrieving knowledge by ID: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }

@@ -1,5 +1,7 @@
 package communicate.Friend.FriendRepositories;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -20,5 +22,11 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
     // Custom query to select id and name only
     @Query("SELECT new communicate.Friend.DTOs.ShortFriendDTO(f.id, f.name) FROM Friend f")
     List<ShortFriendDTO> findAllShortFriendDTOs();
+
+    // Paginated queries
+    Page<Friend> findAll(Pageable pageable);
+    
+    @Query("SELECT new communicate.Friend.DTOs.MCP_Friend_DTO(f.id, f.name, f.dateOfBirth) FROM Friend f")
+    Page<communicate.Friend.DTOs.MCP_Friend_DTO> findAllMCPFriendDTOs(Pageable pageable);
         
 }

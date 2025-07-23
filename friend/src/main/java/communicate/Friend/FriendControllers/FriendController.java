@@ -1,8 +1,10 @@
 package communicate.Friend.FriendControllers;
 
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.RestController;
 
 import communicate.Friend.DTOs.FriendDTO;
+import communicate.Friend.DTOs.MCP_Friend_DTO;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
@@ -194,6 +196,33 @@ public class FriendController {
             
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // Paginated friends endpoint (default size of 10)
+    @GetMapping("friends/page/{page}")
+    public ResponseEntity<Page<MCP_Friend_DTO>> getFriendsPaginated(@PathVariable int page) {
+        try {
+            Page<MCP_Friend_DTO> friends = friendService.getFriendsPaginated(page);
+            return ResponseEntity.ok(friends);
+        } catch (Exception e) {
+            System.err.println("Error retrieving paginated friends: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // Paginated friends endpoint (custom size)
+    @GetMapping("friends/page/{page}/size/{size}")
+    public ResponseEntity<List<MCP_Friend_DTO>> getFriendsPaginatedCustomSize(
+            @PathVariable int page, 
+            @PathVariable int size) {
+        try {
+            Page<MCP_Friend_DTO> friendsPage = friendService.getFriendsPaginated(page, size);
+            List<MCP_Friend_DTO> friends = friendsPage.getContent();
+            return ResponseEntity.ok(friends);
+        } catch (Exception e) {
+            System.err.println("Error retrieving paginated friends: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 }

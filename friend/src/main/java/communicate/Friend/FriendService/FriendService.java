@@ -6,8 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import communicate.Friend.DTOs.MCP_Friend_DTO;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendRepositories.FriendRepository;
@@ -229,6 +234,27 @@ public class FriendService {
             friend.setPrimaryPhotoId(photoId);
             save(friend);
         }
+    }
+
+    // Paginated friends with default size
+    @Transactional
+    public Page<MCP_Friend_DTO> getFriendsPaginated(int page) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.ASC, "name"));
+        return friendRepository.findAllMCPFriendDTOs(pageable);
+    }
+
+    // Paginated friends with custom size
+    @Transactional
+    public Page<MCP_Friend_DTO> getFriendsPaginated(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+        return friendRepository.findAllMCPFriendDTOs(pageable);
+    }
+
+    // Alternative method returning full Friend entities (if needed)
+    @Transactional
+    public Page<Friend> getFriendsFullPaginated(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+        return friendRepository.findAll(pageable);
     }
 
 
