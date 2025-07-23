@@ -19,10 +19,8 @@ services:
     build:
       context: ./friend  # Build the image from the current directory using the Dockerfile
     container_name: friend
-    ports:
-      - "8085"  # Ensure port consistency
     expose:
-      - "8085"
+      - "8085"  # Internal exposure only, no external port mapping
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
       SPRING_DATASOURCE_USERNAME: myapp_user
@@ -50,10 +48,8 @@ services:
         context: ./group
         dockerfile: Dockerfile
       container_name: groupService
-      ports:
-      - "8086"  # Ensure port consistency
       expose:
-      - "8086"  # Expose port 8086 for internal communication
+        - "8086"  # Internal exposure only, no external port mapping
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
@@ -68,10 +64,8 @@ services:
         context: ./connections
         dockerfile: Dockerfile
       container_name: connectionService
-      ports:
-      - "8088"  # Ensure port consistency
       expose:
-        - "8088"  # Expose port 8088 for the connections service
+        - "8088"  # Internal exposure only, no external port mapping
       environment:
         SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
         SPRING_DATASOURCE_USERNAME: myapp_user
@@ -103,8 +97,8 @@ services:
       dockerfile: Dockerfile
     image: communicator-filerepository  # <-- This forces a lowercase name
     container_name: fileRepository
-    ports:
-      - "5001:5000"
+    expose:
+      - "5000"  # Internal exposure only, no external port mapping
     volumes:
       - file-repo-photos:/app/photos
       - file-repo-videos:/app/videos
@@ -121,11 +115,13 @@ services:
       context: ./knowledgeMCP
       dockerfile: Dockerfile
     container_name: mcp-knowledge-server
-    ports:
-      - "8091:8000"
+    expose:
+      - "8000"  # Internal exposure only, no external port mapping
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1
+    depends_on:
+      - nginx  # Depends on nginx since it makes API calls through it
     restart: unless-stopped
 
 
