@@ -141,24 +141,11 @@
         <div class="profile-section">
           <div class="section-title">
             Social Media
-            <button onclick="">Add Social</button>
+            <button class="add-social-btn" th:data-friend-id="${friendId}">Add Social</button>
           </div>
-          <div class="social-links">
-            <a href="#" class="social-link instagram">
-              <i>📸</i> Instagram: @james_wilson
-            </a>
-            <a href="#" class="social-link facebook">
-              <i>👤</i> Facebook: jameswilson
-            </a>
-            <a href="#" class="social-link twitter">
-              <i>🐦</i> Twitter: @jwilson_tech
-            </a>
-            <a href="#" class="social-link linkedin">
-              <i>💼</i> LinkedIn: james-wilson-dev
-            </a>
-            <a href="#" class="social-link github">
-              <i>💻</i> GitHub: jwilson-code
-            </a>
+          <div class="social-links" id="socialLinksContainer">
+            <!-- Social links will be loaded dynamically -->
+            <div class="social-loading">Loading social media links...</div>
           </div>
         </div>
         
@@ -422,6 +409,9 @@
   <script src="/profile/modules/utils.js"></script>
   <script src="/profile/modules/notificationManager.js"></script>
   
+  <!-- Social links module -->
+  <script src="/profile/modules/socialLinks.js"></script>
+  
   <!-- Media-related modules -->
   <script src="/profile/modules/mediaElementFactory.js"></script>
   <script src="/profile/modules/galleryManager.js"></script>
@@ -434,6 +424,10 @@
   <script src="/profile/modules/pagination.js"></script>
   
   <!-- Main application initialization -->
+  <script>
+    // Make friendId available globally for modules
+    window.friendId = [[${friendId}]];
+  </script>
   <script src="/profile/profileApp.js"></script>
 </body>
 </html>

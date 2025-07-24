@@ -998,3 +998,138 @@
       font-size: 0.7rem;
     }
   }
+
+  /* Social Links Styles */
+  .social-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .social-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+  }
+
+  .social-link:hover {
+    background: #e9ecef;
+    border-color: #3498db;
+    transform: translateX(2px);
+  }
+
+  .social-link i {
+    font-size: 1.2rem;
+    width: 1.5rem;
+    text-align: center;
+  }
+
+  /* Platform-specific colors */
+  .social-link.instagram:hover {
+    border-color: #e4405f;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+  }
+
+  .social-link.facebook:hover {
+    border-color: #1877f2;
+    background: #1877f2;
+    color: white;
+  }
+
+  .social-link.twitter:hover {
+    border-color: #1da1f2;
+    background: #1da1f2;
+    color: white;
+  }
+
+  .social-link.linkedin:hover {
+    border-color: #0077b5;
+    background: #0077b5;
+    color: white;
+  }
+
+  .social-link.github:hover {
+    border-color: #333;
+    background: #333;
+    color: white;
+  }
+
+  .social-link.youtube:hover {
+    border-color: #ff0000;
+    background: #ff0000;
+    color: white;
+  }
+
+  .social-link.phone:hover {
+    border-color: #10b981;
+    background: #10b981;
+    color: white;
+  }
+
+  .social-link.email:hover {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    color: white;
+  }
+
+  .social-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #6b7280;
+    background: #f8f9fa;
+    border: 2px dashed #e1e4e8;
+    border-radius: 8px;
+  }
+
+  .social-empty-state p {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .social-empty-state small {
+    font-size: 0.8rem;
+  }
+
+  .social-error-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #ef4444;
+    background: #fef2f2;
+    border: 2px solid #fecaca;
+    border-radius: 8px;
+  }
+
+  .social-error-state p {
+    margin-bottom: 1rem;
+  }
+
+  .retry-btn {
+    padding: 0.5rem 1rem;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.2s ease;
+  }
+
+  .retry-btn:hover {
+    background: #dc2626;
+  }
+
+  .social-loading {
+    text-align: center;
+    padding: 1rem;
+    color: #6b7280;
+    font-style: italic;
+  }

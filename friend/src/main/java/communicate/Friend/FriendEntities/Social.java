@@ -27,8 +27,8 @@ public class Social {
     private Integer id;
 
     private String URL;
-
-    
+    private String platform; // e.g., "Instagram", "Twitter", "LinkedIn", "Phone", "Email"
+    private String displayName; // e.g., "@username" or "display name"
 
     @ManyToOne
     @JoinColumn(name = "friend_id")

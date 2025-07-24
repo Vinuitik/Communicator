@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Social Media - Friends Tracker</title>
+    
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
+    
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="social.css">
+    <link rel="stylesheet" href="../navigation/navigation.css">
+    
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="../favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="../favicon_io/site.webmanifest">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-logo">Friends Tracker</div>
+        <ul class="navbar-links">
+            <li><a href="/calendarView/calendar.html">Home</a></li>
+            <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
+            <li><a href="/" id="navAllFriends">All Friends</a></li>
+            <li><a href="/" id="navWeek">This Week</a></li>
+            <li><a href="/stats">Stats</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="social-container">
+        <!-- Header Section -->
+        <div class="social-header">
+            <button class="back-button" id="backToProfile">
+                <span class="back-icon">←</span> Back to Profile
+            </button>
+            <h1 class="social-title">Manage Social Media</h1>
+            <p class="social-subtitle" id="friendNameDisplay">Loading friend information...</p>
+        </div>
+
+        <!-- Add Social Form -->
+        <div class="social-form-section">
+            <div class="form-container">
+                <h2 class="form-title">Add New Social Media</h2>
+                <form id="socialForm" class="social-form">
+                    <div class="form-group">
+                        <label for="platform" class="form-label">Platform</label>
+                        <select id="platform" name="platform" class="form-select" required>
+                            <option value="">Select Platform</option>
+                            <option value="Instagram">📸 Instagram</option>
+                            <option value="Facebook">👤 Facebook</option>
+                            <option value="Twitter">🐦 Twitter</option>
+                            <option value="LinkedIn">💼 LinkedIn</option>
+                            <option value="GitHub">💻 GitHub</option>
+                            <option value="YouTube">🎥 YouTube</option>
+                            <option value="TikTok">🎵 TikTok</option>
+                            <option value="Snapchat">👻 Snapchat</option>
+                            <option value="WhatsApp">💬 WhatsApp</option>
+                            <option value="Telegram">✈️ Telegram</option>
+                            <option value="Phone">📞 Phone</option>
+                            <option value="Email">📧 Email</option>
+                            <option value="Website">🌐 Website</option>
+                            <option value="Other">🔗 Other</option>
+                        </select>
+                        <div class="form-error" id="platformError"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="url" class="form-label">URL / Contact</label>
+                        <input 
+                            type="text" 
+                            id="url" 
+                            name="url" 
+                            class="form-input" 
+                            placeholder="Enter URL, phone number, or email"
+                            required
+                        >
+                        <div class="form-help" id="urlHelp">
+                            Enter the full URL, phone number, or email address
+                        </div>
+                        <div class="form-error" id="urlError"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="displayName" class="form-label">Display Name</label>
+                        <input 
+                            type="text" 
+                            id="displayName" 
+                            name="displayName" 
+                            class="form-input" 
+                            placeholder="e.g., @username or Display Name"
+                        >
+                        <div class="form-help">
+                            Optional: How you'd like this to be displayed (e.g., @username)
+                        </div>
+                        <div class="form-error" id="displayNameError"></div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelForm">Cancel</button>
+                        <button type="submit" class="btn-primary" id="submitForm">
+                            <span class="btn-text">Add Social Media</span>
+                            <span class="btn-loading" style="display: none;">Adding...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Existing Socials List -->
+        <div class="social-list-section">
+            <div class="list-container">
+                <h2 class="list-title">Existing Social Media</h2>
+                <div class="social-list" id="socialList">
+                    <!-- Social items will be dynamically loaded here -->
+                    <div class="social-list-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading social media links...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Social Media</h3>
+                <button class="modal-close" id="closeEditModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editSocialForm" class="social-form">
+                    <input type="hidden" id="editSocialId">
+                    
+                    <div class="form-group">
+                        <label for="editPlatform" class="form-label">Platform</label>
+                        <select id="editPlatform" name="platform" class="form-select" required>
+                            <option value="Instagram">📸 Instagram</option>
+                            <option value="Facebook">👤 Facebook</option>
+                            <option value="Twitter">🐦 Twitter</option>
+                            <option value="LinkedIn">💼 LinkedIn</option>
+                            <option value="GitHub">💻 GitHub</option>
+                            <option value="YouTube">🎥 YouTube</option>
+                            <option value="TikTok">🎵 TikTok</option>
+                            <option value="Snapchat">👻 Snapchat</option>
+                            <option value="WhatsApp">💬 WhatsApp</option>
+                            <option value="Telegram">✈️ Telegram</option>
+                            <option value="Phone">📞 Phone</option>
+                            <option value="Email">📧 Email</option>
+                            <option value="Website">🌐 Website</option>
+                            <option value="Other">🔗 Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editUrl" class="form-label">URL / Contact</label>
+                        <input 
+                            type="text" 
+                            id="editUrl" 
+                            name="url" 
+                            class="form-input" 
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editDisplayName" class="form-label">Display Name</label>
+                        <input 
+                            type="text" 
+                            id="editDisplayName" 
+                            name="displayName" 
+                            class="form-input"
+                        >
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelEdit">Cancel</button>
+                        <button type="submit" class="btn-primary">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal" style="display: none;">
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this social media link?</p>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDelete">Cancel</button>
+                    <button type="button" class="btn-danger" id="confirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div class="message-container" id="messageContainer"></div>
+
+    <!-- JavaScript -->
+    <script src="social.js"></script>
+</body>
+</html>
