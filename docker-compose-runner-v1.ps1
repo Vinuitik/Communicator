@@ -31,7 +31,7 @@ $linuxTimeZone = switch -Wildcard ($windowsTimeZone) {
     "W. Central Africa Standard Time" { "Africa/Lagos" }
 
     # Asia
-    "China Standard Time" { "Asia/Shanghai" }
+    "China Standard Time" { "Asia/Shanghai " }
     "Tokyo Standard Time" { "Asia/Tokyo" }
     "Korea Standard Time" { "Asia/Seoul" }
     "India Standard Time" { "Asia/Kolkata" }
