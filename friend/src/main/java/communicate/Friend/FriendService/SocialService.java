@@ -44,7 +44,7 @@ public class SocialService {
             .orElseThrow(() -> new IllegalArgumentException("Friend not found with ID: " + friendId));
 
         Social social = Social.builder()
-            .URL(socialDTO.getUrl())
+            .URL(socialDTO.getURL())
             .platform(socialDTO.getPlatform())
             .displayName(socialDTO.getDisplayName())
             .friend(friend)
@@ -65,7 +65,7 @@ public class SocialService {
         Social existingSocial = socialRepository.findById(socialId)
             .orElseThrow(() -> new IllegalArgumentException("Social media link not found with ID: " + socialId));
 
-        existingSocial.setURL(socialDTO.getUrl());
+        existingSocial.setURL(socialDTO.getURL());
         existingSocial.setPlatform(socialDTO.getPlatform());
         existingSocial.setDisplayName(socialDTO.getDisplayName());
 
@@ -114,7 +114,7 @@ public class SocialService {
             throw new IllegalArgumentException("Social data cannot be null");
         }
         
-        if (socialDTO.getUrl() == null || socialDTO.getUrl().trim().isEmpty()) {
+        if (socialDTO.getURL() == null || socialDTO.getURL().trim().isEmpty()) {
             throw new IllegalArgumentException("URL cannot be empty");
         }
         
@@ -123,7 +123,7 @@ public class SocialService {
         }
         
         // Validate URL format (basic validation)
-        String url = socialDTO.getUrl().trim();
+        String url = socialDTO.getURL().trim();
         if (!isValidUrl(url)) {
             throw new IllegalArgumentException("Invalid URL format");
         }

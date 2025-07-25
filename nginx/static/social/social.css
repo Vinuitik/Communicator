@@ -1,52 +1,13 @@
-/* Social Media Management Styles */
-:root {
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-    --secondary-color: #6b7280;
-    --success-color: #10b981;
-    --danger-color: #ef4444;
-    --warning-color: #f59e0b;
-    --background-color: #f8fafc;
-    --surface-color: #ffffff;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --border-color: #e5e7eb;
-    --border-radius: 8px;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Social Media Management Styles - Modular Import */
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-primary);
-    line-height: 1.6;
-    padding-top: 80px; /* Account for fixed navbar */
-}
-
-/* Main Container */
-.social-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-    display: grid;
-    gap: 2rem;
-    grid-template-columns: 1fr;
-}
-
-/* Header Section */
-.social-header {
-    text-align: center;
-    margin-bottom: 1rem;
-}
+/* Import all style modules */
+@import url('./styles/base.css');
+@import url('./styles/header.css');
+@import url('./styles/forms.css');
+@import url('./styles/socialList.css');
+@import url('./styles/modals.css');
+@import url('./styles/messages.css');
+@import url('./styles/responsive.css');
 
 .back-button {
     display: inline-flex;

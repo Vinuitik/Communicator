@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SocialDTO {
-    private String url;
+    private String URL;
     private String platform; // e.g., "Instagram", "Twitter", "LinkedIn", "Phone", "Email"
     private String displayName; // e.g., "@username" or "display name"
 }

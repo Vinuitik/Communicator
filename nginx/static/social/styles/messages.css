@@ -1,0 +1,49 @@
+/* Message Display Styles */
+#messageContainer {
+    position: fixed;
+    top: 100px;
+    right: 1rem;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 400px;
+}
+
+.message {
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid;
+}
+
+.message.success {
+    background: #f0fdf4;
+    color: #166534;
+    border-left-color: var(--success-color);
+}
+
+.message.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border-left-color: var(--danger-color);
+}
+
+.message.info {
+    background: #eff6ff;
+    color: #1e40af;
+    border-left-color: var(--primary-color);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

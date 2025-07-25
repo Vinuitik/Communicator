@@ -3,9 +3,9 @@
  * Modular version with separated concerns
  */
 
-import { URLHelper } from './modules/urlHelper.js';
-import { MessageManager } from './modules/messageManager.js';
-import { SocialMediaManager } from './modules/socialMediaManager.js';
+import { URLHelper } from './urlHelper.js';
+import { MessageManager } from './messageManager.js';
+import { SocialMediaManager } from '../socialMediaManager.js';
 
 // Global variable for the manager instance
 let socialManager;

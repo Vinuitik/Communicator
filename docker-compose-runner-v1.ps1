@@ -30,7 +30,7 @@ $linuxTimeZone = switch -Wildcard ($windowsTimeZone) {
     "Russian Standard Time" { "Europe/Moscow" }
     "W. Central Africa Standard Time" { "Africa/Lagos" }
 
-    # Asia
+    # Asaia
     "China Standard Time" { "Asia/Shanghai " }
     "Tokyo Standard Time" { "Asia/Tokyo" }
     "Korea Standard Time" { "Asia/Seoul" }
