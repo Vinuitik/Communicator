@@ -131,6 +131,8 @@ services:
     container_name: ai-agent
     expose:
       - "8001"  # Internal exposure only, no external port mapping
+    env_file:
+      - .env  # Load environment variables from .env file
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1

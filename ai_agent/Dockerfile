@@ -8,18 +8,21 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . /app
+# Copy requirements first for better caching
+COPY requirements.txt /app/
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Expose the port FastAPI runs on
-EXPOSE 8000
+# Copy project files (after dependencies for better Docker layer caching)
+COPY . /app
 
-# Run the service
-CMD ["uvicorn", "ai_agent_service:app", "--host", "0.0.0.0", "--port", "8000"]
+# Expose the port FastAPI runs on
+EXPOSE 8001
+
+# Run the service - fix the module name
+CMD ["uvicorn", "ai_agent:app", "--host", "0.0.0.0", "--port", "8001"]

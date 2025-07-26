@@ -17,7 +17,7 @@ export class URLHelper {
      * @param {string} friendId Friend ID
      */
     static navigateToProfile(friendId) {
-        window.location.href = `/api/friend/profile/${friendId}`;
+        window.location.href = `/api/friends/profile/${friendId}`;
     }
 
     /**

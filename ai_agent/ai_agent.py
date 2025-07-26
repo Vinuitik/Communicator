@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_google_genai import GoogleGemini
+from langchain_google_genai import ChatGoogleGenerativeAI  # Use ChatGoogleGenerativeAI instead
 from langgraph.prebuilt import create_react_agent
 
 import asyncio
@@ -13,6 +13,8 @@ import asyncio
 # --- Load env vars ---
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+print(GEMINI_API_KEY)
 
 # --- Init FastAPI ---
 app = FastAPI()
@@ -38,8 +40,12 @@ async def setup_agent():
 
     tools = await client.get_tools()
 
-    # 2. Create the Gemini LLM
-    llm = GoogleGemini(api_key=GEMINI_API_KEY, model="gemini-1.5-flash")
+    # 2. Create the Gemini LLM - Use ChatGoogleGenerativeAI with google_api_key parameter
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        google_api_key=GEMINI_API_KEY,
+        temperature=0
+    )
 
     # 3. Build the LangChain Agent with tools
     agent = create_react_agent(llm, tools)
