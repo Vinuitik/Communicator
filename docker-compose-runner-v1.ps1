@@ -10,7 +10,7 @@ Write-Host "Detected Windows timezone: $windowsTimeZone"
 $linuxTimeZone = switch -Wildcard ($windowsTimeZone) {
     # North America
     "Pacific Standard Time" { "America/Los_Angeles" }
-    "Mountain Standard Time" { "America/Denver" }
+    "Mountain Standard Time" { "America/Denver"  }
     "Central Standard Time" { "America/Chicago" }
     "Eastern Standard Time" { "America/New_York" }
     "Atlantic Standard Time" { "America/Halifax" }
