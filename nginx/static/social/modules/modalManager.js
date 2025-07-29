@@ -8,10 +8,18 @@ export class ModalManager {
      * @param {Object} social Social media data
      */
     static showEditModal(social) {
+        console.log('Opening edit modal with social data:', social);
+        console.log('social.URL:', social.URL);
+        console.log('social.url:', social.url);
+        console.log('social.platform:', social.platform);
+        console.log('social.displayName:', social.displayName);
+        
         document.getElementById('editSocialId').value = social.id;
         document.getElementById('editPlatform').value = social.platform;
-        document.getElementById('editUrl').value = social.URL;
+        document.getElementById('editUrl').value = social.URL || social.url || '';
         document.getElementById('editDisplayName').value = social.displayName || '';
+        
+        console.log('Set editUrl field to:', document.getElementById('editUrl').value);
         
         document.getElementById('editModal').style.display = 'flex';
     }

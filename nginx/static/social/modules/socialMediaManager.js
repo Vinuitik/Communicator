@@ -223,9 +223,28 @@ export class SocialMediaManager {
      * @param {string} socialId Social media link ID
      */
     editSocial(socialId) {
+        console.log('editSocial called with socialId:', socialId, 'type:', typeof socialId);
+        console.log('Available socials:', this.socials);
+        console.log('Social IDs in array:', this.socials.map(s => ({ id: s.id, type: typeof s.id })));
+        
         const social = this.socials.find(s => s.id === socialId);
+        console.log('Found social:', social);
+        
         if (social) {
             ModalManager.showEditModal(social);
+        } else {
+            console.error('Social not found with ID:', socialId);
+            // Try converting types and searching again
+            const socialAsNumber = this.socials.find(s => s.id == socialId);
+            const socialAsString = this.socials.find(s => String(s.id) === String(socialId));
+            console.log('Social found with == comparison:', socialAsNumber);
+            console.log('Social found with string comparison:', socialAsString);
+            
+            if (socialAsNumber) {
+                ModalManager.showEditModal(socialAsNumber);
+            } else if (socialAsString) {
+                ModalManager.showEditModal(socialAsString);
+            }
         }
     }
 
