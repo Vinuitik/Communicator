@@ -16,7 +16,8 @@ export class SocialAPIService {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return await response.json();
+            const socials = await response.json();
+            return socials;
         } catch (error) {
             console.error('Error fetching socials:', error);
             throw new Error('Failed to load social media links');
@@ -31,6 +32,9 @@ export class SocialAPIService {
      */
     static async createSocial(friendId, socialData) {
         try {
+            console.log('Creating social with data:', socialData);
+            console.log('Request URL:', `${CONFIG.API_BASE_URL}/${friendId}`);
+            
             const response = await fetch(`${CONFIG.API_BASE_URL}/${friendId}`, {
                 method: 'POST',
                 headers: {
@@ -39,7 +43,11 @@ export class SocialAPIService {
                 body: JSON.stringify(socialData),
             });
 
+            console.log('Response status:', response.status);
+            
             if (!response.ok) {
+                const errorText = await response.text();
+                console.log('Error response:', errorText);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return await response.json();

@@ -26,8 +26,10 @@ export class SocialListRenderer {
      * @returns {string} HTML string
      */
     static getSocialItemHTML(social) {
+        
         const icon = PLATFORM_ICONS[social.platform] || '🔗';
         const displayName = social.displayName || social.platform;
+        const url = social.URL || social.url || 'No URL';
         
         return `
             <div class="social-item" data-platform="${social.platform}">
@@ -36,7 +38,7 @@ export class SocialListRenderer {
                     <div class="social-details">
                         <div class="social-platform">${social.platform}</div>
                         ${social.displayName ? `<div class="social-display-name">${social.displayName}</div>` : ''}
-                        <a href="${social.URL}" target="_blank" class="social-url">${social.URL}</a>
+                        <a href="${url}" target="_blank" class="social-url">${url}</a>
                     </div>
                 </div>
                 <div class="social-actions">

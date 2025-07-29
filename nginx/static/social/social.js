@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socialManager = new SocialMediaManager(friendId);
     socialManager.initialize();
+    
+    // Export for global access after initialization
+    window.socialManager = socialManager;
 });
-
-// Export for global access (needed for onclick handlers in HTML)
-window.socialManager = socialManager;

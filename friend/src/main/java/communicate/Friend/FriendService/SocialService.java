@@ -156,9 +156,10 @@ public class SocialService {
             return true;
         }
         
-        // Check for phone numbers (with or without + sign, allowing various formats)
-        // Supports: +1234567890, +1 234 567 890, +1-234-567-890, +1 (234) 567-890, etc.
-        if (trimmedUrl.matches("^\\+?[1-9]\\d{0,3}[\\s\\-]?\\(?\\d{1,4}\\)?[\\s\\-]?\\d{1,4}[\\s\\-]?\\d{1,9}$")) {
+        // Check for international phone numbers (with or without + sign, allowing various formats)
+        // Supports international numbers: +380970180407, +1 234 567 890, +44-20-1234-5678, etc.
+        // More flexible pattern that accepts any country code and various formatting
+        if (trimmedUrl.matches("^\\+?[0-9][0-9\\s\\-\\(\\)]{6,20}$")) {
             return true;
         }
         

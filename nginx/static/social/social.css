@@ -29,7 +29,7 @@ body {
     background-color: var(--background-color);
     color: var(--text-primary);
     line-height: 1.6;
-    padding-top: 80px; /* Account for fixed navbar */
+    /* Removed excessive padding-top: 80px */
 }
 
 /* Main Container */

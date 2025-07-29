@@ -35,9 +35,11 @@ export class URLHelper {
                     ? `mailto:${trimmedUrl}` 
                     : trimmedUrl;
             case 'Phone':
+                // For phone numbers, keep the original format with spaces
+                // Backend accepts both tel: prefix and raw phone numbers
                 return trimmedUrl.startsWith('tel:') 
                     ? trimmedUrl 
-                    : `tel:${trimmedUrl.replace(/[^\d\+]/g, '')}`;
+                    : trimmedUrl; // Don't add tel: prefix, backend accepts raw phone numbers
             default:
                 return trimmedUrl.startsWith('http') 
                     ? trimmedUrl 
