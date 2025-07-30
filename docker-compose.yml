@@ -41,6 +41,7 @@ services:
         TZ: ${HOST_TIMEZONE:-UTC}
       depends_on:
         - postgres
+        - fileRepository
       restart: unless-stopped
 
   group:

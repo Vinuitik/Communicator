@@ -22,9 +22,14 @@ RUN pip3 install -r requirements.txt
 COPY upload_to_drive.py .
 COPY service-account-key.json .
 COPY PostgresBackupService.java .
+COPY FileBackupService.java .
+COPY startup.sh .
+
+# Make startup script executable
+RUN chmod +x startup.sh
 
 # Compile Java code
-RUN javac PostgresBackupService.java
+RUN javac PostgresBackupService.java FileBackupService.java
 
-# Default command: Run Java backup service
-CMD ["java", "PostgresBackupService"]
+# Default command: Run startup script that starts both services
+CMD ["./startup.sh"]
