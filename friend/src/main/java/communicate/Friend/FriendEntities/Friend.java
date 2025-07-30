@@ -89,6 +89,19 @@ public class Friend {
     @OneToMany(mappedBy = "friend",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<PersonalResource> resources;
+
+    // Exponential Moving Averages - calculated by chrono service
+    @Builder.Default
+    @Column(name = "average_frequency")
+    private Double averageFrequency = 0.0;
+
+    @Builder.Default
+    @Column(name = "average_duration")
+    private Double averageDuration = 0.0;
+
+    @Builder.Default
+    @Column(name = "average_excitement")
+    private Double averageExcitement = 0.0;
     
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {

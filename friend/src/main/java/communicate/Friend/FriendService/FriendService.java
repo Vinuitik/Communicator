@@ -257,5 +257,45 @@ public class FriendService {
         return friendRepository.findAll(pageable);
     }
 
+    // Update friend's moving averages (called by chrono service)
+    @Transactional
+    public void updateMovingAverages(Integer friendId, Double averageFrequency, 
+                                   Double averageDuration, Double averageExcitement) {
+        Optional<Friend> friendOpt = friendRepository.findById(friendId);
+        if (friendOpt.isPresent()) {
+            Friend friend = friendOpt.get();
+            friend.setAverageFrequency(averageFrequency);
+            friend.setAverageDuration(averageDuration);
+            friend.setAverageExcitement(averageExcitement);
+            friendRepository.save(friend);
+        } else {
+            throw new jakarta.persistence.EntityNotFoundException("Friend with id " + friendId + " not found");
+        }
+    }
+
+    // Paginated friends with EMA data for chrono service
+    @Transactional
+    public List<ShortFriendDTO> getFriendsPaginatedForChrono(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
+        Page<Friend> friendsPage = friendRepository.findAll(pageable);
+        
+        // Convert to ShortFriendDTO with EMA data
+        return friendsPage.getContent().stream()
+                .map(friend -> new ShortFriendDTO(
+                    friend.getId(),
+                    friend.getName(),
+                    friend.getAverageFrequency(),
+                    friend.getAverageDuration(),
+                    friend.getAverageExcitement()
+                ))
+                .toList();
+    }
+
+    // Get total count of friends
+    @Transactional
+    public long getFriendsCount() {
+        return friendRepository.count();
+    }
+
 
 }

@@ -139,124 +139,93 @@ def get_friend_analytics(friend_id: int, days_back: int = 30) -> str:
 @mcp.tool()
 def calculate_friend_moving_averages(friend_id: int, days_back: int = 30) -> str:
     """
-    Calculate exponential moving averages for friend interaction metrics.
+    Get exponential moving averages for friend interaction metrics.
     
     Args:
         friend_id: The unique ID of the friend to analyze
-        days_back: How many days back to analyze (default=30)
+        days_back: How many days back to analyze (default=30, used for raw data only)
     
     Returns:
-        JSON with calculated moving averages for:
+        JSON with pre-calculated moving averages for:
         - frequency: How often you meet
-        - intensity: Quality/experience rating of meetings
+        - intensity: Quality/experience rating of meetings  
         - duration: Average time spent per meeting
         
-    Uses exponential moving average algorithm to smooth out fluctuations and show trends.
+    Note: The averages are pre-calculated daily by the chrono service for optimal performance.
+    This function returns the latest cached values plus optional raw analytics data.
     """
     try:
-        # Get analytics data
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days_back)
-        
-        url = f"http://nginx/api/friend/analyticsList"
-        params = {
-            "friendId": friend_id,
-            "left": start_date.isoformat(),
-            "right": end_date.isoformat()
-        }
-        
-        response = requests.get(url, params=params)
+        # Get the friend's current pre-calculated averages
+        url = f"http://nginx/api/friend/shortList"
+        response = requests.get(url)
         response.raise_for_status()
-        analytics_data = response.json()
+        friends_data = response.json()
         
-        if not analytics_data:
-            return json.dumps({"error": "No analytics data found for this friend"})
+        # Find the specific friend
+        friend_data = None
+        for friend in friends_data:
+            if friend['id'] == friend_id:
+                friend_data = friend
+                break
         
-        # Process the data similar to analytics.js
-        feedback_by_date = {}
-        total_duration_by_date = {}
-        frequency_by_date = {}
+        if not friend_data:
+            return json.dumps({"error": "Friend not found"})
         
-        for item in analytics_data:
-            date = item['date']
+        # Get raw analytics data if requested (for additional context)
+        raw_data = None
+        if days_back > 0:
+            end_date = datetime.now().date()
+            start_date = end_date - timedelta(days=days_back)
             
-            # Update total duration
-            total_duration_by_date[date] = total_duration_by_date.get(date, 0) + item['hours']
+            analytics_url = f"http://nginx/api/friend/analyticsList"
+            params = {
+                "friendId": friend_id,
+                "left": start_date.isoformat(),
+                "right": end_date.isoformat()
+            }
             
-            # Update frequency (count of meetings)
-            frequency_by_date[date] = frequency_by_date.get(date, 0) + 1
-            
-            # Update feedback (experience rating - assuming it's numeric or can be converted)
-            try:
-                experience_rating = float(item['experience']) if item['experience'].replace('.', '').isdigit() else 5.0
-                feedback_by_date[date] = experience_rating
-            except:
-                feedback_by_date[date] = 5.0  # Default neutral rating
-        
-        # Create date range and fill missing dates with zeros
-        current_date = start_date
-        all_dates = []
-        while current_date <= end_date:
-            all_dates.append(current_date.isoformat())
-            current_date += timedelta(days=1)
-        
-        # Map data to arrays
-        frequency_data = [frequency_by_date.get(date, 0) for date in all_dates]
-        intensity_data = [feedback_by_date.get(date, 0) for date in all_dates]
-        duration_data = [total_duration_by_date.get(date, 0) for date in all_dates]
-        
-        # Calculate exponential moving averages
-        def exponential_moving_average(data, window_size=7):
-            if not data or len(data) == 0:
-                return []
-            
-            alpha = 2 / (window_size + 1)
-            ema = []
-            previous_ema = data[0]
-            
-            for value in data:
-                previous_ema = alpha * value + (1 - alpha) * previous_ema
-                ema.append(previous_ema)
-            
-            return ema
-        
-        # Calculate EMAs
-        smoothed_frequency = exponential_moving_average(frequency_data)
-        smoothed_intensity = exponential_moving_average(intensity_data)
-        smoothed_duration = exponential_moving_average(duration_data)
-        
-        # Get latest values (most recent trends)
-        latest_frequency = smoothed_frequency[-1] if smoothed_frequency else 0
-        latest_intensity = smoothed_intensity[-1] if smoothed_intensity else 0
-        latest_duration = smoothed_duration[-1] if smoothed_duration else 0
+            analytics_response = requests.get(analytics_url, params=params)
+            if analytics_response.status_code == 200:
+                analytics_data = analytics_response.json()
+                
+                # Calculate summary stats from raw data
+                total_meetings = len(analytics_data)
+                total_hours = sum(item['hours'] for item in analytics_data)
+                avg_duration_per_meeting = total_hours / max(total_meetings, 1)
+                
+                # Count experience ratings
+                ratings_count = {}
+                for item in analytics_data:
+                    rating = item['experience']
+                    ratings_count[rating] = ratings_count.get(rating, 0) + 1
+                
+                raw_data = {
+                    "period_days": days_back,
+                    "total_meetings": total_meetings,
+                    "total_hours": round(total_hours, 2),
+                    "average_duration_per_meeting": round(avg_duration_per_meeting, 2),
+                    "experience_breakdown": ratings_count
+                }
         
         result = {
             "friend_id": friend_id,
-            "analysis_period_days": days_back,
-            "latest_trends": {
-                "frequency_ema": round(latest_frequency, 3),
-                "intensity_ema": round(latest_intensity, 3),
-                "duration_ema": round(latest_duration, 3)
+            "friend_name": friend_data['name'],
+            "pre_calculated_averages": {
+                "frequency_ema": round(friend_data.get('averageFrequency', 0.0), 3),
+                "intensity_ema": round(friend_data.get('averageExcitement', 0.0), 3),
+                "duration_ema": round(friend_data.get('averageDuration', 0.0), 3)
             },
-            "raw_data": {
-                "dates": all_dates,
-                "frequency_ema": [round(x, 3) for x in smoothed_frequency],
-                "intensity_ema": [round(x, 3) for x in smoothed_intensity],
-                "duration_ema": [round(x, 3) for x in smoothed_duration]
-            },
-            "summary": {
-                "total_meetings": sum(frequency_data),
-                "average_meeting_duration": round(sum(duration_data) / max(sum(frequency_data), 1), 2),
-                "average_experience_rating": round(sum(intensity_data) / max(len([x for x in intensity_data if x > 0]), 1), 2)
-            }
+            "calculation_method": "Pre-calculated by chrono service (updated daily at midnight)",
+            "raw_analytics_summary": raw_data,
+            "note": "These averages use exponential moving average with experience-based alpha coefficients, calculated daily for optimal performance"
         }
         
         return json.dumps(result, indent=2)
         
     except requests.exceptions.RequestException as e:
-        return f"Error calculating moving averages: {str(e)}"
+        return f"Error retrieving moving averages: {str(e)}"
     except Exception as e:
-        return f"Error processing analytics data: {str(e)}"
+        return f"Error processing moving averages data: {str(e)}"
 
 
 @mcp.tool()

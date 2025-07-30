@@ -17,11 +17,21 @@ import lombok.RequiredArgsConstructor;
 public class AnalyticsService {
 
     private final AnalyticsRepository analyticsRepository;
+    private final EmaUpdateService emaUpdateService;
 
     @Transactional
     public void save(Analytics analytics){
         try {
             analyticsRepository.save(analytics);
+            
+            // Update EMA values in real-time when analytics is created
+            if (analytics.getFriend() != null && analytics.getFriend().getId() != null) {
+                emaUpdateService.updateEmaOnNewAnalytics(
+                    analytics.getFriend().getId(),
+                    analytics.getExperience(),
+                    analytics.getHours()
+                );
+            }
         } catch (Exception e) {
            System.out.print("Error saving analytics " + e.toString());
         }
@@ -34,6 +44,9 @@ public class AnalyticsService {
                 f.setId(friendId);
                 a.setFriend(f);
                 analyticsRepository.save(a);
+                
+                // Update EMA values for each analytics entry
+                emaUpdateService.updateEmaOnNewAnalytics(friendId, a.getExperience(), a.getHours());
             }
         } catch (Exception e) {
            System.out.print("Error saving analytics " + e.toString());
@@ -43,9 +56,14 @@ public class AnalyticsService {
     public void saveAll(Friend friend){
         try {
             List<Analytics> analytics = friend.getAnalytics();
-            for(Analytics a :analytics){;
+            for(Analytics a :analytics){
                 a.setFriend(friend);
                 analyticsRepository.save(a);
+                
+                // Update EMA values for each analytics entry
+                if (friend.getId() != null) {
+                    emaUpdateService.updateEmaOnNewAnalytics(friend.getId(), a.getExperience(), a.getHours());
+                }
             }
         } catch (Exception e) {
            System.out.print("Error saving analytics " + e.toString());
@@ -60,5 +78,19 @@ public class AnalyticsService {
            System.out.print("Error saving analytics " + e.toString());
         }
         return new ArrayList<Analytics>();
+    }
+
+    /**
+     * Batch check: Get list of friend IDs who had interactions on a specific date
+     * This is optimized for the chrono service to avoid N+1 queries
+     */
+    @Transactional
+    public List<Integer> getFriendsWithInteractionsOnDate(List<Integer> friendIds, LocalDate date) {
+        try {
+            return analyticsRepository.findFriendIdsWithInteractionsOnDate(friendIds, date);
+        } catch (Exception e) {
+            System.out.print("Error checking batch interactions " + e.toString());
+            return new ArrayList<Integer>();
+        }
     }
 }

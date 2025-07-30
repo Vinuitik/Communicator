@@ -225,4 +225,66 @@ public class FriendController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
+    // Update friend's moving averages (called by chrono service)
+    @PutMapping("updateAverages")
+    public ResponseEntity<String> updateFriendAverages(@RequestBody Map<String, Object> updateData) {
+        try {
+            Integer friendId = (Integer) updateData.get("id");
+            Double averageFrequency = ((Number) updateData.get("averageFrequency")).doubleValue();
+            Double averageDuration = ((Number) updateData.get("averageDuration")).doubleValue();
+            Double averageExcitement = ((Number) updateData.get("averageExcitement")).doubleValue();
+
+            friendService.updateMovingAverages(friendId, averageFrequency, averageDuration, averageExcitement);
+            
+            return ResponseEntity.ok("Moving averages updated successfully");
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend not found");
+        } catch (Exception e) {
+            System.err.println("Error updating moving averages: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error updating moving averages: " + e.getMessage());
+        }
+    }
+
+    // Batch check for friends who had interactions on a specific date
+    @PostMapping("/batch-interaction-check")
+    public ResponseEntity<List<Integer>> batchInteractionCheck(
+            @RequestBody List<Integer> friendIds,
+            @RequestParam String date) {
+        try {
+            LocalDate checkDate = LocalDate.parse(date);
+            List<Integer> friendsWithInteractions = analyticsService.getFriendsWithInteractionsOnDate(friendIds, checkDate);
+            return ResponseEntity.ok(friendsWithInteractions);
+        } catch (Exception e) {
+            System.err.println("Error in batch interaction check: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // Paginated friends with EMA data for chrono service
+    @GetMapping("friends/chrono/page/{page}/size/{size}")
+    public ResponseEntity<List<ShortFriendDTO>> getFriendsForChrono(
+            @PathVariable int page, 
+            @PathVariable int size) {
+        try {
+            List<ShortFriendDTO> friends = friendService.getFriendsPaginatedForChrono(page, size);
+            return ResponseEntity.ok(friends);
+        } catch (Exception e) {
+            System.err.println("Error retrieving paginated friends for chrono: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // Get total count of friends (for pagination calculations)
+    @GetMapping("friends/count")
+    public ResponseEntity<Long> getFriendsCount() {
+        try {
+            long count = friendService.getFriendsCount();
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            System.err.println("Error getting friends count: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 }

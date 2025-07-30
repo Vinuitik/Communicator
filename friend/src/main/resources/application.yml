@@ -1,0 +1,10 @@
+# EMA Configuration for real-time updates
+ema:
+  coefficients:
+    # Alpha values for new data (when new analytics entry is created)
+    newData:
+      excellent: 0.6    # *** rating - high responsiveness to new good data
+      good: 0.7         # ** rating
+      poor: 0.8         # * rating - even higher responsiveness for poor experiences
+
+# Keep existing properties file for other configurations

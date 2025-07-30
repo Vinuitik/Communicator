@@ -76,6 +76,20 @@ services:
         - postgres
       restart: unless-stopped
 
+  chrono:
+      build: 
+        context: ./chrono
+        dockerfile: Dockerfile
+      container_name: chronoService
+      expose:
+        - "8087"  # Internal exposure only, no external port mapping
+      environment:
+        TZ: ${HOST_TIMEZONE:-UTC}
+      depends_on:
+        - friend
+        - nginx
+      restart: unless-stopped
+
 
   nginx:
     build:
