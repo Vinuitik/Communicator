@@ -43,4 +43,21 @@ public class ChronoProperties {
             default -> coefficients.getDecay().getOrDefault("good", 0.2);
         };
     }
+    
+    /**
+     * Get alpha coefficient for new data based on experience rating
+     */
+    public double getNewDataAlpha(String experience) {
+        if (coefficients == null || coefficients.getDecay() == null) {
+            return 0.3; // Default alpha for new data
+        }
+        
+        // For new data, we typically want higher alpha values (more responsive)
+        return switch (experience) {
+            case "***" -> 0.6; // Excellent experience - high weight
+            case "**" -> 0.3;  // Good experience - moderate weight  
+            case "*" -> 0.15;  // Poor experience - lower weight
+            default -> 0.3;    // Default moderate weight
+        };
+    }
 }

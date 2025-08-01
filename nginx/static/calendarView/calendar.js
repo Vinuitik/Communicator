@@ -74,11 +74,15 @@ function renderCalendar(friends) {
         // Get correct index for the day (Monday is 1, Sunday is 0)
         const dayIndex = i === 6 ? 0 : i + 1;
         
+        // Check if this column represents today
+        const isToday = columnDate.toDateString() === today.toDateString();
+        
         // Create the column for this day
         const dayColumn = createDayColumn(
             dayNames[dayIndex],
             formatDate(columnDate),
-            friendsByDay.get(dayIndex)
+            friendsByDay.get(dayIndex),
+            isToday
         );
         
         calendarContainer.appendChild(dayColumn);
@@ -119,9 +123,14 @@ function createPreviousColumn(previousFriends) {
     return column;
 }
 
-function createDayColumn(dayName, dateString, dayFriends) {
+function createDayColumn(dayName, dateString, dayFriends, isToday = false) {
     const column = document.createElement('div');
     column.className = 'day-column';
+    
+    // Add "today" class if this is today's column
+    if (isToday) {
+        column.classList.add('today');
+    }
     
     // Create header with day name and date
     const header = document.createElement('div');

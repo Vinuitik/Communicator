@@ -59,7 +59,7 @@ public class ChronoJobService {
                 
                 // Batch check: which friends had interactions yesterday
                 List<Integer> friendsWithInteractions = friendServiceClient
-                        .batchInteractionCheck(friendIds, yesterday);
+                        .getFriendsWithInteractionsOnDate(friendIds, yesterday);
                 
                 // Apply decay to friends who didn't have interactions
                 for (FriendSummary friend : friends) {
@@ -89,7 +89,7 @@ public class ChronoJobService {
 
         // Apply decay using configured decay coefficients
         // For simplicity, using "good" decay rate as default
-        double decayAlpha = chronoProperties.getCoefficients().getDecay().getGood();
+        double decayAlpha = chronoProperties.getCoefficients().getDecay().get("good");
         
         double newFrequency = currentFrequency * (1 - decayAlpha);
         double newDuration = currentDuration * (1 - decayAlpha);

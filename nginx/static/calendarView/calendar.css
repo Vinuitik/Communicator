@@ -125,3 +125,17 @@
     .add-friend:hover {
       background-color: #d6dbdf;
     }
+
+    .day-column.today {
+      background-color: #fff9e6;
+      border: 2px solid #f39c12;
+    }
+
+    .day-column.today .day-header {
+      border-bottom-color: #f39c12;
+    }
+
+    .day-column.today .day-name {
+      color: #f39c12;
+      font-weight: bold;
+    }

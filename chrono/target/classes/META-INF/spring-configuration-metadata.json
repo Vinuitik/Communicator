@@ -1,0 +1,54 @@
+{
+  "groups": [
+    {
+      "name": "chrono",
+      "type": "com.communicator.chrono.config.ChronoProperties",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties"
+    },
+    {
+      "name": "chrono.coefficients",
+      "type": "com.communicator.chrono.config.ChronoProperties$Coefficients",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties",
+      "sourceMethod": "public com.communicator.chrono.config.ChronoProperties.Coefficients getCoefficients() "
+    },
+    {
+      "name": "chrono.friend-service",
+      "type": "com.communicator.chrono.config.ChronoProperties$FriendService",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties",
+      "sourceMethod": "public com.communicator.chrono.config.ChronoProperties.FriendService getFriendService() "
+    }
+  ],
+  "properties": [
+    {
+      "name": "chrono.coefficients.decay",
+      "type": "java.util.Map<java.lang.String,java.lang.Double>",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$Coefficients"
+    },
+    {
+      "name": "chrono.friend-service.base-url",
+      "type": "java.lang.String",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$FriendService"
+    },
+    {
+      "name": "chrono.friend-service.batch-size",
+      "type": "java.lang.Integer",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$FriendService"
+    },
+    {
+      "name": "chrono.friend-service.friend-page-size",
+      "type": "java.lang.Integer",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$FriendService"
+    },
+    {
+      "name": "chrono.friend-service.timeout",
+      "type": "java.lang.Integer",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$FriendService"
+    },
+    {
+      "name": "chrono.schedule",
+      "type": "java.lang.String",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties"
+    }
+  ],
+  "hints": []
+}
