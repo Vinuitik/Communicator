@@ -139,23 +139,23 @@ services:
       - nginx  # Depends on nginx since it makes API calls through it
     restart: unless-stopped
 
-  # ai-agent:
-  #   build:
-  #     context: ./ai_agent
-  #     dockerfile: Dockerfile
-  #   container_name: ai-agent
-  #   expose:
-  #     - "8001"  # Internal exposure only, no external port mapping
-  #   env_file:
-  #     - ./ai_agent/.env  # Load environment variables from .env file
-  #   environment:
-  #     TZ: ${HOST_TIMEZONE:-UTC}
-  #     PYTHONUNBUFFERED: 1
-  #     GEMINI_API_KEY: ${GEMINI_API_KEY}  # Pass from environment variable
-  #   depends_on:
-  #     - nginx  # Depends on nginx since it makes API calls through it
-  #     - mcp-knowledge-server  # Depends on MCP server
-  #   restart: unless-stopped
+  ai-agent:
+     build:
+       context: ./ai_agent
+       dockerfile: Dockerfile
+     container_name: ai-agent
+     expose:
+       - "8001"  # Internal exposure only, no external port mapping
+     env_file:
+       - ./ai_agent/.env  # Load environment variables from .env file
+     environment:
+       TZ: ${HOST_TIMEZONE:-UTC}
+       PYTHONUNBUFFERED: 1
+       GEMINI_API_KEY: ${GEMINI_API_KEY}  # Pass from environment variable
+     depends_on:
+       - nginx  # Depends on nginx since it makes API calls through it
+       - mcp-knowledge-server  # Depends on MCP server
+     #restart: unless-stopped
 
 
 
