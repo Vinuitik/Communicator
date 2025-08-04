@@ -28,6 +28,55 @@ function getGradientColor(daysDiff) {
     }
 }
 
+// Helper: Get intensity gradient color based on score
+function getIntensityGradientColor(intensityScore) {
+    // Clamp intensity score between 0 and 10 for reasonable range
+    const min = 0, max = 10;
+    const clamped = Math.max(min, Math.min(max, intensityScore));
+    // Map 0 to 0 (red), 5 to 0.5 (yellow), 10 to 1 (green)
+    const percent = clamped / max;
+    
+    // Interpolate between red (#c0392b), yellow (#ffe21f), green (#2ecc40)
+    if (percent < 0.5) {
+        // Red to Yellow
+        const ratio = percent / 0.5;
+        return `rgb(${192 + (255-192)*ratio}, ${57 + (226-57)*ratio}, ${43 + (31-43)*ratio})`;
+    } else {
+        // Yellow to Green
+        const ratio = (percent - 0.5) / 0.5;
+        return `rgb(${255 + (46-255)*ratio}, ${226 + (204-226)*ratio}, ${31 + (64-31)*ratio})`;
+    }
+}
+
+// Helper: Calculate intensity score from exponential moving averages
+function calculateIntensityScore(friend) {
+    const frequency = friend.averageFrequency || 0;
+    const duration = friend.averageDuration || 0;
+    const excitement = friend.averageExcitement || 0;
+    
+    // Sum of the three exponential averages
+    return frequency + duration + excitement;
+}
+
+// Helper: Get color from red to green based on daysDiff
+function getGradientColor(daysDiff) {
+    // Clamp daysDiff between -7 (very early) and +7 (very late)
+    const min = -7, max = 7;
+    const clamped = Math.max(min, Math.min(max, daysDiff));
+    // Map -7 to 0 (red), 0 to 0.5 (yellow), 7 to 1 (green)
+    const percent = (clamped - min) / (max - min);
+    // Interpolate between red (#c0392b), yellow (#ffe21f), green (#2ecc40)
+    if (percent < 0.5) {
+        // Red to Yellow
+        const ratio = percent / 0.5;
+        return `rgb(${192 + (255-192)*ratio}, ${57 + (226-57)*ratio}, ${43 + (31-43)*ratio})`;
+    } else {
+        // Yellow to Green
+        const ratio = (percent - 0.5) / 0.5;
+        return `rgb(${255 + (46-255)*ratio}, ${226 + (204-226)*ratio}, ${31 + (64-31)*ratio})`;
+    }
+}
+
 async function viewRequest(endpoint) {
     try {
         const response = await fetch(`/api/friend/${endpoint}`);
@@ -51,10 +100,15 @@ async function viewRequest(endpoint) {
             const color = getGradientColor(daysDiff);
             const diffText = daysDiff === 0 ? 'Today' : (daysDiff > 0 ? `+${daysDiff} days` : `${daysDiff} days`);
 
+            // Calculate intensity score and its color
+            const intensityScore = calculateIntensityScore(friend);
+            const intensityColor = getIntensityGradientColor(intensityScore);
+            const intensityText = intensityScore.toFixed(2);
+
             row.innerHTML = `
                 <td>${friend.name}</td>
                 <td style="font-weight:bold; color: ${color};">${diffText}</td>
-                <td>${friend.experience}</td>
+                <td style="font-weight:bold; color: ${intensityColor};">${intensityText}</td>
                 <td>${friend.dateOfBirth}</td>
                 <td class="actions-cell">
                     <div class="dropdown">

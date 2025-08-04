@@ -42,9 +42,10 @@ async def setup_agent():
 
     # 2. Create the Gemini LLM - Use ChatGoogleGenerativeAI with google_api_key parameter
     llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         google_api_key=GEMINI_API_KEY,
-        temperature=0
+        temperature=0.7,
+        transport="rest"
     )
 
     # 3. Build the LangChain Agent with tools

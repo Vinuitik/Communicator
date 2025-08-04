@@ -55,7 +55,8 @@ public class FriendController {
         List<Friend> friends = friendService.getAllFriends();
         List<FriendDTO> result = new ArrayList<>();
         for(Friend f: friends){
-            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime()) );
+            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement()) );
         }
         return result;
     }
@@ -65,7 +66,8 @@ public class FriendController {
         List<Friend> friends = friendService.findThisWeek();
         List<FriendDTO> result = new ArrayList<>();
         for(Friend f: friends){
-            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime()) );
+            result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement()) );
         }
         return result;
     }
