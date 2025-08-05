@@ -9,10 +9,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configuration
     const API_BASE_URL = '/api/friend';
     
+    // Pagination state
+    let currentPage = 1;
+    let totalPages = 1;
+    let friendId = null;
+    const pageSize = 10;
+    
+    // Extract friend ID from URL
+    const urlPath = window.location.pathname;
+    const pathParts = urlPath.split('/');
+    if (pathParts.length > 2 && pathParts[1] === 'api' && pathParts[2] === 'friend' && pathParts[3] === 'knowledge') {
+        friendId = parseInt(pathParts[4]);
+    }
+    
     // Table Management Class
     class KnowledgeTableManager {
         constructor() {
             this.initEventListeners();
+            this.initializePagination();
+            if (friendId) {
+                this.loadKnowledgePage(1);
+            }
         }
         
         initEventListeners() {
@@ -26,8 +43,132 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitInfoBtn.addEventListener('click', this.handleSubmitInfo.bind(this));
             }
             
-            // Initialize existing table rows
+            // Initialize existing table rows (for server-rendered content)
             this.initExistingTableRows();
+        }
+        
+        initializePagination() {
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            const pageInput = document.getElementById('pageInput');
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => this.goToPage(currentPage - 1));
+            }
+            
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => this.goToPage(currentPage + 1));
+            }
+            
+            if (pageInput) {
+                pageInput.addEventListener('change', (e) => {
+                    const page = parseInt(e.target.value);
+                    this.goToPage(page);
+                });
+                
+                pageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const page = parseInt(e.target.value);
+                        this.goToPage(page);
+                    }
+                });
+            }
+        }
+        
+        async loadKnowledgePage(page) {
+            if (!friendId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/getKnowledge/${friendId}/page/${page - 1}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentPage = page;
+                totalPages = data.totalPages;
+                
+                this.updateKnowledgeTable(data.content);
+                this.updatePaginationInfo(data.content.length, data.totalElements, page);
+                this.updatePaginationControls();
+                
+            } catch (error) {
+                console.error('Error loading knowledge page:', error);
+            }
+        }
+        
+        updateKnowledgeTable(knowledges) {
+            if (!committedTableBody) return;
+            
+            committedTableBody.innerHTML = '';
+            
+            knowledges.forEach(knowledge => {
+                const row = this.createKnowledgeRow(knowledge);
+                committedTableBody.appendChild(row);
+            });
+        }
+        
+        createKnowledgeRow(knowledge) {
+            const row = document.createElement('tr');
+            row.setAttribute('data-id', knowledge.id);
+            
+            row.innerHTML = `
+                <td data-label="Id">${knowledge.id}</td>
+                <td data-label="Fact" contenteditable="true">${knowledge.text}</td>
+                <td data-label="Importance" contenteditable="true">${knowledge.priority}</td>
+                <td data-label="Actions" id="actions">
+                    <button class="button updateKnowledgeBtn">Update</button>
+                    <button class="button deleteKnowledgeBtn">Delete</button>
+                </td>
+            `;
+            
+            // Add event listeners
+            const updateButton = row.querySelector('.updateKnowledgeBtn');
+            const deleteButton = row.querySelector('.deleteKnowledgeBtn');
+            
+            if (updateButton) {
+                updateButton.addEventListener('click', () => this.handleUpdate(row, knowledge.id));
+            }
+            
+            if (deleteButton) {
+                deleteButton.addEventListener('click', () => this.handleDelete(row, knowledge.id));
+            }
+            
+            return row;
+        }
+        
+        updatePaginationInfo(itemsOnPage, totalItems, page) {
+            const knowledgeInfo = document.getElementById('knowledgeInfo');
+            if (!knowledgeInfo) return;
+            
+            const startItem = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+            const endItem = Math.min(page * pageSize, totalItems);
+            
+            knowledgeInfo.textContent = `Showing ${startItem}-${endItem} of ${totalItems} knowledge items`;
+        }
+        
+        updatePaginationControls() {
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            const pageInput = document.getElementById('pageInput');
+            const totalPagesSpan = document.getElementById('totalPages');
+            
+            if (prevBtn) prevBtn.disabled = currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+            
+            if (pageInput) {
+                pageInput.value = currentPage;
+                pageInput.max = totalPages;
+            }
+            
+            if (totalPagesSpan) {
+                totalPagesSpan.textContent = totalPages;
+            }
+        }
+        
+        async goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            await this.loadKnowledgePage(page);
         }
         
         initExistingTableRows() {
@@ -126,7 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.text())
             .then(data => {
                 console.log('Knowledge deleted:', data);
-                row.remove();
+                
+                // Refresh current page after deletion
+                if (friendId) {
+                    this.loadKnowledgePage(currentPage);
+                } else {
+                    row.remove();
+                }
             })
             .catch(error => console.error('Error deleting knowledge:', error));
         }

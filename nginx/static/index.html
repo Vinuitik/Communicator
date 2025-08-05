@@ -50,6 +50,21 @@
                 <!-- Sample data for now; replace with dynamic content later -->
             </tbody>
         </table>
+        
+        <!-- Pagination Controls -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span id="friendsInfo">Loading...</span>
+            </div>
+            <div class="pagination-controls">
+                <button id="prevPageBtn" disabled>Previous</button>
+                <span class="page-info">
+                    Page <input type="number" id="pageInput" value="1" min="1"> 
+                    of <span id="totalPages">1</span>
+                </span>
+                <button id="nextPageBtn" disabled>Next</button>
+            </div>
+        </div>
     </div>
 
     <!-- Link to external JavaScript -->

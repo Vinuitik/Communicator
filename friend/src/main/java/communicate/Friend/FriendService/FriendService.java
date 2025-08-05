@@ -297,5 +297,12 @@ public class FriendService {
         return friendRepository.count();
     }
 
+    // Paginated friends for UI (returns full Friend entities)
+    @Transactional
+    public Page<Friend> getFriendsPagedForUI(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "name"));
+        return friendRepository.findAll(pageable);
+    }
+
 
 }

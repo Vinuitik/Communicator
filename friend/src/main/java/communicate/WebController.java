@@ -3,6 +3,7 @@ package communicate;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -75,9 +76,15 @@ public class WebController {
     @GetMapping("knowledge/{id}")
     //@ResponseBody
     public String knowledge(@PathVariable(required = true) Integer id, Model model) {
-        List<FriendKnowledge> knowledges = knowledgeService.getKnowledgeByFriendIdSorted(id);
-        //return knowledges;
-        model.addAttribute("knowledges", knowledges);
+        // For initial page load, get first page of knowledge
+        Page<FriendKnowledge> knowledgePage = knowledgeService.getKnowledgeByFriendIdPaginated(id, 0);
+        
+        model.addAttribute("knowledges", knowledgePage.getContent());
+        model.addAttribute("currentPage", 0);
+        model.addAttribute("totalPages", knowledgePage.getTotalPages());
+        model.addAttribute("totalElements", knowledgePage.getTotalElements());
+        model.addAttribute("friendId", id);
+        
         return "facts.html";
     }
     
