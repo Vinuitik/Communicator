@@ -109,7 +109,7 @@ async function viewRequest(endpoint) {
                 <td>${friend.name}</td>
                 <td style="font-weight:bold; color: ${color};">${diffText}</td>
                 <td style="font-weight:bold; color: ${intensityColor};">${intensityText}</td>
-                <td>${friend.dateOfBirth}</td>
+                <td>${friend.dateOfBirth ? friend.dateOfBirth : ''}</td>
                 <td class="actions-cell">
                     <div class="dropdown">
                         <button class="dropdown-button">⋮</button>
