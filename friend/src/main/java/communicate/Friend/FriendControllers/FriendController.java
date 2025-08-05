@@ -56,7 +56,7 @@ public class FriendController {
         List<FriendDTO> result = new ArrayList<>();
         for(Friend f: friends){
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement()) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), false) );
         }
         return result;
     }
@@ -65,9 +65,24 @@ public class FriendController {
     public List<FriendDTO> getWeekFriends() {
         List<Friend> friends = friendService.findThisWeek();
         List<FriendDTO> result = new ArrayList<>();
+        
+        // Get current week boundaries to check for birthdays
+        LocalDate now = LocalDate.now();
+        LocalDate monday = now.minusDays(now.getDayOfWeek().getValue() - 1);
+        LocalDate sunday = monday.plusDays(6);
+        int currentYear = now.getYear();
+        
         for(Friend f: friends){
+            boolean isBirthdayThisWeek = false;
+            
+            // Check if friend has a birthday this week
+            if (f.getDateOfBirth() != null) {
+                LocalDate birthdayThisYear = f.getDateOfBirth().withYear(currentYear);
+                isBirthdayThisWeek = !birthdayThisYear.isBefore(monday) && !birthdayThisYear.isAfter(sunday);
+            }
+            
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement()) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), isBirthdayThisWeek) );
         }
         return result;
     }

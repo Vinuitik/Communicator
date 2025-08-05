@@ -102,6 +102,26 @@
       background-color: #f39c12;
     }
     
+    .friend-box.birthday {
+      background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+      border: 2px solid #ff4757;
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+      animation: birthday-pulse 2s infinite;
+    }
+    
+    @keyframes birthday-pulse {
+      0% {
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+      }
+      50% {
+        box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        transform: translateY(-2px);
+      }
+      100% {
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+      }
+    }
+    
     .friend-name {
       font-weight: bold;
     }

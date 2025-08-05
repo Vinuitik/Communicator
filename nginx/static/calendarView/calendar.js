@@ -164,17 +164,25 @@ function createDayColumn(dayName, dateString, dayFriends, isToday = false) {
 function createFriendBox(friend) {
     const box = document.createElement('div');
     
-    // Determine category based on experience (you might want to customize this logic)
+    // Determine category based on experience and birthday status
     let category = 'personal';
-    if (friend.experience && friend.experience.toLowerCase().includes('family')) {
+    
+    // Check if this is a birthday event (highest priority)
+    if (friend.isBirthdayThisWeek) {
+        category = 'birthday';
+    } else if (friend.experience && friend.experience.toLowerCase().includes('family')) {
         category = 'family';
     } else if (friend.experience && friend.experience.toLowerCase().includes('work')) {
         category = 'work';
     }
     
     box.className = `friend-box ${category}`;
+    
+    // Add birthday indicator in the display text
+    const displayText = friend.isBirthdayThisWeek ? `🎂 ${friend.name}` : friend.name;
+    
     box.innerHTML = `
-        <div class="friend-name">${friend.name}</div>
+        <div class="friend-name">${displayText}</div>
         <div class="friend-time">${friend.experience || ''}</div>
     `;
     
