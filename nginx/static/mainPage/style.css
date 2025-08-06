@@ -145,74 +145,111 @@ tr:hover {
 .dropdown-button {
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 1.2rem;
     cursor: pointer;
-    padding: 5px 10px;
-    color: #6c5ce7;
+    padding: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    color: #666;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .dropdown-button:hover {
-    background-color: #f0f0f0;
-    border-radius: 4px;
+    background-color: #f5f5f5;
+    color: #333;
 }
 
 .dropdown-content {
     display: none;
     position: absolute;
-    right: 0;
     background-color: white;
     min-width: 160px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    z-index: 1;
+    z-index: 1000;
     border-radius: 4px;
-    overflow: hidden;
+    border: 1px solid #e1e4e8;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
 }
 
 .dropdown-content.show {
     display: block;
+    animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .dropdown-item {
     color: #333;
-    padding: 12px 16px;
+    padding: 8px 16px;
     text-decoration: none;
     display: block;
-    transition: background-color 0.2s;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+    border: none;
+    background: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
 }
 
 .dropdown-item:hover {
-    background-color: #f5f5f5;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.dropdown-item:first-child {
+    border-radius: 4px 4px 0 0;
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 4px 4px;
 }
 
 .dropdown-item.delete-button {
     color: #e74c3c;
+    border-top: 1px solid #eee;
 }
 
 .dropdown-item.delete-button:hover {
-    background-color: #fee;
+    background-color: #fef2f2;
+    color: #dc2626;
 }
 
 /* Pagination styles */
 .pagination-container {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
     margin: 1rem 0;
     padding: 1rem;
     background: white;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .pagination-info {
     color: #666;
     font-size: 0.9rem;
+    flex: 1;
+    min-width: 200px;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex-shrink: 0;
 }
 
 .pagination-controls button {
@@ -221,18 +258,23 @@ tr:hover {
     background: white;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    min-height: 36px;
 }
 
 .pagination-controls button:hover:not(:disabled) {
     background-color: #6c5ce7;
     color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(108, 92, 231, 0.3);
 }
 
 .pagination-controls button:disabled {
     background-color: #f5f5f5;
     color: #999;
     cursor: not-allowed;
+    opacity: 0.6;
 }
 
 .page-info {
@@ -240,12 +282,61 @@ tr:hover {
     align-items: center;
     gap: 0.5rem;
     color: #666;
+    font-size: 0.9rem;
+    white-space: nowrap;
 }
 
 .page-info input {
     width: 60px;
-    padding: 0.25rem;
+    padding: 0.25rem 0.5rem;
     border: 1px solid #ddd;
     border-radius: 4px;
     text-align: center;
+    font-size: 0.9rem;
+    min-height: 32px;
+    transition: border-color 0.2s ease;
+}
+
+.page-info input:focus {
+    outline: none;
+    border-color: #6c5ce7;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.1);
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding: 0.75rem;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        min-width: auto;
+    }
+    
+    .pagination-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .pagination-controls button {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        min-height: 32px;
+    }
+    
+    .page-info {
+        justify-content: center;
+        font-size: 0.85rem;
+    }
+    
+    .page-info input {
+        width: 50px;
+        font-size: 0.85rem;
+        min-height: 28px;
+    }
 }
