@@ -15,12 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let friendId = null;
     const pageSize = 10;
     
-    // Extract friend ID from URL
+    // Extract friend ID from URL - Fixed URL parsing
     const urlPath = window.location.pathname;
     const pathParts = urlPath.split('/');
-    if (pathParts.length > 2 && pathParts[1] === 'api' && pathParts[2] === 'friend' && pathParts[3] === 'knowledge') {
-        friendId = parseInt(pathParts[4]);
+    // Look for knowledge URL pattern: /knowledge/{id}
+    if (pathParts.includes('knowledge')) {
+        const knowledgeIndex = pathParts.indexOf('knowledge');
+        if (knowledgeIndex >= 0 && pathParts[knowledgeIndex + 1]) {
+            friendId = parseInt(pathParts[knowledgeIndex + 1]);
+        }
     }
+    
+    // Alternative: try to get from data attribute
+    if (!friendId) {
+        const container = document.querySelector('[data-friend-id]');
+        if (container) {
+            friendId = parseInt(container.getAttribute('data-friend-id'));
+        }
+    }
+    
+    console.log('Detected friend ID:', friendId, 'from URL:', urlPath);
     
     // Table Management Class
     class KnowledgeTableManager {
@@ -53,59 +67,97 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageInput = document.getElementById('pageInput');
             
             if (prevBtn) {
-                prevBtn.addEventListener('click', () => this.goToPage(currentPage - 1));
+                prevBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                        this.goToPage(currentPage - 1);
+                    }
+                });
             }
             
             if (nextBtn) {
-                nextBtn.addEventListener('click', () => this.goToPage(currentPage + 1));
+                nextBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                        this.goToPage(currentPage + 1);
+                    }
+                });
             }
             
             if (pageInput) {
                 pageInput.addEventListener('change', (e) => {
                     const page = parseInt(e.target.value);
-                    this.goToPage(page);
+                    if (page >= 1 && page <= totalPages) {
+                        this.goToPage(page);
+                    } else {
+                        e.target.value = currentPage; // Reset to current page if invalid
+                    }
                 });
                 
                 pageInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
+                        e.preventDefault();
                         const page = parseInt(e.target.value);
-                        this.goToPage(page);
+                        if (page >= 1 && page <= totalPages) {
+                            this.goToPage(page);
+                        } else {
+                            e.target.value = currentPage; // Reset to current page if invalid
+                        }
                     }
                 });
             }
         }
         
         async loadKnowledgePage(page) {
-            if (!friendId) return;
+            if (!friendId) {
+                console.log('No friend ID available for pagination');
+                return;
+            }
             
             try {
+                console.log(`Loading page ${page} for friend ${friendId}`);
+                
+                // Backend expects 0-based indexing
                 const response = await fetch(`${API_BASE_URL}/getKnowledge/${friendId}/page/${page - 1}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                currentPage = page;
-                totalPages = data.totalPages;
+                console.log('Received data:', data);
                 
-                this.updateKnowledgeTable(data.content);
-                this.updatePaginationInfo(data.content.length, data.totalElements, page);
+                // Update state
+                currentPage = page;
+                totalPages = data.totalPages || 1;
+                
+                // Update UI
+                this.updateKnowledgeTable(data.content || []);
+                this.updatePaginationInfo(data.content?.length || 0, data.totalElements || 0, page);
                 this.updatePaginationControls();
                 
             } catch (error) {
                 console.error('Error loading knowledge page:', error);
+                // Show user-friendly error
+                this.showError('Failed to load knowledge data. Please try again.');
             }
         }
         
         updateKnowledgeTable(knowledges) {
-            if (!committedTableBody) return;
+            if (!committedTableBody) {
+                console.log('Committed table body not found');
+                return;
+            }
             
+            // Clear existing rows
             committedTableBody.innerHTML = '';
             
+            // Add new rows
             knowledges.forEach(knowledge => {
                 const row = this.createKnowledgeRow(knowledge);
                 committedTableBody.appendChild(row);
             });
+            
+            console.log(`Updated table with ${knowledges.length} rows`);
         }
         
         createKnowledgeRow(knowledge) {
@@ -114,15 +166,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             row.innerHTML = `
                 <td data-label="Id">${knowledge.id}</td>
-                <td data-label="Fact" contenteditable="true">${knowledge.text}</td>
-                <td data-label="Importance" contenteditable="true">${knowledge.priority}</td>
-                <td data-label="Actions" id="actions">
+                <td data-label="Fact" contenteditable="true">${knowledge.text || knowledge.fact || ''}</td>
+                <td data-label="Importance" contenteditable="true">${knowledge.priority || knowledge.importance || ''}</td>
+                <td data-label="Actions">
                     <button class="button updateKnowledgeBtn">Update</button>
                     <button class="button deleteKnowledgeBtn">Delete</button>
                 </td>
             `;
             
-            // Add event listeners
+            // Add event listeners to the buttons
             const updateButton = row.querySelector('.updateKnowledgeBtn');
             const deleteButton = row.querySelector('.deleteKnowledgeBtn');
             
@@ -153,8 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageInput = document.getElementById('pageInput');
             const totalPagesSpan = document.getElementById('totalPages');
             
-            if (prevBtn) prevBtn.disabled = currentPage <= 1;
-            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+            if (prevBtn) {
+                prevBtn.disabled = currentPage <= 1;
+            }
+            
+            if (nextBtn) {
+                nextBtn.disabled = currentPage >= totalPages;
+            }
             
             if (pageInput) {
                 pageInput.value = currentPage;
@@ -164,11 +221,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if (totalPagesSpan) {
                 totalPagesSpan.textContent = totalPages;
             }
+            
+            console.log(`Updated pagination controls: page ${currentPage} of ${totalPages}`);
         }
         
         async goToPage(page) {
-            if (page < 1 || page > totalPages) return;
+            if (page < 1 || page > totalPages) {
+                console.log(`Invalid page number: ${page} (valid range: 1-${totalPages})`);
+                return;
+            }
+            
+            console.log(`Going to page ${page}`);
             await this.loadKnowledgePage(page);
+        }
+        
+        showError(message) {
+            const knowledgeInfo = document.getElementById('knowledgeInfo');
+            if (knowledgeInfo) {
+                knowledgeInfo.textContent = message;
+                knowledgeInfo.style.color = 'red';
+                
+                // Reset color after 3 seconds
+                setTimeout(() => {
+                    knowledgeInfo.style.color = '';
+                }, 3000);
+            }
         }
         
         initExistingTableRows() {
