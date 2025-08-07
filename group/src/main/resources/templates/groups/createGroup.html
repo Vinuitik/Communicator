@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Group - Group Manager</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/createGroup/createGroup.css">
+    <link rel="stylesheet" href="/navigation/navigation.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Group Manager</div>
+        <ul class="navbar-links">
+            <li><a href="/groups">All Groups</a></li>
+            <li><a href="/groups/create">Create Group</a></li>
+            <li><a href="/">Home</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Create New Group</h1>
+
+        <!-- Flash Messages -->
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <!-- Create Group Form -->
+        <div class="form-container">
+            <form th:action="@{/groups/create}" th:object="${group}" method="post" class="group-form">
+                
+                <div class="form-group">
+                    <label for="name">Group Name *</label>
+                    <input type="text" 
+                           id="name" 
+                           th:field="*{name}" 
+                           placeholder="e.g., Work Colleagues, Family, College Friends" 
+                           required 
+                           class="form-control">
+                    <div class="form-help">Enter a name that helps you categorize relationships</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="button button-primary">Create Group</button>
+                    <a href="/groups" class="button button-secondary">Cancel</a>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Information Section -->
+        <div class="info-section">
+            <h2>About Relationship Groups</h2>
+            <div class="info-cards">
+                <div class="info-card">
+                    <h3>Organize Contacts</h3>
+                    <p>Create groups to categorize people in your life - family, friends, colleagues, classmates, etc.</p>
+                </div>
+                <div class="info-card">
+                    <h3>Track Relationships</h3>
+                    <p>Monitor and improve your relationships with different groups of people over time.</p>
+                </div>
+                <div class="info-card">
+                    <h3>Relationship Insights</h3>
+                    <p>Gain insights into your social connections and identify areas for relationship building.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/createGroup/createGroup.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Groups - Group Manager</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/groupsView/groupsView.css">
+    <link rel="stylesheet" href="/navigation/navigation.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Relationship Manager</div>
+        <ul class="navbar-links">
+            <li><a href="/groups">All Groups</a></li>
+            <li><a href="/groups/create">Create Group</a></li>
+            <li><a href="/">Home</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h1>Relationship Groups</h1>
+
+        <!-- Flash Messages -->
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <!-- Create Group Button -->
+        <div class="action-container">
+            <a href="/groups/create" class="button button-primary">Create New Group</a>
+        </div>
+
+        <!-- Groups Container -->
+        <div class="groups-container">
+            <div th:if="${groups.isEmpty()}" class="no-groups">
+                <h2>No relationship groups found</h2>
+                <p>Start organizing your contacts by creating your first group!</p>
+                <a href="/groups/create" class="button button-primary">Create Your First Group</a>
+            </div>
+
+            <div th:if="${!groups.isEmpty()}" class="groups-grid">
+                <div th:each="group : ${groups}" class="group-card">
+                    <div class="group-header">
+                        <h3 th:text="${group.name}">Group Name</h3>
+                        <div class="group-id" th:text="'ID: ' + ${group.id}">ID: 1</div>
+                    </div>
+
+                    <div class="group-stats">
+                        <div class="stat">
+                            <span class="stat-label">Contacts:</span>
+                            <span class="stat-value">0</span>
+                            <span class="stat-note">Coming Soon</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Notes:</span>
+                            <span class="stat-value" th:text="${group.knowledge != null ? group.knowledge.size() : 0}">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Settings:</span>
+                            <span class="stat-value" th:text="${group.permissions != null ? group.permissions.size() : 0}">0</span>
+                        </div>
+                    </div>
+
+                    <div class="group-actions">
+                        <a th:href="@{'/groups/' + ${group.id}}" class="button button-secondary">Manage</a>
+                        <button type="button" class="button button-danger" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/groupsView/groupsView.js"></script>
+
+</body>
+</html>

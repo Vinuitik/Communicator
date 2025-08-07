@@ -6,7 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -37,11 +37,21 @@ public class SocialGroup {
 
     private String description;
 
-    @OneToMany(mappedBy = "group",cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<GroupKnowledge> knowledge;
+    @Builder.Default
+    private List<GroupKnowledge> knowledge = new ArrayList<>();
 
-    @OneToMany(mappedBy = "group",cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<GroupPermission> permissions;
+    @Builder.Default
+    private List<GroupPermission> permissions = new ArrayList<>();
+
+    // Constructor to ensure lists are initialized
+    public SocialGroup(String name, String description) {
+        this.name = name;
+        this.description = description;
+        this.knowledge = new ArrayList<>();
+        this.permissions = new ArrayList<>();
+    }
 }

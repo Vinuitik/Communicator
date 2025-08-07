@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Group Details - ' + ${group.name}">Group Details - Group Manager</title>
+
+    <!-- Link to Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="/groupDetails/groupDetails.css">
+    <link rel="stylesheet" href="/navigation/navigation.css">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+    <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-logo">Relationship Manager</div>
+        <ul class="navbar-links">
+            <li><a href="/groups">All Groups</a></li>
+            <li><a href="/groups/create">Create Group</a></li>
+            <li><a href="/">Home</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- Group Header -->
+        <div class="group-header">
+            <div class="header-content">
+                <h1 th:text="${group.name}">Group Name</h1>
+                <div class="group-meta">
+                    <span class="group-id" th:text="'Group ID: ' + ${group.id}">ID: 1</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="/groups" class="button button-secondary">← Back to Groups</a>
+                <button type="button" class="button button-danger" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete Group</button>
+            </div>
+        </div>
+
+        <!-- Contacts Section (Future Implementation) -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Contacts in this Group</h2>
+                <span class="count">0</span>
+            </div>
+            <div class="contacts-container">
+                <div class="no-content">
+                    <p>Contact management coming soon!</p>
+                    <p>This will show all people assigned to this relationship group.</p>
+                    <button class="button button-primary" disabled>Add Contact (Coming Soon)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Group Notes</h2>
+                <span class="count" th:text="${group.knowledge != null ? group.knowledge.size() : 0}">0</span>
+            </div>
+            <div class="knowledge-container">
+                <div th:if="${group.knowledge == null or group.knowledge.isEmpty()}" class="no-content">
+                    <p>No notes found for this group</p>
+                    <p>Add notes about your relationships with people in this group.</p>
+                    <button class="button button-primary" onclick="addKnowledge()">Add First Note</button>
+                </div>
+                <div th:if="${group.knowledge != null and !group.knowledge.isEmpty()}" class="knowledge-list">
+                    <div th:each="knowledge : ${group.knowledge}" class="knowledge-item">
+                        <div class="knowledge-content">
+                            <h4 th:text="${knowledge.title ?: 'Untitled Note'}">Note Title</h4>
+                            <p th:text="${knowledge.content ?: 'No content'}">Note content</p>
+                        </div>
+                        <div class="knowledge-actions">
+                            <button class="button button-small button-secondary" th:onclick="'editKnowledge(' + ${knowledge.id} + ')'">Edit</button>
+                            <button class="button button-small button-danger" th:onclick="'deleteKnowledge(' + ${knowledge.id} + ')'">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Group Settings Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Group Settings</h2>
+                <span class="count" th:text="${group.permissions != null ? group.permissions.size() : 0}">0</span>
+            </div>
+            <div class="permissions-container">
+                <div th:if="${group.permissions == null or group.permissions.isEmpty()}" class="no-content">
+                    <p>No specific settings configured</p>
+                    <p>Configure privacy and access settings for this relationship group.</p>
+                    <button class="button button-primary" onclick="addPermission()">Add Setting</button>
+                </div>
+                <div th:if="${group.permissions != null and !group.permissions.isEmpty()}" class="permissions-list">
+                    <div th:each="permission : ${group.permissions}" class="permission-item">
+                        <div class="permission-content">
+                            <h4 th:text="${permission.permissionType ?: 'Unknown Setting'}">Setting Type</h4>
+                            <p th:text="${permission.description ?: 'No description'}">Setting description</p>
+                        </div>
+                        <div class="permission-actions">
+                            <button class="button button-small button-secondary" th:onclick="'editPermission(' + ${permission.id} + ')'">Edit</button>
+                            <button class="button button-small button-danger" th:onclick="'deletePermission(' + ${permission.id} + ')'">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/groupDetails/groupDetails.js"></script>
+
+</body>
+</html>

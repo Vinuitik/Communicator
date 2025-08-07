@@ -81,6 +81,13 @@
             <version>42.6.1</version> <!-- Correct driver version -->
         </dependency>
 
+        <!-- Spring Security for CSRF and Session Management -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+
 
     </dependencies>
 

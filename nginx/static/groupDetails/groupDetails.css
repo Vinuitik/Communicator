@@ -1,0 +1,370 @@
+/* groupDetails.css */
+
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Fonts */
+body {
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.6;
+    background-color: #f5f5f5;
+    color: #333;
+    margin: 0;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Container */
+.container {
+    width: 90%;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Group Header */
+.group-header {
+    background-color: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-left: 5px solid #007bff;
+}
+
+.header-content h1 {
+    font-size: 2.5rem;
+    font-weight: 500;
+    color: #007bff;
+    margin-bottom: 10px;
+}
+
+.group-meta {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.group-id {
+    font-size: 1rem;
+    color: #666;
+    background-color: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+}
+
+/* Buttons */
+.button {
+    display: inline-block;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    min-width: 120px;
+}
+
+.button-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.button-primary:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.button-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.button-secondary:hover {
+    background-color: #545b62;
+    transform: translateY(-2px);
+}
+
+.button-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.button-danger:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+}
+
+.button-small {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    min-width: 80px;
+}
+
+/* Sections */
+.section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f8f9fa;
+}
+
+.section-header h2 {
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: #333;
+    margin: 0;
+}
+
+.count {
+    background-color: #007bff;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* Description Section */
+.description-content {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #555;
+}
+
+.no-content {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+/* Knowledge Section */
+.knowledge-container,
+.permissions-container {
+    margin-top: 15px;
+}
+
+.knowledge-list,
+.permissions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.knowledge-item,
+.permission-item {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    border-left: 4px solid #28a745;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: all 0.3s ease;
+}
+
+.permission-item {
+    border-left-color: #ffc107;
+}
+
+.knowledge-item:hover,
+.permission-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.knowledge-content,
+.permission-content {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.knowledge-content h4,
+.permission-content h4 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.knowledge-content p,
+.permission-content p {
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.knowledge-actions,
+.permission-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Empty States */
+.no-content .button {
+    margin-top: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: 15px;
+    }
+
+    .group-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: flex-start;
+    }
+
+    .header-content h1 {
+        font-size: 2rem;
+    }
+
+    .header-actions {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .section {
+        padding: 20px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .knowledge-item,
+    .permission-item {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .knowledge-content,
+    .permission-content {
+        margin-right: 0;
+    }
+
+    .knowledge-actions,
+    .permission-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .group-header {
+        padding: 20px;
+    }
+
+    .header-content h1 {
+        font-size: 1.8rem;
+    }
+
+    .section {
+        padding: 15px;
+    }
+
+    .button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .header-actions .button {
+        width: 100%;
+    }
+
+    .knowledge-actions,
+    .permission-actions {
+        flex-direction: column;
+    }
+
+    .knowledge-actions .button,
+    .permission-actions .button {
+        width: 100%;
+    }
+}
+
+/* Animation for new items */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.knowledge-item,
+.permission-item {
+    animation: fadeInUp 0.3s ease;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
