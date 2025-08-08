@@ -74,8 +74,8 @@
                     </div>
 
                     <div class="group-actions">
-                        <a th:href="@{'/groups/' + ${group.id}}" class="button button-secondary">Manage</a>
-                        <button type="button" class="button button-danger" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
+                        <a th:href="@{'/groups/' + ${group.id}}" class="button button-secondary" th:data-group-id="${group.id}">Manage</a>
+                        <button type="button" class="button button-danger" th:data-group-id="${group.id}" data-action="delete" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
                     </div>
                 </div>
             </div>

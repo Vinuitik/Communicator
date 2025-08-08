@@ -16,7 +16,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize interactive features
     initializeCollapsibleSections();
+    
+    // Initialize navigation handlers
+    initializeNavigation();
 });
+
+/**
+ * Initialize navigation handlers
+ */
+function initializeNavigation() {
+    // Handle back to groups button
+    const backButtons = document.querySelectorAll('a[href="/groups"], .button[href="/groups"]');
+    backButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateToGroups();
+        });
+    });
+
+    // Handle edit group button (if it exists)
+    const editButtons = document.querySelectorAll('[data-action="edit"]');
+    editButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const groupId = this.getAttribute('data-group-id');
+            navigateToEditGroup(groupId);
+        });
+    });
+}
+
+/**
+ * Navigate to groups list page
+ */
+function navigateToGroups() {
+    window.location.href = '/groups';
+}
+
+/**
+ * Navigate to edit group page
+ * @param {number} groupId - The ID of the group to edit
+ */
+function navigateToEditGroup(groupId) {
+    window.location.href = `/groups/${groupId}/edit`;
+}
 
 /**
  * Delete a group with confirmation
@@ -37,39 +79,81 @@ function deleteGroup(groupId) {
         deleteButton.textContent = 'Deleting...';
         deleteButton.disabled = true;
 
-        // Create a form and submit it for deletion
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/groups/${groupId}/delete`;
-        
-        // Add CSRF token if available
-        const csrfToken = document.querySelector('meta[name="_csrf"]');
-        if (csrfToken) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrfToken.content;
-            form.appendChild(csrfInput);
-        }
-        
-        // Add method override for DELETE
-        const methodInput = document.createElement('input');
-        methodInput.type = 'hidden';
-        methodInput.name = '_method';
-        methodInput.value = 'DELETE';
-        form.appendChild(methodInput);
-        
-        document.body.appendChild(form);
-        
-        // Submit form
-        form.submit();
-        
-        // Reset button state if submission fails (shouldn't happen normally)
-        setTimeout(() => {
+        // Make API call to delete the group
+        fetch(`/api/groups/${groupId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccessMessage(data.message);
+                // Navigate back to groups list after a short delay
+                setTimeout(() => {
+                    navigateToGroups();
+                }, 1500);
+            } else {
+                showErrorMessage(data.message);
+                // Reset button state
+                deleteButton.textContent = originalText;
+                deleteButton.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting group:', error);
+            showErrorMessage('Failed to delete group. Please try again.');
+            // Reset button state
             deleteButton.textContent = originalText;
             deleteButton.disabled = false;
-        }, 5000);
+        });
     }
+}
+
+/**
+ * Show success message
+ * @param {string} message - The success message
+ */
+function showSuccessMessage(message) {
+    showMessage(message, 'alert-success');
+}
+
+/**
+ * Show error message
+ * @param {string} message - The error message
+ */
+function showErrorMessage(message) {
+    showMessage(message, 'alert-error');
+}
+
+/**
+ * Show message with specified type
+ * @param {string} message - The message to show
+ * @param {string} type - The alert type (alert-success, alert-error, etc.)
+ */
+function showMessage(message, type) {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+
+    // Create new alert
+    const alert = document.createElement('div');
+    alert.className = `alert ${type}`;
+    alert.textContent = message;
+
+    // Insert at the top of the container
+    const container = document.querySelector('.container');
+    const firstChild = container.querySelector('h1').nextElementSibling;
+    container.insertBefore(alert, firstChild);
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        alert.style.opacity = '0';
+        setTimeout(() => {
+            alert.remove();
+        }, 300);
+    }, 5000);
 }
 
 /**

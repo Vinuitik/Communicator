@@ -19,7 +19,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize character counters
     initializeCharacterCounters();
+
+    // Initialize navigation handlers
+    initializeNavigation();
 });
+
+/**
+ * Navigate to groups list page
+ */
+function navigateToGroups() {
+    // Use relative path to stay within nginx routing context
+    // This ensures we stay on the same domain/port (localhost:8090)
+    window.location.href = '/groups';
+}
+
+/**
+ * Initialize navigation handlers
+ */
+function initializeNavigation() {
+    // Handle back to groups button
+    const backButtons = document.querySelectorAll('a[href="/groups"], .button[href="/groups"]');
+    backButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            navigateToGroups();
+        });
+    });
+}
 
 /**
  * Initialize form validation
@@ -43,6 +69,8 @@ function initializeFormValidation() {
 
     // Form submission validation
     form.addEventListener('submit', function(e) {
+        e.preventDefault(); // Always prevent default form submission
+        
         let isValid = true;
 
         if (nameInput && !validateName(nameInput)) {
@@ -50,13 +78,55 @@ function initializeFormValidation() {
         }
 
         if (!isValid) {
-            e.preventDefault();
             showError('Please fix the validation errors before submitting.');
             return false;
         }
 
-        // Add loading state
-        addLoadingState(form);
+        // Submit via AJAX
+        submitGroupForm(form);
+    });
+}
+
+/**
+ * Submit the group form via AJAX
+ * @param {HTMLElement} form - The form element
+ */
+function submitGroupForm(form) {
+    // Add loading state
+    addLoadingState(form);
+
+    // Get form data
+    const formData = new FormData(form);
+    const groupData = {
+        name: formData.get('name'),
+        description: formData.get('description') || ''
+    };
+
+    // Make API call
+    fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(groupData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessMessage(data.message);
+            // Navigate to groups list after a short delay
+            setTimeout(() => {
+                navigateToGroups();
+            }, 1500);
+        } else {
+            showErrorMessage(data.message);
+            removeLoadingState(form);
+        }
+    })
+    .catch(error => {
+        console.error('Error creating group:', error);
+        showErrorMessage('Failed to create group. Please try again.');
+        removeLoadingState(form);
     });
 }
 
@@ -200,17 +270,48 @@ function addLoadingState(form) {
 }
 
 /**
+ * Remove loading state from form
+ * @param {HTMLElement} form - The form element
+ */
+function removeLoadingState(form) {
+    form.classList.remove('loading');
+    
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Create Group';
+    }
+}
+
+/**
+ * Show success message
+ * @param {string} message - The success message
+ */
+function showSuccessMessage(message) {
+    showMessage(message, 'alert-success');
+}
+
+/**
  * Show error message
  * @param {string} message - The error message
  */
-function showError(message) {
+function showErrorMessage(message) {
+    showMessage(message, 'alert-error');
+}
+
+/**
+ * Show message with specified type
+ * @param {string} message - The message to show
+ * @param {string} type - The alert type (alert-success, alert-error, etc.)
+ */
+function showMessage(message, type) {
     // Remove existing alerts
     const existingAlerts = document.querySelectorAll('.alert');
     existingAlerts.forEach(alert => alert.remove());
 
     // Create new alert
     const alert = document.createElement('div');
-    alert.className = 'alert alert-error';
+    alert.className = `alert ${type}`;
     alert.textContent = message;
 
     // Insert at the top of the container
@@ -225,4 +326,12 @@ function showError(message) {
             alert.remove();
         }, 300);
     }, 5000);
+}
+
+/**
+ * Show error message
+ * @param {string} message - The error message
+ */
+function showError(message) {
+    showErrorMessage(message);
 }
