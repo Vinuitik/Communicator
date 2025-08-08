@@ -85,14 +85,25 @@ function deleteGroup(groupId) {
         deleteButton.textContent = 'Deleting...';
         deleteButton.disabled = true;
 
-        // Make API call to delete the group
+        // Make API call to delete the group with better error handling
         fetch(`/api/groups/${groupId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // If API fails, try to parse error message
+                return response.json().catch(() => {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }).then(errorData => {
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showSuccessMessage(data.message);
