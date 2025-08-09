@@ -56,7 +56,6 @@
                     <thead>
                         <tr>
                             <th>Group Name</th>
-                            <th>Group ID</th>
                             <th>Contacts</th>
                             <th>Notes</th>
                             <th>Settings</th>
@@ -64,12 +63,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="group : ${groups}">
+                        <tr th:each="group : ${groups}" th:data-group-id="${group.id}">
                             <td>
                                 <span class="group-name" th:text="${group.name}">Group Name</span>
-                            </td>
-                            <td>
-                                <span class="group-id" th:text="${group.id}">1</span>
                             </td>
                             <td>
                                 <span class="stat-value">0</span>

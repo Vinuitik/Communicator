@@ -56,16 +56,47 @@ function closeAllDropdowns() {
  * Initialize click handlers for group navigation
  */
 function initializeGroupLinks() {
-    // Handle group detail links
-    const groupLinks = document.querySelectorAll('[data-group-id]');
-    groupLinks.forEach(link => {
+    // Handle dropdown action links that have group IDs
+    const actionLinks = document.querySelectorAll('[data-group-id][data-action]');
+    actionLinks.forEach(link => {
         if (link.getAttribute('data-action') !== 'delete') {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
                 const groupId = this.getAttribute('data-group-id');
-                navigateToGroupDetails(groupId);
+                const action = this.getAttribute('data-action');
+                
+                if (action === 'details') {
+                    navigateToGroupDetails(groupId);
+                } else if (action === 'knowledge') {
+                    navigateToGroupKnowledge(groupId);
+                } else if (action === 'edit') {
+                    navigateToEditGroup(groupId);
+                }
             });
         }
+    });
+
+    // Handle table row clicks for navigation (excluding action cells)
+    const tableRows = document.querySelectorAll('table tbody tr[data-group-id]');
+    tableRows.forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't navigate if clicking on action buttons/dropdowns
+            if (e.target.closest('.actions-cell') || 
+                e.target.closest('.dropdown') || 
+                e.target.closest('button') ||
+                e.target.closest('a')) {
+                return;
+            }
+            
+            const groupId = this.getAttribute('data-group-id');
+            if (groupId) {
+                navigateToGroupDetails(groupId);
+            }
+        });
+        
+        // Add hover effect for better UX
+        row.style.cursor = 'pointer';
+        row.title = 'Click to view group details';
     });
 
     // Handle create group button
@@ -99,6 +130,14 @@ function navigateToGroupKnowledge(groupId) {
  */
 function navigateToCreateGroup() {
     window.location.href = '/api/groups/create';
+}
+
+/**
+ * Navigate to edit group page
+ * @param {number} groupId - The ID of the group to edit
+ */
+function navigateToEditGroup(groupId) {
+    window.location.href = `/api/groups/${groupId}/edit`;
 }
 
 /**
