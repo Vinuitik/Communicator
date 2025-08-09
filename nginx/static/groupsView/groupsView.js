@@ -16,7 +16,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add click handlers for group links
     initializeGroupLinks();
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.matches('.dropdown-button')) {
+            closeAllDropdowns();
+        }
+    });
 });
+
+/**
+ * Toggle dropdown menu
+ * @param {HTMLElement} button - The dropdown button element
+ */
+function toggleDropdown(button) {
+    const dropdown = button.nextElementSibling;
+    const isOpen = dropdown.classList.contains('show');
+    
+    // Close all dropdowns first
+    closeAllDropdowns();
+    
+    // Toggle current dropdown if it wasn't open
+    if (!isOpen) {
+        dropdown.classList.add('show');
+    }
+}
+
+/**
+ * Close all open dropdowns
+ */
+function closeAllDropdowns() {
+    const dropdowns = document.querySelectorAll('.dropdown-content');
+    dropdowns.forEach(dropdown => {
+        dropdown.classList.remove('show');
+    });
+}
 
 /**
  * Initialize click handlers for group navigation
@@ -49,7 +83,7 @@ function initializeGroupLinks() {
  * @param {number} groupId - The ID of the group
  */
 function navigateToGroupDetails(groupId) {
-    window.location.href = `/groups/${groupId}`;
+    window.location.href = `/api/groups/${groupId}`;
 }
 
 /**
@@ -57,21 +91,21 @@ function navigateToGroupDetails(groupId) {
  * @param {number} groupId - The ID of the group
  */
 function navigateToGroupKnowledge(groupId) {
-    window.location.href = `/groups/${groupId}/knowledge`;
+    window.location.href = `/api/groups/${groupId}/knowledge`;
 }
 
 /**
  * Navigate to create group page
  */
 function navigateToCreateGroup() {
-    window.location.href = '/groups/create';
+    window.location.href = '/api/groups/create';
 }
 
 /**
  * Navigate to groups list page
  */
 function navigateToGroups() {
-    window.location.href = '/groups';
+    window.location.href = '/api/groups';
 }
 
 /**

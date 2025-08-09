@@ -24,8 +24,8 @@
     <nav class="navbar">
         <div class="navbar-logo">Group Manager</div>
         <ul class="navbar-links">
-            <li><a href="/groups">All Groups</a></li>
-            <li><a href="/groups/create">Create Group</a></li>
+            <li><a href="/api/groups">All Groups</a></li>
+            <li><a href="/api/groups/create">Create Group</a></li>
             <li><a href="/">Home</a></li>
         </ul>
     </nav>
@@ -39,7 +39,7 @@
 
         <!-- Create Group Form -->
         <div class="form-container">
-            <form th:action="@{/groups/create}" th:object="${group}" method="post" class="group-form">
+            <form th:action="@{/api/groups/create}" th:object="${group}" method="post" class="group-form">
                 
                 <div class="form-group">
                     <label for="name">Group Name *</label>
@@ -54,7 +54,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="button button-primary">Create Group</button>
-                    <a href="/groups" class="button button-secondary">Cancel</a>
+                    <a href="/api/groups" class="button button-secondary">Cancel</a>
                 </div>
 
             </form>

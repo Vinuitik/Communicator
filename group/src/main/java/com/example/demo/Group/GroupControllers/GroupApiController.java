@@ -26,7 +26,7 @@ import com.example.demo.Group.GroupServices.SocialGroupService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/group")
+@RequestMapping("/api/groups")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class GroupApiController {

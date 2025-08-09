@@ -24,8 +24,8 @@
     <nav class="navbar">
         <div class="navbar-logo">Relationship Manager</div>
         <ul class="navbar-links">
-            <li><a href="/groups">All Groups</a></li>
-            <li><a href="/groups/create">Create Group</a></li>
+            <li><a href="/api/groups">All Groups</a></li>
+            <li><a href="/api/groups/create">Create Group</a></li>
             <li><a href="/">Home</a></li>
         </ul>
     </nav>
@@ -39,7 +39,7 @@
 
         <!-- Create Group Button -->
         <div class="action-container">
-            <a href="/groups/create" class="button button-primary">Create New Group</a>
+            <a href="/api/groups/create" class="button button-primary">Create New Group</a>
         </div>
 
         <!-- Groups Container -->
@@ -47,38 +47,53 @@
             <div th:if="${groups.isEmpty()}" class="no-groups">
                 <h2>No relationship groups found</h2>
                 <p>Start organizing your contacts by creating your first group!</p>
-                <a href="/groups/create" class="button button-primary">Create Your First Group</a>
+                <a href="/api/groups/create" class="button button-primary">Create Your First Group</a>
             </div>
 
-            <div th:if="${!groups.isEmpty()}" class="groups-grid">
-                <div th:each="group : ${groups}" class="group-card">
-                    <div class="group-header">
-                        <h3 th:text="${group.name}">Group Name</h3>
-                        <div class="group-id" th:text="'ID: ' + ${group.id}">ID: 1</div>
-                    </div>
-
-                    <div class="group-stats">
-                        <div class="stat">
-                            <span class="stat-label">Contacts:</span>
-                            <span class="stat-value">0</span>
-                            <span class="stat-note">Coming Soon</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Notes:</span>
-                            <span class="stat-value" th:text="${group.knowledge != null ? group.knowledge.size() : 0}">0</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Settings:</span>
-                            <span class="stat-value" th:text="${group.permissions != null ? group.permissions.size() : 0}">0</span>
-                        </div>
-                    </div>
-
-                    <div class="group-actions">
-                        <a th:href="@{'/groups/' + ${group.id}}" class="button button-secondary" th:data-group-id="${group.id}">Manage</a>
-                        <a th:href="@{'/groups/' + ${group.id} + '/knowledge'}" class="button button-primary" title="Add knowledge about this group">Add Note</a>
-                        <button type="button" class="button button-danger" th:data-group-id="${group.id}" data-action="delete" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
-                    </div>
-                </div>
+            <div th:if="${!groups.isEmpty()}">
+                <!-- Table for displaying group data -->
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Group Name</th>
+                            <th>Group ID</th>
+                            <th>Contacts</th>
+                            <th>Notes</th>
+                            <th>Settings</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="group : ${groups}">
+                            <td>
+                                <span class="group-name" th:text="${group.name}">Group Name</span>
+                            </td>
+                            <td>
+                                <span class="group-id" th:text="${group.id}">1</span>
+                            </td>
+                            <td>
+                                <span class="stat-value">0</span>
+                                <span class="stat-note">Coming Soon</span>
+                            </td>
+                            <td>
+                                <span class="stat-value" th:text="${group.knowledge != null ? group.knowledge.size() : 0}">0</span>
+                            </td>
+                            <td>
+                                <span class="stat-value" th:text="${group.permissions != null ? group.permissions.size() : 0}">0</span>
+                            </td>
+                            <td class="actions-cell">
+                                <div class="dropdown">
+                                    <button class="dropdown-button" onclick="toggleDropdown(this)">⋮</button>
+                                    <div class="dropdown-content">
+                                        <a th:href="@{'/api/groups/' + ${group.id}}" class="dropdown-item" th:data-group-id="${group.id}">Manage</a>
+                                        <a th:href="@{'/api/groups/' + ${group.id} + '/knowledge'}" class="dropdown-item" title="Add knowledge about this group">Add Note</a>
+                                        <button type="button" class="dropdown-item delete-button" th:data-group-id="${group.id}" data-action="delete" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

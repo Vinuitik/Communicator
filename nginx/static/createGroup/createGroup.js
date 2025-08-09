@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function navigateToGroups() {
     // Use relative path to stay within nginx routing context
     // This ensures we stay on the same domain/port (localhost:8090)
-    window.location.href = '/groups';
+    window.location.href = '/api/groups';
 }
 
 /**
@@ -38,7 +38,7 @@ function navigateToGroups() {
  */
 function initializeNavigation() {
     // Handle back to groups button
-    const backButtons = document.querySelectorAll('a[href="/groups"], .button[href="/groups"]');
+    const backButtons = document.querySelectorAll('a[href="/api/groups"], .button[href="/api/groups"]');
     backButtons.forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
