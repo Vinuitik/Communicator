@@ -1,0 +1,4 @@
+/* Group Knowledge CSS - imports the facts.css for consistency */
+@import url('/facts/facts.css');
+
+/* Group-specific overrides can go here if needed */

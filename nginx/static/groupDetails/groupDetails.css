@@ -183,6 +183,18 @@ body {
     gap: 15px;
 }
 
+.knowledge-header-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: flex-end;
+}
+
+.knowledge-header-actions .button {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+}
+
 .knowledge-item,
 .permission-item {
     background-color: #f8f9fa;

@@ -236,14 +236,17 @@ h3 {
 /* Group Actions */
 .group-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 .group-actions .button {
-    padding: 8px 16px;
-    font-size: 0.9rem;
+    padding: 8px 12px;
+    font-size: 0.85rem;
     min-width: auto;
+    flex: 1;
+    min-width: 80px;
 }
 
 /* Responsive Design */

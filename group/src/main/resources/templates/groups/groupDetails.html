@@ -70,16 +70,20 @@
                 <div th:if="${group.knowledge == null or group.knowledge.isEmpty()}" class="no-content">
                     <p>No notes found for this group</p>
                     <p>Add notes about your relationships with people in this group.</p>
-                    <button class="button button-primary" onclick="addKnowledge()">Add First Note</button>
+                    <a th:href="@{'/groups/' + ${group.id} + '/knowledge'}" class="button button-primary">Add First Note</a>
                 </div>
                 <div th:if="${group.knowledge != null and !group.knowledge.isEmpty()}" class="knowledge-list">
+                    <div class="knowledge-header-actions">
+                        <a th:href="@{'/groups/' + ${group.id} + '/knowledge'}" class="button button-primary">Add New Note</a>
+                        <a th:href="@{'/groups/' + ${group.id} + '/knowledge'}" class="button button-secondary">Manage All Notes</a>
+                    </div>
                     <div th:each="knowledge : ${group.knowledge}" class="knowledge-item">
                         <div class="knowledge-content">
                             <h4 th:text="${knowledge.title ?: 'Untitled Note'}">Note Title</h4>
                             <p th:text="${knowledge.content ?: 'No content'}">Note content</p>
                         </div>
                         <div class="knowledge-actions">
-                            <button class="button button-small button-secondary" th:onclick="'editKnowledge(' + ${knowledge.id} + ')'">Edit</button>
+                            <a th:href="@{'/groups/' + ${group.id} + '/knowledge'}" class="button button-small button-secondary">Edit</a>
                             <button class="button button-small button-danger" th:onclick="'deleteKnowledge(' + ${knowledge.id} + ')'">Delete</button>
                         </div>
                     </div>

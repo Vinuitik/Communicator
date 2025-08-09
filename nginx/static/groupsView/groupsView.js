@@ -53,6 +53,14 @@ function navigateToGroupDetails(groupId) {
 }
 
 /**
+ * Navigate to group knowledge page
+ * @param {number} groupId - The ID of the group
+ */
+function navigateToGroupKnowledge(groupId) {
+    window.location.href = `/groups/${groupId}/knowledge`;
+}
+
+/**
  * Navigate to create group page
  */
 function navigateToCreateGroup() {

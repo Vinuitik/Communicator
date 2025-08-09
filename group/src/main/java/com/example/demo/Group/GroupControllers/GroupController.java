@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.example.demo.Group.GroupEntities.GroupKnowledge;
 import com.example.demo.Group.GroupEntities.SocialGroup;
+import com.example.demo.Group.GroupServices.GroupKnowledgeService;
 import com.example.demo.Group.GroupServices.SocialGroupService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class GroupController {
 
     private final SocialGroupService socialGroupService;
+    private final GroupKnowledgeService groupKnowledgeService;
 
     @GetMapping("/groups")
     public String getAllGroups(Model model) {
@@ -39,7 +42,7 @@ public class GroupController {
 
     @GetMapping("/groups/create")
     public String showCreateGroupForm(Model model) {
-        model.addAttribute("group", new SocialGroup());
+        model.addAttribute("group", SocialGroup.builder().name("").description("").build());
         return "groups/createGroup";
     }
 
@@ -76,6 +79,19 @@ public class GroupController {
             }
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Failed to delete group: " + e.getMessage());
+        }
+        return "redirect:/groups";
+    }
+
+    @GetMapping("/groups/{id}/knowledge")
+    public String getGroupKnowledge(@PathVariable Integer id, Model model) {
+        SocialGroup group = socialGroupService.getGroupById(id);
+        if (group != null) {
+            List<GroupKnowledge> knowledges = groupKnowledgeService.getAllGroupKnowledge(id);
+            model.addAttribute("group", group);
+            model.addAttribute("groupId", id);
+            model.addAttribute("knowledges", knowledges);
+            return "groups/groupKnowledge";
         }
         return "redirect:/groups";
     }
