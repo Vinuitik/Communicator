@@ -81,8 +81,8 @@
                                 <div class="dropdown">
                                     <button class="dropdown-button" onclick="toggleDropdown(this)">⋮</button>
                                     <div class="dropdown-content">
-                                        <a th:href="@{'/api/groups/' + ${group.id}}" class="dropdown-item" th:data-group-id="${group.id}">Manage</a>
-                                        <a th:href="@{'/api/groups/' + ${group.id} + '/knowledge'}" class="dropdown-item" title="Add knowledge about this group">Add Note</a>
+                                        <a th:href="@{'/api/groups/' + ${group.id}}" class="dropdown-item" th:data-group-id="${group.id}">Profile</a>
+                                        <a th:href="@{'/api/groups/' + ${group.id} + '/knowledge'}" class="dropdown-item" title="Add knowledge about this group">Knowledge</a>
                                         <button type="button" class="dropdown-item delete-button" th:data-group-id="${group.id}" data-action="delete" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
                                     </div>
                                 </div>
