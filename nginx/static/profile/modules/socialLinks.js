@@ -42,7 +42,7 @@ class ProfileSocialManager {
         if (addSocialBtn) {
             addSocialBtn.addEventListener('click', () => {
                 const friendId = addSocialBtn.dataset.friendId;
-                window.location.href = `/social/social.html?friendId=${friendId}`;
+                window.location.href = `/social?friendId=${friendId}`;
             });
         }
     }

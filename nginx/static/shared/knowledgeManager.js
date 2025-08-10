@@ -204,7 +204,11 @@ export class KnowledgeManager {
         });
         
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/${this.config.entityType}/addKnowledge/${this.entityId}`, {
+            // Fix URL construction for addKnowledge
+            const url = `${this.config.apiBaseUrl}/addKnowledge/${this.entityId}`;
+            console.log('Submit URL:', url); // Debug log
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -236,8 +240,11 @@ export class KnowledgeManager {
         try {
             console.log(`Loading page ${page} for ${this.config.entityType} ${this.entityId}`);
             
-            // Backend expects 0-based indexing
-            const response = await fetch(`${this.config.apiBaseUrl}/${this.config.entityType}/getKnowledge/${this.entityId}/page/${page - 1}`);
+            // Fix URL construction - don't double the entity type
+            const url = `${this.config.apiBaseUrl}/getKnowledge/${this.entityId}/page/${page - 1}`;
+            console.log('API URL:', url); // Debug log
+            
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -318,7 +325,11 @@ export class KnowledgeManager {
         };
         
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/${this.config.entityType}/updateKnowledge/${knowledgeId}`, {
+            // Fix URL construction for updateKnowledge
+            const url = `${this.config.apiBaseUrl}/updateKnowledge/${knowledgeId}`;
+            console.log('Update URL:', url); // Debug log
+            
+            const response = await fetch(url, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -344,7 +355,11 @@ export class KnowledgeManager {
         }
         
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/${this.config.entityType}/deleteKnowledge/${knowledgeId}`, {
+            // Fix URL construction for deleteKnowledge
+            const url = `${this.config.apiBaseUrl}/deleteKnowledge/${knowledgeId}`;
+            console.log('Delete URL:', url); // Debug log
+            
+            const response = await fetch(url, {
                 method: 'DELETE'
             });
             

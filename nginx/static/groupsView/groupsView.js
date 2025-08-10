@@ -100,7 +100,7 @@ function initializeGroupLinks() {
     });
 
     // Handle create group button
-    const createGroupBtns = document.querySelectorAll('a[href="/groups/create"], .button[href="/groups/create"]');
+    const createGroupBtns = document.querySelectorAll('a[href="/api/groups/create"], .button[href="/api/groups/create"], a[href="/groups/create"], .button[href="/groups/create"]');
     createGroupBtns.forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -133,11 +133,12 @@ function navigateToCreateGroup() {
 }
 
 /**
- * Navigate to edit group page
+ * Navigate to edit group page (redirect to details for now since edit doesn't exist)
  * @param {number} groupId - The ID of the group to edit
  */
 function navigateToEditGroup(groupId) {
-    window.location.href = `/api/groups/${groupId}/edit`;
+    // Since there's no edit endpoint in GroupController, redirect to group details
+    window.location.href = `/api/groups/${groupId}`;
 }
 
 /**

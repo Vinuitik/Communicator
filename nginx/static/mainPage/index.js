@@ -205,10 +205,10 @@ async function viewRequest(endpoint, page = 1) {
                             <button class="dropdown-button" type="button">⋮</button>
                             <div class="dropdown-content">
                                 <a href="/api/friend/talked/${friend.id}" class="dropdown-item">Talked</a>
-                                <a href="api/friend/profile/${friend.id}" class="dropdown-item">Profile</a>
-                                <a href="api/friend/knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
-                                <a href="api/groups/${friend.id}" class="dropdown-item">Groups</a>
-                                <a href="api/connections/${friend.id}" class="dropdown-item">Connections</a>
+                                <a href="/api/friend/profile/${friend.id}" class="dropdown-item">Profile</a>
+                                <a href="/api/friend/knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
+                                <a href="/api/groups" class="dropdown-item">Groups</a>
+                                <a href="/api/connections/${friend.id}" class="dropdown-item">Connections</a>
                                 <a href="#" class="dropdown-item delete-button">Delete</a>
                             </div>
                         </div>
