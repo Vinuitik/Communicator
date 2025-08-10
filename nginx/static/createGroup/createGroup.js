@@ -1,5 +1,6 @@
 // createGroup.js
 
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Create Group page loaded');
     
@@ -30,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function navigateToGroups() {
     // Use relative path to stay within nginx routing context
     // This ensures we stay on the same domain/port (localhost:8090)
-    window.location.href = '/api/groups';
+    
+    window.location.href = `${window.location.origin}/api/groups/`;
 }
 
 /**
@@ -103,7 +105,7 @@ function submitGroupForm(form) {
     };
 
     // Make API call with better error handling
-    fetch('/api/groups', {
+    fetch('/api/groups/create', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

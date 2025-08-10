@@ -43,35 +43,6 @@ public class GroupController {
         return "groups/createGroup";
     }
 
-    // Handle /api/groups/create POST -> group_service/create
-    @PostMapping("/create")
-    public String createGroup(@ModelAttribute SocialGroup group, RedirectAttributes redirectAttributes) {
-        try {
-            SocialGroup savedGroup = socialGroupService.createGroup(group);
-            redirectAttributes.addFlashAttribute("success", "Group created successfully!");
-            return "redirect:/api/groups";
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to create group: " + e.getMessage());
-            return "redirect:/api/groups/create";
-        }
-    }
-
-
-    // Handle /api/groups/{id}/delete POST -> group_service/{id}/delete
-    @PostMapping("/{id}/delete")
-    public String deleteGroup(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
-        try {
-            boolean deleted = socialGroupService.deleteGroup(id);
-            if (deleted) {
-                redirectAttributes.addFlashAttribute("success", "Group deleted successfully!");
-            } else {
-                redirectAttributes.addFlashAttribute("error", "Group not found!");
-            }
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Failed to delete group: " + e.getMessage());
-        }
-        return "redirect:/api/groups";
-    }
 
     // Handle /api/groups/{id}/knowledge -> group_service/{id}/knowledge
     @GetMapping("/{id}/knowledge")
