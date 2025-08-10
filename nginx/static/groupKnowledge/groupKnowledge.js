@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
         apiBaseUrl: '/api/groups',
         entityType: 'group',
         entityIdKey: 'groupId',
-        textFieldName: 'text',
-        priorityFieldName: 'priority',
+        textFieldName: 'fact',        // JSON property name
+        priorityFieldName: 'importance',  // JSON property name
         pageSize: 10
     };
     

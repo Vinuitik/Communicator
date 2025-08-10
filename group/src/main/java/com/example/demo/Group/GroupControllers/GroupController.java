@@ -56,16 +56,6 @@ public class GroupController {
         }
     }
 
-    // Handle /api/groups/{id} -> group_service/{id}
-    @GetMapping("/{id}")
-    public String getGroupDetails(@PathVariable Integer id, Model model) {
-        SocialGroup group = socialGroupService.getGroupById(id);
-        if (group != null) {
-            model.addAttribute("group", group);
-            return "groups/groupDetails";
-        }
-        return "redirect:/api/groups";
-    }
 
     // Handle /api/groups/{id}/delete POST -> group_service/{id}/delete
     @PostMapping("/{id}/delete")

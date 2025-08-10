@@ -32,7 +32,7 @@
     </nav>
 
     <div class="container fixed_top" th:attr="data-group-id=${groupId}">
-        <h1 id="top">Group Knowledge Tracker</h1>
+        <h1 id="top" th:text="'Group Knowledge Tracker - ' + ${group.name}">Group Knowledge Tracker</h1>
 
         <!-- Input Form Container for Adding New Knowledge -->
         <div class="input-form-container">

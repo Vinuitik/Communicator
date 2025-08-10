@@ -32,16 +32,25 @@ export class KnowledgeManager {
         const urlPath = window.location.pathname;
         const pathParts = urlPath.split('/');
         
-        // Look for knowledge URL pattern: /{entityType}/{id}/knowledge or /knowledge/{id}
-        const knowledgeIndex = pathParts.indexOf('knowledge');
-        if (knowledgeIndex >= 0) {
-            // Pattern: /knowledge/{id}
-            if (pathParts[knowledgeIndex + 1]) {
-                this.entityId = parseInt(pathParts[knowledgeIndex + 1]);
+        // Look for specific patterns based on entity type
+        if (this.config.entityType === 'group') {
+            // Pattern: /api/groups/{id}/knowledge
+            const groupsIndex = pathParts.indexOf('groups');
+            if (groupsIndex >= 0 && pathParts[groupsIndex + 1] && pathParts[groupsIndex + 2] === 'knowledge') {
+                this.entityId = parseInt(pathParts[groupsIndex + 1]);
             }
-            // Pattern: /{entityType}/{id}/knowledge
-            else if (knowledgeIndex > 0 && pathParts[knowledgeIndex - 1]) {
-                this.entityId = parseInt(pathParts[knowledgeIndex - 1]);
+        } else {
+            // Pattern for friends: /knowledge/{id} or /{entityType}/{id}/knowledge
+            const knowledgeIndex = pathParts.indexOf('knowledge');
+            if (knowledgeIndex >= 0) {
+                // Pattern: /knowledge/{id}
+                if (pathParts[knowledgeIndex + 1]) {
+                    this.entityId = parseInt(pathParts[knowledgeIndex + 1]);
+                }
+                // Pattern: /{entityType}/{id}/knowledge
+                else if (knowledgeIndex > 0 && pathParts[knowledgeIndex - 1]) {
+                    this.entityId = parseInt(pathParts[knowledgeIndex - 1]);
+                }
             }
         }
         

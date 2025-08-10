@@ -26,7 +26,7 @@ import com.example.demo.Group.GroupServices.SocialGroupService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/groups")
+@RequestMapping("/")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class GroupApiController {
@@ -34,23 +34,7 @@ public class GroupApiController {
     private final SocialGroupService socialGroupService;
     private final GroupKnowledgeService groupKnowledgeService;
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllGroups() {
-        try {
-            List<SocialGroup> groups = socialGroupService.getAllGroups();
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("groups", groups);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Failed to retrieve groups: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
-
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createGroup(@RequestBody SocialGroup group) {
         try {
             SocialGroup savedGroup = socialGroupService.createGroup(group);
