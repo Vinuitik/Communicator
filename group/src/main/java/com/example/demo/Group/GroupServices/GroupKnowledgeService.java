@@ -16,7 +16,9 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,7 +63,7 @@ public class GroupKnowledgeService {
     }
 
     public Page<GroupKnowledge> getGroupKnowledgePage(Integer groupId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "priority"));
         return groupKnowledgeRepository.findByGroupId(groupId, pageable);
     }
 
@@ -98,5 +100,13 @@ public class GroupKnowledgeService {
 
     public long getKnowledgeCountForGroup(Integer groupId) {
         return groupKnowledgeRepository.countByGroupId(groupId);
+    }
+    
+    public Map<Integer, Long> getKnowledgeCountsForGroups(List<Integer> groupIds) {
+        return groupIds.stream()
+                .collect(Collectors.toMap(
+                    groupId -> groupId,
+                    this::getKnowledgeCountForGroup
+                ));
     }
 }

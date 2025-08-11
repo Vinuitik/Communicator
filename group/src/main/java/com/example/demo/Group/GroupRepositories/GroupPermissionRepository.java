@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 import com.example.demo.Group.GroupEntities.GroupPermission;
 @Repository
 public interface GroupPermissionRepository extends JpaRepository<GroupPermission, Integer> {
-
+    
+    long countByGroupId(Integer groupId);
 }

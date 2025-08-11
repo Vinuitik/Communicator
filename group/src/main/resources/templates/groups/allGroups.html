@@ -72,10 +72,10 @@
                                 <span class="stat-note">Coming Soon</span>
                             </td>
                             <td>
-                                <span class="stat-value" th:text="${group.knowledge != null ? group.knowledge.size() : 0}">0</span>
+                                <span class="stat-value" th:text="${knowledgeCounts[group.id] ?: 0}">0</span>
                             </td>
                             <td>
-                                <span class="stat-value" th:text="${group.permissions != null ? group.permissions.size() : 0}">0</span>
+                                <span class="stat-value" th:text="${permissionCounts[group.id] ?: 0}">0</span>
                             </td>
                             <td class="actions-cell">
                                 <div class="dropdown">
