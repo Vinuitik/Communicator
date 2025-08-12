@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
 
 import com.example.demo.Group.GroupEntities.SocialGroup;
 import com.example.demo.Group.GroupRepositories.SocialGroupRepository;
@@ -20,6 +21,7 @@ public class SocialGroupService {
         return socialGroupRepository.findAll();
     }
 
+    @Transactional
     public SocialGroup getGroupById(Integer id) {
         Optional<SocialGroup> group = socialGroupRepository.findById(id);
         return group.orElse(null);

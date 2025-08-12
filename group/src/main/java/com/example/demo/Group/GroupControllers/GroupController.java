@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,8 +21,6 @@ import com.example.demo.Group.GroupEntities.SocialGroup;
 import com.example.demo.Group.GroupServices.GroupKnowledgeService;
 import com.example.demo.Group.GroupServices.GroupPermissionService;
 import com.example.demo.Group.GroupServices.SocialGroupService;
-
-import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 

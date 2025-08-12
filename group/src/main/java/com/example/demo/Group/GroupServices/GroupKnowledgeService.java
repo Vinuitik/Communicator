@@ -5,7 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.transaction.Transactional;
 
 import com.example.demo.Group.GroupEntities.GroupKnowledge;
 import com.example.demo.Group.GroupEntities.SocialGroup;
@@ -67,6 +67,7 @@ public class GroupKnowledgeService {
         return groupKnowledgeRepository.findByGroupId(groupId, pageable);
     }
 
+    @Transactional
     public List<GroupKnowledge> getAllGroupKnowledge(Integer groupId) {
         return groupKnowledgeRepository.findByGroupIdOrderByDateDesc(groupId);
     }
