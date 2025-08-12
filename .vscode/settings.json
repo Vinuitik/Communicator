@@ -2,5 +2,6 @@
     "java.configuration.updateBuildConfiguration": "interactive",
     "java.debug.settings.onBuildFailureProceed": true,
     "DockerRun.DisableDockerrc": true,
-    "java.compile.nullAnalysis.mode": "disabled"
+    "java.compile.nullAnalysis.mode": "disabled",
+    "DockerRun.DisableAutoGenerateConfig": true
 }

@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td data-label="Id">${knowledge.id}</td>
                 <td data-label="Fact" contenteditable="true">${knowledge.text || knowledge.fact || ''}</td>
                 <td data-label="Importance" contenteditable="true">${knowledge.priority || knowledge.importance || ''}</td>
-                <td data-label="Actions">
+                <td data-label="Actions" class="actions-cell">
                     <button class="button updateKnowledgeBtn">Update</button>
                     <button class="button deleteKnowledgeBtn">Delete</button>
                 </td>
@@ -367,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ID cell for committed table
                 const idCell = document.createElement('td');
                 idCell.textContent = id || '';
+                idCell.setAttribute('data-label', 'Id');
                 newRow.appendChild(idCell);
             }
             
@@ -374,12 +375,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const factCell = document.createElement('td');
             factCell.textContent = fact;
             factCell.setAttribute('contenteditable', 'true');
+            factCell.setAttribute('data-label', 'Fact');
             newRow.appendChild(factCell);
             
             // Importance cell
             const importanceCell = document.createElement('td');
             importanceCell.textContent = importance;
             importanceCell.setAttribute('contenteditable', 'true');
+            importanceCell.setAttribute('data-label', 'Importance');
             newRow.appendChild(importanceCell);
             
             // Actions cell
@@ -410,9 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             actionsCell.appendChild(updateButton);
             actionsCell.appendChild(deleteButton);
-            actionsCell.style.minWidth = '300px';
-            actionsCell.style.display = 'flex';
-            actionsCell.style.justifyContent = 'space-around';
+            actionsCell.classList.add('actions-cell');
+            actionsCell.setAttribute('data-label', 'Actions');
             newRow.appendChild(actionsCell);
             
             // Insert at correct position based on importance
