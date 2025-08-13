@@ -19,4 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const knowledgeManager = new KnowledgeManager(groupKnowledgeConfig);
     
     console.log('Group Knowledge Manager initialized');
+    
+    // Export methods for backward compatibility
+    window.KnowledgeTableManager = {
+        collectKnowledgeData: () => knowledgeManager.collectKnowledgeData(),
+        sendKnowledgeData: (knowledgeData) => knowledgeManager.sendKnowledgeData(knowledgeData),
+        getIdFromUrl: () => knowledgeManager.getIdFromUrl()
+    };
 });

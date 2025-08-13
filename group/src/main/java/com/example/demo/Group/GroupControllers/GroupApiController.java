@@ -3,6 +3,7 @@ package com.example.demo.Group.GroupControllers;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -101,18 +102,45 @@ public class GroupApiController {
     public ResponseEntity<Map<String, Object>> addKnowledgeToGroup(
             @PathVariable Integer groupId,
             @RequestBody List<GroupKnowledge> knowledgeList) {
+        Map<String, Object> response = new HashMap<>();
         try {
+            // Get the group to verify it exists
+            SocialGroup group = socialGroupService.getGroupById(groupId);
+            if (group == null) {
+                response.put("message", "Group with ID " + groupId + " not found.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+            // Associate the group with each knowledge object and set default values
+            for (GroupKnowledge k : knowledgeList) {
+                k.setGroup(group);
+                // Ensure ID is null for new entities
+                k.setId(null);
+                // Ensure priority is not null
+                if (k.getPriority() == null) {
+                    k.setPriority(5L); // Default priority
+                }
+                // Validate required fields
+                if (k.getText() == null || k.getText().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Knowledge text cannot be null or empty");
+                }
+            }
+
             List<GroupKnowledge> savedKnowledge = groupKnowledgeService.addKnowledgeToGroup(groupId, knowledgeList);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
+
+            // Collect the IDs of the saved knowledge objects
+            List<Integer> ids = savedKnowledge.stream()
+                                        .map(GroupKnowledge::getId)
+                                        .toList();
+
             response.put("message", "Knowledge added successfully!");
-            response.put("knowledge", savedKnowledge);
+            response.put("ids", ids); // Add the IDs to the response
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Failed to add knowledge: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            System.err.println("Error adding knowledge: " + e.getMessage());
+            e.printStackTrace(); // Add stack trace for debugging
+            response.put("message", "An error occurred while adding the knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
@@ -145,44 +173,36 @@ public class GroupApiController {
         }
     }
 
-    @PutMapping("/updateKnowledge/{knowledgeId}")
-    public ResponseEntity<Map<String, Object>> updateKnowledge(
-            @PathVariable Integer knowledgeId,
-            @RequestBody GroupKnowledge knowledgeData) {
+    @PutMapping("/updateKnowledge")
+    public ResponseEntity<String> updateKnowledge(@RequestBody GroupKnowledge knowledgeData) {
         try {
-            GroupKnowledge updatedKnowledge = groupKnowledgeService.updateKnowledge(knowledgeId, knowledgeData);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Knowledge updated successfully!");
-            response.put("knowledge", updatedKnowledge);
-            return ResponseEntity.ok(response);
+            Optional<GroupKnowledge> knowledgeDbOpt = groupKnowledgeService.getKnowledgeById(knowledgeData.getId());
+            if (knowledgeDbOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Knowledge with the given ID not found.");
+            }
+            GroupKnowledge knowledgeDb = knowledgeDbOpt.get();
+            knowledgeData.setGroup(knowledgeDb.getGroup());
+            groupKnowledgeService.updateKnowledge(knowledgeData.getId(), knowledgeData);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Knowledge updated successfully!");
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Failed to update knowledge: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            System.err.println("Error updating knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while updating the knowledge.");
         }
     }
 
     @DeleteMapping("/deleteKnowledge/{knowledgeId}")
-    public ResponseEntity<Map<String, Object>> deleteKnowledge(@PathVariable Integer knowledgeId) {
+    public ResponseEntity<String> deleteKnowledge(@PathVariable Integer knowledgeId) {
         try {
             boolean deleted = groupKnowledgeService.deleteKnowledge(knowledgeId);
-            Map<String, Object> response = new HashMap<>();
             if (deleted) {
-                response.put("success", true);
-                response.put("message", "Knowledge deleted successfully!");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Knowledge deleted successfully!");
             } else {
-                response.put("success", false);
-                response.put("message", "Knowledge not found!");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Knowledge not found!");
             }
         } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Failed to delete knowledge: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            System.err.println("Error deleting knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while deleting the knowledge.");
         }
     }
 }

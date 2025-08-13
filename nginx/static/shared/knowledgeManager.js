@@ -301,8 +301,8 @@ export class KnowledgeManager {
         
         row.innerHTML = `
             <td data-label="Id">${knowledge.id}</td>
-            <td data-label="Fact" contenteditable="true">${knowledge[this.config.textFieldName] || knowledge.fact || ''}</td>
-            <td data-label="Importance" contenteditable="true">${knowledge[this.config.priorityFieldName] || knowledge.importance || ''}</td>
+            <td data-label="Fact" contenteditable="true">${knowledge[this.config.textFieldName] || knowledge.text || knowledge.fact || ''}</td>
+            <td data-label="Importance" contenteditable="true">${knowledge[this.config.priorityFieldName] || knowledge.priority || knowledge.importance || ''}</td>
             <td data-label="Actions">
                 <button class="button updateKnowledgeBtn">Update</button>
                 <button class="button deleteKnowledgeBtn">Delete</button>
@@ -329,13 +329,14 @@ export class KnowledgeManager {
         const importanceCell = row.querySelector('td[data-label="Importance"]');
         
         const updatedData = {
+            id: knowledgeId,
             [this.config.textFieldName]: factCell.textContent.trim(),
             [this.config.priorityFieldName]: parseInt(importanceCell.textContent.trim())
         };
         
         try {
-            // Fix URL construction for updateKnowledge
-            const url = `${this.config.apiBaseUrl}/updateKnowledge/${knowledgeId}`;
+            // URL construction for updateKnowledge (no ID in path for unified API)
+            const url = `${this.config.apiBaseUrl}/updateKnowledge`;
             console.log('Update URL:', url); // Debug log
             
             const response = await fetch(url, {
@@ -364,7 +365,7 @@ export class KnowledgeManager {
         }
         
         try {
-            // Fix URL construction for deleteKnowledge
+            // URL construction for deleteKnowledge (ID in path)
             const url = `${this.config.apiBaseUrl}/deleteKnowledge/${knowledgeId}`;
             console.log('Delete URL:', url); // Debug log
             
@@ -443,11 +444,185 @@ export class KnowledgeManager {
     
     showError(message) {
         // You can customize this to use your preferred notification system
-        alert('Error: ' + message);
+        const knowledgeInfo = this.elements.knowledgeInfo;
+        if (knowledgeInfo) {
+            knowledgeInfo.textContent = message;
+            knowledgeInfo.style.color = 'red';
+            
+            // Reset color after 3 seconds
+            setTimeout(() => {
+                knowledgeInfo.style.color = '';
+            }, 3000);
+        } else {
+            alert('Error: ' + message);
+        }
     }
     
     showSuccess(message) {
         // You can customize this to use your preferred notification system
-        alert('Success: ' + message);
+        const knowledgeInfo = this.elements.knowledgeInfo;
+        if (knowledgeInfo) {
+            knowledgeInfo.textContent = message;
+            knowledgeInfo.style.color = 'green';
+            
+            // Reset color after 3 seconds
+            setTimeout(() => {
+                knowledgeInfo.style.color = '';
+            }, 3000);
+        } else {
+            console.log('Success: ' + message);
+        }
+    }
+    
+    // Additional methods for backward compatibility with facts.js
+    addRowToTable(tableBody, fact, importance, id = null) {
+        if (!tableBody) return;
+        
+        // Create new row and cells
+        const newRow = document.createElement('tr');
+        if (id) newRow.setAttribute('data-id', id);
+        
+        // Different structure based on table type
+        if (tableBody === this.elements.committedTableBody) {
+            // ID cell for committed table
+            const idCell = document.createElement('td');
+            idCell.textContent = id || '';
+            idCell.setAttribute('data-label', 'Id');
+            newRow.appendChild(idCell);
+        }
+        
+        // Fact cell
+        const factCell = document.createElement('td');
+        factCell.textContent = fact;
+        factCell.setAttribute('contenteditable', 'true');
+        factCell.setAttribute('data-label', 'Fact');
+        newRow.appendChild(factCell);
+        
+        // Importance cell
+        const importanceCell = document.createElement('td');
+        importanceCell.textContent = importance;
+        importanceCell.setAttribute('contenteditable', 'true');
+        importanceCell.setAttribute('data-label', 'Importance');
+        newRow.appendChild(importanceCell);
+        
+        // Actions cell
+        const actionsCell = document.createElement('td');
+        
+        // Update button
+        const updateButton = document.createElement('button');
+        updateButton.textContent = 'Update';
+        updateButton.classList.add('button', 'updateKnowledgeBtn');
+        updateButton.style.marginRight = '5px';
+        
+        // Delete button
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.classList.add('button', 'deleteKnowledgeBtn');
+        
+        // Add event listeners to buttons
+        if (tableBody === this.elements.tableBody) {
+            deleteButton.addEventListener('click', () => {
+                newRow.remove();
+                console.log('Temporary row deleted');
+            });
+        } else {
+            // For committed table
+            updateButton.addEventListener('click', () => this.handleUpdate(newRow, id));
+            deleteButton.addEventListener('click', () => this.handleDelete(newRow, id));
+        }
+        
+        actionsCell.appendChild(updateButton);
+        actionsCell.appendChild(deleteButton);
+        actionsCell.classList.add('actions-cell');
+        actionsCell.setAttribute('data-label', 'Actions');
+        newRow.appendChild(actionsCell);
+        
+        // Insert at correct position based on importance
+        this.insertRowSorted(tableBody, newRow, parseFloat(importance));
+    }
+    
+    insertRowSorted(tableBody, newRow, importance) {
+        // Determine which column index to use for importance based on table type
+        const importanceColumnIndex = tableBody === this.elements.committedTableBody ? 2 : 1;
+        
+        // Find insertion index using binary search
+        const index = this.findInsertionIndex(tableBody, importance, importanceColumnIndex);
+        
+        // Insert the row at the correct index
+        const rows = tableBody.querySelectorAll('tr');
+        if (rows.length === 0 || index >= rows.length) {
+            tableBody.appendChild(newRow);
+        } else {
+            tableBody.insertBefore(newRow, rows[index]);
+        }
+    }
+    
+    findInsertionIndex(tableBody, importance, columnIndex) {
+        const rows = Array.from(tableBody.querySelectorAll('tr'));
+        let low = 0, high = rows.length - 1;
+        
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const midImportance = parseFloat(rows[mid].children[columnIndex].textContent);
+            
+            if (midImportance < importance) {
+                high = mid - 1;
+            } else {
+                low = mid + 1;
+            }
+        }
+        
+        return low;
+    }
+    
+    // Method for collecting knowledge data from the temporary table
+    collectKnowledgeData() {
+        const knowledgeEntries = [];
+        const rows = this.elements.tableBody?.querySelectorAll('tr') || [];
+
+        rows.forEach(row => {
+            const factText = row.cells[0].textContent;
+            const importanceText = row.cells[1].textContent;
+            knowledgeEntries.push({ 
+                [this.config.textFieldName]: factText, 
+                [this.config.priorityFieldName]: parseInt(importanceText) 
+            });
+        });
+
+        return knowledgeEntries;
+    }
+    
+    // Method for getting ID from URL
+    getIdFromUrl() {
+        return this.entityId;
+    }
+    
+    // Method for sending knowledge data - wrapper for handleSubmitInfo
+    sendKnowledgeData(knowledgeData) {
+        if (!this.entityId) {
+            throw new Error(`No ${this.config.entityType} ID available`);
+        }
+        
+        console.log('Sending data:', knowledgeData);
+        
+        const url = `${this.config.apiBaseUrl}/addKnowledge/${this.entityId}`;
+        
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(knowledgeData)
+        })
+        .then(response => {
+            console.log('Response:', response);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data sent successfully:', data);
+            return data;
+        })
+        .catch(error => {
+            console.error('Error sending data:', error);
+            throw error;
+        });
     }
 }
