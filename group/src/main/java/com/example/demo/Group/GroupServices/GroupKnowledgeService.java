@@ -62,6 +62,7 @@ public class GroupKnowledgeService {
         return groupKnowledgeRepository.save(knowledge);
     }
 
+    @Transactional
     public Page<GroupKnowledge> getGroupKnowledgePage(Integer groupId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "priority"));
         return groupKnowledgeRepository.findByGroupId(groupId, pageable);

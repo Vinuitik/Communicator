@@ -140,6 +140,7 @@ public class GroupApiController {
             Page<GroupKnowledge> knowledgePage = groupKnowledgeService.getGroupKnowledgePage(groupId, page, 10);
             return ResponseEntity.ok(knowledgePage);
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
