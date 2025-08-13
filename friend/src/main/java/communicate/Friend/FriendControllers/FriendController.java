@@ -304,22 +304,4 @@ public class FriendController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
-
-    // New paginated endpoint that returns FriendDTO for UI
-    @GetMapping("friends/ui/page/{page}/size/{size}")
-    public ResponseEntity<List<FriendDTO>> getFriendsPaginatedForUI(
-            @PathVariable int page, 
-            @PathVariable int size) {
-        try {
-            Page<Friend> friendsPage = friendService.getFriendsPagedForUI(page, size);
-            List<FriendDTO> friends = friendsPage.getContent().stream()
-                .map(f -> new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                        f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), false))
-                .toList();
-            return ResponseEntity.ok(friends);
-        } catch (Exception e) {
-            System.err.println("Error retrieving paginated friends for UI: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
 }

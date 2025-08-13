@@ -29,7 +29,8 @@ public class AnalyticsService {
                 emaUpdateService.updateEmaOnNewAnalytics(
                     analytics.getFriend().getId(),
                     analytics.getExperience(),
-                    analytics.getHours()
+                    analytics.getHours(),
+                    analytics.getDate()
                 );
             }
         } catch (Exception e) {
@@ -46,7 +47,7 @@ public class AnalyticsService {
                 analyticsRepository.save(a);
                 
                 // Update EMA values for each analytics entry
-                emaUpdateService.updateEmaOnNewAnalytics(friendId, a.getExperience(), a.getHours());
+                emaUpdateService.updateEmaOnNewAnalytics(friendId, a.getExperience(), a.getHours(), a.getDate());
             }
         } catch (Exception e) {
            System.out.print("Error saving analytics " + e.toString());
@@ -62,7 +63,7 @@ public class AnalyticsService {
                 
                 // Update EMA values for each analytics entry
                 if (friend.getId() != null) {
-                    emaUpdateService.updateEmaOnNewAnalytics(friend.getId(), a.getExperience(), a.getHours());
+                    emaUpdateService.updateEmaOnNewAnalytics(friend.getId(), a.getExperience(), a.getHours(), a.getDate());
                 }
             }
         } catch (Exception e) {
