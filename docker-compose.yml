@@ -104,6 +104,7 @@ services:
       - friend
       - group
       - connections
+      - mcp-knowledge-server
     #restart: unless-stopped
 
   fileRepository:
@@ -135,8 +136,6 @@ services:
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1
-    depends_on:
-      - nginx  # Depends on nginx since it makes API calls through it
     #restart: unless-stopped
 
   ai-agent:

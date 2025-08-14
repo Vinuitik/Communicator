@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -34,18 +34,18 @@
         <h1>Create New Group</h1>
 
         <!-- Flash Messages -->
-        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+        <div id="success-message" class="alert alert-success" style="display: none;"></div>
+        <div id="error-message" class="alert alert-error" style="display: none;"></div>
 
         <!-- Create Group Form -->
         <div class="form-container">
-            <form th:action="@{/api/groups/create}" th:object="${group}" method="post" class="group-form">
+            <form id="createGroupForm" action="/api/groups/create" method="post" class="group-form">
                 
                 <div class="form-group">
                     <label for="name">Group Name *</label>
                     <input type="text" 
                            id="name" 
-                           th:field="*{name}" 
+                           name="name" 
                            placeholder="e.g., Work Colleagues, Family, College Friends" 
                            required 
                            class="form-control">
