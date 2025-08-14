@@ -1,26 +1,21 @@
-# Use the official OpenJDK 17 image as base
-FROM openjdk:17-jdk-alpine
-
-# Set the working directory inside the container
+# Stage 1: Build the application with dependency caching
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy the Maven wrapper and pom.xml
-COPY mvnw .
-COPY mvnw.cmd .
-COPY .mvn .mvn
+# Copy only the pom.xml to leverage Docker's layer caching
 COPY pom.xml .
 
-# Make Maven wrapper executable
-RUN chmod +x ./mvnw
+# Download all dependencies. This layer is cached as long as pom.xml doesn't change.
+RUN mvn dependency:go-offline
 
-# Copy the source code
+# Copy the rest of the source code
 COPY src ./src
 
-# Build the application
-RUN ./mvnw clean package -DskipTests
+# Package the application
+RUN mvn clean package -DskipTests
 
-# Expose the port the app runs on
-EXPOSE 8087
-
-# Run the jar file
-CMD ["java", "-jar", "target/app.jar"]
+# Stage 2: Create the final, smaller image
+FROM openjdk:21-slim
+WORKDIR /app
+COPY --from=build /app/target/app.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]

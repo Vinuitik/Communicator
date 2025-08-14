@@ -18,6 +18,8 @@ services:
   friend:
     build:
       context: ./friend  # Build the image from the current directory using the Dockerfile
+    volumes:
+      - maven-cache-friend:/root/.m2
     container_name: friend
     expose:
       - "8085"  # Internal exposure only, no external port mapping
@@ -56,6 +58,8 @@ services:
         SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
         TZ: ${HOST_TIMEZONE:-UTC}
+      volumes:
+        - maven-cache-group:/root/.m2
       depends_on:
         - postgres
       #restart: unless-stopped
@@ -72,6 +76,8 @@ services:
         SPRING_DATASOURCE_USERNAME: myapp_user
         SPRING_DATASOURCE_PASSWORD: example
         TZ: ${HOST_TIMEZONE:-UTC}
+      volumes:
+        - maven-cache-connections:/root/.m2
       depends_on:
         - postgres
       #restart: unless-stopped
@@ -85,6 +91,8 @@ services:
         - "8087"  # Internal exposure only, no external port mapping
       environment:
         TZ: ${HOST_TIMEZONE:-UTC}
+      volumes:
+        - maven-cache-chrono:/root/.m2
       depends_on:
         - friend
         - nginx
@@ -168,4 +176,12 @@ volumes:
   file-repo-voice:
     driver: local
   file-repo-personal:
+    driver: local
+  maven-cache-friend:
+    driver: local
+  maven-cache-group:
+    driver: local
+  maven-cache-connections:
+    driver: local
+  maven-cache-chrono:
     driver: local
