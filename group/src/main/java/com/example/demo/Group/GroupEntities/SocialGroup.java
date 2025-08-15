@@ -48,11 +48,17 @@ public class SocialGroup {
     @Builder.Default
     private List<GroupPermission> permissions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "socialGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<GroupSocial> socials = new ArrayList<>();
+
     // Constructor to ensure lists are initialized
     public SocialGroup(String name, String description) {
         this.name = name;
         this.description = description;
         this.knowledge = new ArrayList<>();
         this.permissions = new ArrayList<>();
+        this.socials = new ArrayList<>();
     }
 }
