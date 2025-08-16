@@ -27,6 +27,12 @@ RESOURCE_FOLDERS = {
         'videos': os.path.join(BASE_DIR, 'groups', 'videos'),
         'voice': os.path.join(BASE_DIR, 'groups', 'voice'),
         'personal': os.path.join(BASE_DIR, 'groups', 'personalResources')
+    },
+    'connections': {
+        'photos': os.path.join(BASE_DIR, 'connections', 'photos'),
+        'videos': os.path.join(BASE_DIR, 'connections', 'videos'),
+        'voice': os.path.join(BASE_DIR, 'connections', 'voice'),
+        'personal': os.path.join(BASE_DIR, 'connections', 'personalResources')
     }
 }
 
@@ -171,8 +177,10 @@ def delete_files_transactional(file_names, entity_type, entity_id):
 # --- Blueprints Registration ---
 from blueprints.friends_files import friends_bp
 from blueprints.groups_files import groups_bp
+from blueprints.connections_files import connections_bp
 from blueprints.backup import backup_bp
 
 app.register_blueprint(friends_bp)
 app.register_blueprint(groups_bp)
+app.register_blueprint(connections_bp)
 app.register_blueprint(backup_bp)

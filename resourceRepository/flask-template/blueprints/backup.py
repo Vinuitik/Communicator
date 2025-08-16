@@ -10,13 +10,13 @@ backup_bp = Blueprint('backup', __name__)
 @backup_bp.route('/backup', methods=['GET'])
 def backup_all_files():
     """
-    Creates a zip archive of all files for both friends and groups.
+    Creates a zip archive of all files for friends, groups, and connections.
     """
     memory_file = io.BytesIO()
     found_files_count = 0
 
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # Iterate through each entity type (friends, groups)
+        # Iterate through each entity type (friends, groups, connections)
         for entity_type, resource_types in RESOURCE_FOLDERS.items():
             # Iterate through each resource type (photos, videos, etc.)
             for _, base_path in resource_types.items():
