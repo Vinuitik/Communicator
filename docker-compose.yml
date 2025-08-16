@@ -128,6 +128,8 @@ services:
       - file-repo-videos:/app/videos
       - file-repo-voice:/app/voice
       - file-repo-personal:/app/personalResources
+      - file-repo-groups:/app/groups
+      - file-repo-connections:/app/connections
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
     #restart: unless-stopped
@@ -176,6 +178,10 @@ volumes:
   file-repo-voice:
     driver: local
   file-repo-personal:
+    driver: local
+  file-repo-groups:
+    driver: local
+  file-repo-connections:
     driver: local
   maven-cache-friend:
     driver: local
