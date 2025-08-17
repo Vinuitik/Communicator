@@ -33,7 +33,7 @@ public class GroupSocialService {
     public List<GroupSocial> getAllGroupSocialsForGroup(Integer groupId) {
         SocialGroup socialGroup = socialGroupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
-        return socialGroup.getGroupSocials();
+        return socialGroup.getSocials();
     }
 
     public GroupSocial updateGroupSocial(Integer socialId, GroupSocial groupSocialDetails) {

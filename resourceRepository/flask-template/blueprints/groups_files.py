@@ -1,7 +1,7 @@
 import os
 from flask import Blueprint, request, jsonify, send_file
 from werkzeug.utils import secure_filename
-from ..app import get_destination_folder, find_file_path, save_files_transactional, delete_files_transactional
+from app import get_destination_folder, find_file_path, save_files_transactional, delete_files_transactional
 
 groups_bp = Blueprint('groups_files', __name__, url_prefix='/groups')
 

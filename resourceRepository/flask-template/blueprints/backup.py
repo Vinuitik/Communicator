@@ -3,7 +3,7 @@ import zipfile
 import datetime
 import os
 from flask import Blueprint, jsonify, send_file
-from ..app import RESOURCE_FOLDERS, BASE_DIR
+from app import RESOURCE_FOLDERS, BASE_DIR
 
 backup_bp = Blueprint('backup', __name__)
 

@@ -7,8 +7,12 @@ WORKDIR /app
 COPY ./flask-template/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
-COPY ./flask-template/app.py .
+# Copy the entire Flask application into the container (this includes the
+# `blueprints/` package so imports like `from blueprints...` resolve)
+COPY ./flask-template/ .
+
+# Ensure the application directory is on Python path (defensive)
+ENV PYTHONPATH=/app
 
 # Make port 5000 available to the world outside this container
 EXPOSE 5000
