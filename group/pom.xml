@@ -65,6 +65,13 @@
             <version>${spring.boot.version}</version>
         </dependency>
 
+        <!-- Spring Boot Starter WebFlux for WebClient -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

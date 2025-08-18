@@ -46,4 +46,12 @@ public class SocialGroupService {
         }
         return false;
     }
+
+    @Transactional
+    public void setPrimaryPhoto(Long photoId, Integer groupId) {
+        SocialGroup group = socialGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
+        group.setPrimaryPhotoId(photoId);
+        socialGroupRepository.save(group);
+    }
 }

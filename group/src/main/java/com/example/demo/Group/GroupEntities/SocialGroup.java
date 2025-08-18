@@ -1,6 +1,7 @@
 package com.example.demo.Group.GroupEntities;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,21 +14,16 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import com.example.demo.Group.GroupEntities.GroupPermission;
 import jakarta.persistence.OneToMany;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SocialGroup {
 
     @Id
@@ -36,15 +32,13 @@ public class SocialGroup {
 
     private String name;
 
+    @Column(name = "description", length = 500)
     private String description;
 
-    @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    @Builder.Default
-    private List<GroupKnowledge> knowledge = new ArrayList<>();
+    @Column(name = "primary_photo_id")
+    private Long primaryPhotoId;
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
     @Builder.Default
     private List<GroupPermission> permissions = new ArrayList<>();
 
@@ -52,13 +46,4 @@ public class SocialGroup {
     @JsonManagedReference
     @Builder.Default
     private List<GroupSocial> socials = new ArrayList<>();
-
-    // Constructor to ensure lists are initialized
-    public SocialGroup(String name, String description) {
-        this.name = name;
-        this.description = description;
-        this.knowledge = new ArrayList<>();
-        this.permissions = new ArrayList<>();
-        this.socials = new ArrayList<>();
-    }
 }

@@ -28,7 +28,7 @@ public class WebConfig {
             // Allow all requests without authentication
             .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
             // Disable security headers that might interfere
-            .headers(headers -> headers.frameOptions().disable());
+            .headers(headers -> headers.frameOptions(frameOptionsConfig -> frameOptionsConfig.disable()));
         
         return http.build();
     }

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/groups/{groupId}/socials")
+@RequestMapping("/{groupId}/socials")
 public class GroupSocialController {
 
     @Autowired
@@ -32,12 +32,12 @@ public class GroupSocialController {
         return ResponseEntity.ok(groupSocialService.getAllGroupSocialsForGroup(groupId));
     }
 
-    @PutMapping("/{socialId}")
+    @PutMapping("update/{socialId}")
     public ResponseEntity<GroupSocial> updateGroupSocial(@PathVariable Integer socialId, @RequestBody GroupSocial groupSocialDetails) {
         return ResponseEntity.ok(groupSocialService.updateGroupSocial(socialId, groupSocialDetails));
     }
 
-    @DeleteMapping("/{socialId}")
+    @DeleteMapping("delete/{socialId}")
     public ResponseEntity<Void> deleteGroupSocial(@PathVariable Integer socialId) {
         groupSocialService.deleteGroupSocial(socialId);
         return ResponseEntity.noContent().build();
