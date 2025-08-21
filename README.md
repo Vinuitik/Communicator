@@ -125,10 +125,12 @@ public class Connections {
 ## 🎨 Frontend Architecture
 
 ### Technology Stack
-- **Core**: HTML5, CSS3, Vanilla JavaScript
-- **Styling**: Custom CSS with Google Fonts (Roboto)
-- **Architecture**: Single Page Application with dynamic content loading
+- **Core**: HTML5, CSS3, Vanilla JavaScript (Multi-page application)
+- **Modern Components**: React 18.2.0, TailwindCSS 3.4.0, Webpack 5
+- **Styling**: Custom CSS with Google Fonts (Roboto) + TailwindCSS utility classes for React components
+- **Architecture**: Multi-page application with nginx routing + Modern React components for specific features
 - **Communication**: Fetch API for REST calls
+- **Build Tools**: Webpack with Babel for React compilation and PostCSS for Tailwind processing
 
 ### Key Features
 1. **Weekly Dashboard**: Shows friends to contact this week based on birthdays and planned interaction times
@@ -137,21 +139,47 @@ public class Connections {
 4. **Analytics Dashboard**: Visualize communication patterns and statistics
 5. **File Upload System**: Manage photos, videos, and documents per friend
 6. **Calendar View**: Visual representation of upcoming interactions
+7. **Group Social Management**: Modern React-based interface for managing group social links
+8. **Multi-page Navigation**: Nginx-routed pages for different application features
 
-### Page Structure
+### Page Structure & Routing
 ```
-nginx/static/
-├── index.html              # Main dashboard
-├── addFriendForm/          # Friend creation interface
-├── analytics/              # Statistics and charts
-├── calendarView/           # Calendar interface
-├── facts/                  # Knowledge management
-├── fileUpload/             # Media upload system
-├── mainPage/               # Dashboard styling
-├── navigation/             # Navigation components
-├── profile/                # Friend profile pages
-└── updateForm/             # Friend editing interface
+nginx/static/                    # Multi-page application structure
+├── index.html                   # Main dashboard (route: /index)
+├── addFriendForm/              # Friend creation interface
+├── analytics/                  # Statistics and charts (route: /stats)
+├── calendarView/               # Calendar interface
+├── facts/                      # Knowledge management
+├── fileUpload/                 # Media upload system (route: /fileUpload/{id})
+├── mainPage/                   # Dashboard styling
+├── navigation/                 # Navigation components
+├── profile/                    # Friend profile pages
+├── social/                     # Social media management (route: /social)
+├── groupsView/                 # Group listing interface
+├── createGroup/                # Group creation (route: /api/groups/createGroup)
+├── groupDetails/               # Group management interface
+├── groupKnowledge/             # Group knowledge management
+└── updateForm/                 # Friend editing interface
+
+nginx/react-components/         # Modern React implementation
+├── package.json               # React dependencies and build scripts
+├── webpack.config.js          # Webpack build configuration
+├── tailwind.config.cjs        # TailwindCSS configuration
+├── postcss.config.cjs         # PostCSS with Tailwind processing
+└── src/
+    └── groupSocial/           # Group social management (route: /group/social/{groupId})
+        ├── components/        # Reusable React components
+        ├── services/          # API service layers
+        ├── styles/           # TailwindCSS and component styles
+        └── utils/            # React hooks and utility functions
 ```
+
+### Nginx Routing Strategy
+The application uses nginx for intelligent routing:
+- **Static HTML Pages**: Traditional multi-page routing for most features
+- **Dynamic React Pages**: Specific routes like `/group/social/{groupId}` serve React applications
+- **API Proxying**: All `/api/*` routes proxy to appropriate microservices
+- **File Management**: Special routing for file uploads with ID-based paths
 
 ## 🚀 Getting Started
 
@@ -181,6 +209,9 @@ nginx/static/
 
 4. **Access the application**:
    - Main Application: http://localhost:8090
+   - Dashboard: http://localhost:8090/index
+   - Analytics: http://localhost:8090/stats
+   - Group Social (React): http://localhost:8090/group/social/{groupId}
    - Friend Service API: http://localhost:8090/api/friend/
    - File Upload: http://localhost:8090/api/fileRepository/
 
@@ -190,6 +221,13 @@ nginx/static/
 docker-compose up postgres -d  # Database only
 cd friend && mvn spring-boot:run  # Friend service
 cd ../resourceRepository/flask-template && python app.py  # File service
+
+# React component development
+cd nginx/react-components
+npm install                    # Install React dependencies
+npm run dev                   # Development build with watch mode
+npm run build                 # Production build
+npm start                     # Development server on port 3000
 ```
 
 ## 📚 API Documentation
@@ -243,6 +281,40 @@ POST /files               # Download files batch as ZIP
 ```
 
 ## 🔧 Configuration
+
+### React Components Configuration
+
+#### Webpack Build System
+The React components use Webpack 5 for modern build processes:
+```javascript
+// Entry points for different modules
+entry: {
+  groupSocial: './src/groupSocial/index.js'
+  // Future: friend, analytics, calendar modules
+}
+
+// Babel compilation for React JSX
+presets: ['@babel/preset-env', '@babel/preset-react']
+```
+
+#### TailwindCSS Integration
+TailwindCSS is integrated through PostCSS:
+```javascript
+// postcss.config.cjs
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  }
+}
+```
+
+#### Component Architecture
+- **Hybrid Strategy**: Traditional multi-page HTML for most features + React for complex interactive components
+- **Targeted React Usage**: React components for specific features that benefit from component reusability (e.g., group social management)
+- **Reusable Components**: Modal, MessageDisplay, Form components that can be shared across different React modules
+- **Custom Hooks**: useMessageManager for consistent UI feedback across React components
+- **Service Layer**: Abstracted API calls for easy endpoint swapping between microservices
 
 ### Docker Compose Services
 ```yaml
@@ -332,9 +404,11 @@ The system automatically identifies friends to contact based on:
 
 ### Phase 2: UI/UX Redesign
 - [ ] **Weekly Pane System**: 8-slot dashboard (7 daily + 1 missed)
-- [ ] React/Vue.js frontend migration
-- [ ] TailwindCSS styling system
-- [ ] Mobile-responsive design
+- [x] **React Components**: Modern component-based architecture with TailwindCSS for specific features
+- [ ] **Progressive Migration**: Gradually migrate complex pages from static HTML to React components
+- [x] **TailwindCSS Integration**: Utility-first CSS framework implementation for React components
+- [ ] Mobile-responsive design improvements across all pages
+- [ ] Enhanced component reusability strategy across microservices
 
 ### Phase 3: Advanced Analytics
 - [ ] **Dynamic Discount Rates**: Quality-based scoring (0.99/0.97/0.95)
@@ -359,21 +433,34 @@ friend/src/main/java/communicate/
 ├── Entities/         # JPA entities
 ├── DTOs/            # Data transfer objects
 └── Main.java        # Application entry point
+
+nginx/react-components/src/
+├── groupSocial/     # React implementation for group social features
+│   ├── components/  # Reusable React components (JSX)
+│   ├── services/    # API service layers
+│   ├── styles/      # TailwindCSS and component styles
+│   └── utils/       # Custom React hooks and utilities
+└── [future modules] # Planned: friend, analytics, calendar React modules
 ```
 
 ### Technology Stack
 - **Backend**: Spring Boot 3.2.1, Java 21, Maven
 - **Database**: PostgreSQL 17 with pgvector
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Infrastructure**: Docker, NGINX
+- **Frontend Architecture**: 
+  - **Multi-page Application**: Traditional HTML pages with nginx routing
+  - **Modern Components**: React 18.2.0 with TailwindCSS 3.4.0 for specific features
+- **Build Tools**: Webpack 5, Babel, PostCSS (for React components only)
+- **Infrastructure**: Docker, NGINX (API Gateway + Static File Server)
 - **File Storage**: Flask-based Python service
 
 ### Development Workflow
 1. Database changes → Update entities
 2. Business logic → Update services
 3. API changes → Update controllers
-4. Frontend → Update static files
-5. Testing → Integration tests with Docker
+4. **Static Pages** → Update HTML/CSS/JS files in nginx/static/
+5. **React Components** → Update components in nginx/react-components/ and build with Webpack
+6. **Nginx Configuration** → Update routing and proxy rules as needed
+7. Testing → Integration tests with Docker
 
 ## 📝 License & Contributing
 
