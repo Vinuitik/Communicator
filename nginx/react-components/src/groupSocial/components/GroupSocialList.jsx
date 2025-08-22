@@ -9,21 +9,19 @@ import { URLHelper } from '../utils/URLHelper.js';
 const GroupSocialList = ({ socials, onEdit, onDelete, isLoading = false }) => {
     if (isLoading) {
         return (
-            <div className="social-list-loading">
-                <div className="loading-spinner"></div>
-                <span>Loading group social links...</span>
+            <div className="flex flex-col items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="mt-2 text-sm text-gray-600">Loading group social links...</span>
             </div>
         );
     }
 
     if (!socials || socials.length === 0) {
         return (
-            <div className="social-list-empty">
-                <div className="empty-state">
-                    <span className="empty-icon">🔗</span>
-                    <h3>No social links yet</h3>
-                    <p>Add social media links for this group to get started.</p>
-                </div>
+            <div className="text-center py-8">
+                <div className="text-4xl mb-3">🔗</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No social links yet</h3>
+                <p className="text-sm text-gray-500">Add social media links for this group to get started.</p>
             </div>
         );
     }
@@ -61,18 +59,37 @@ const GroupSocialList = ({ socials, onEdit, onDelete, isLoading = false }) => {
         <div>
             <div className="space-y-3">
                 {socials.map((social) => (
-                    <div key={social.id} className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-md p-3" data-platform={social.platform}>
+                    <div key={social.id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors" data-platform={social.platform}>
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-lg">{PLATFORM_ICONS[social.platform] || '🔗'}</div>
+                            <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-lg shadow-sm">{PLATFORM_ICONS[social.platform] || '🔗'}</div>
                             <div>
-                                <div className="font-semibold">{social.platform}</div>
-                                <div className="text-xs text-gray-500">{formatDisplayText(social.url, social.platform)}</div>
+                                <div className="font-medium text-gray-900">{social.platform}</div>
+                                <div className="text-sm text-gray-500 cursor-pointer hover:text-blue-600" onClick={() => handleLinkClick(social.url, social.platform)}>{formatDisplayText(social.url, social.platform)}</div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <button onClick={() => onEdit(social)} className="px-3 py-1 rounded-md bg-yellow-400 text-white text-sm">✏️</button>
-                            <button onClick={() => onDelete(social)} className="px-3 py-1 rounded-md bg-red-500 text-white text-sm">🗑️</button>
+                            <button 
+                                onClick={() => handleLinkClick(social.url, social.platform)} 
+                                className="px-3 py-1.5 rounded-md bg-blue-500 text-white text-xs hover:bg-blue-600 transition-colors"
+                                title={getActionText(social.platform)}
+                            >
+                                🌐
+                            </button>
+                            <button 
+                                onClick={() => onEdit(social)} 
+                                className="px-3 py-1.5 rounded-md bg-amber-500 text-white text-xs hover:bg-amber-600 transition-colors"
+                                title="Edit"
+                            >
+                                ✏️
+                            </button>
+                            <button 
+                                onClick={() => onDelete(social)} 
+                                className="px-3 py-1.5 rounded-md bg-red-500 text-white text-xs hover:bg-red-600 transition-colors"
+                                title="Delete"
+                            >
+                                🗑️
+                            </button>
                         </div>
                     </div>
                 ))}

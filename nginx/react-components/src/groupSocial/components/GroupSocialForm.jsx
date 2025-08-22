@@ -89,7 +89,7 @@ const GroupSocialForm = ({ onSubmit, onCancel, initialData = null, isLoading = f
                     name="platform"
                     value={formData.platform}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:ring-2 focus:ring-brand focus:border-brand ${errors.platform ? 'border-red-300' : ''}`}
+                    className={`mt-1 block w-full rounded-md border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.platform ? 'border-red-300' : 'border-gray-300'}`}
                     required
                 >
                     <option value="">Select Platform</option>
@@ -109,15 +109,15 @@ const GroupSocialForm = ({ onSubmit, onCancel, initialData = null, isLoading = f
                     value={formData.url}
                     onChange={handleInputChange}
                     placeholder={formData.platform ? getPlaceholderText(formData.platform) : 'Select a platform first'}
-                    className={`mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:ring-2 focus:ring-brand focus:border-brand ${errors.url ? 'border-red-300' : ''}`}
+                    className={`mt-1 block w-full rounded-md border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.url ? 'border-red-300' : 'border-gray-300'}`}
                     required
                 />
                 {errors.url && <p className="text-xs text-red-600 mt-1">{errors.url}</p>}
             </div>
 
             <div className="flex justify-end gap-3">
-                <button type="button" onClick={onCancel} className="px-4 py-2 rounded-md bg-white border border-gray-200 text-sm text-gray-700" disabled={isLoading}>Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-md bg-brand text-white text-sm" disabled={isLoading}>
+                <button type="button" onClick={onCancel} className="px-4 py-2 rounded-md bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50" disabled={isLoading}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50" disabled={isLoading}>
                     {isLoading ? (initialData ? 'Updating...' : 'Adding...') : (initialData ? 'Update Social Link' : 'Add Social Link')}
                 </button>
             </div>

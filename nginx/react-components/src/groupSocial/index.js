@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import GroupSocialApp from './components/GroupSocialApp.jsx';
+import './styles/tailwind.css';
 import './styles/groupSocial.css';
 
 // Initialize React app when DOM is loaded
