@@ -134,31 +134,31 @@ const GroupSocialApp = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+        <div className="social-container">
             <NavBar />
-            <div className="max-w-6xl mx-auto px-4 pt-20 pb-8">
-                <header className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">🔗 Group Social Links</h1>
-                    <p className="text-lg text-gray-600 mb-4">Manage social media links for this group</p>
-                    {groupId && (
-                        <div className="inline-block bg-white border border-gray-300 rounded-lg px-4 py-2 shadow-sm">
-                            <span className="text-sm font-medium text-gray-700">Group ID: </span>
-                            <span className="text-sm font-bold text-blue-600">{groupId}</span>
-                        </div>
-                    )}
-                </header>
-
-                <MessageDisplay message={message} onClose={clearMessage} />
-
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        <p className="mt-4 text-gray-600">Loading group information...</p>
+            
+            <header className="social-header">
+                <h1 className="social-title">🔗 Group Social Links</h1>
+                <p className="social-subtitle">Manage social media links for this group</p>
+                {groupId && (
+                    <div className="group-id-badge">
+                        <strong>Group ID:</strong> {groupId}
                     </div>
-                ) : groupId ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-900">Add New Social Media</h2>
+                )}
+            </header>
+
+            <MessageDisplay message={message} onClose={clearMessage} />
+
+            {loading ? (
+                <div className="social-list-loading">
+                    <div className="loading-spinner"></div>
+                    <p>Loading group information...</p>
+                </div>
+            ) : groupId ? (
+                <>
+                    <section className="social-form-section">
+                        <div className="form-container">
+                            <h2 className="form-title">Add New Social Media</h2>
                             <GroupSocialForm
                                 onSubmit={handleAddSocial}
                                 onCancel={() => {}}
@@ -166,9 +166,11 @@ const GroupSocialApp = () => {
                                 isLoading={formLoading}
                             />
                         </div>
+                    </section>
 
-                        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-900">Existing Social Media</h2>
+                    <section className="social-list-section">
+                        <div className="list-container">
+                            <h2 className="list-title">Existing Social Media</h2>
                             <GroupSocialList
                                 socials={socials}
                                 onEdit={openEditModal}
@@ -176,30 +178,29 @@ const GroupSocialApp = () => {
                                 isLoading={false}
                             />
                         </div>
-                    </div>
-                ) : (
-                    <div className="text-center py-16">
-                        <div className="text-6xl mb-4">❌</div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-                        <p className="text-gray-600">Unable to load group social links. Please check the URL and try again.</p>
-                    </div>
-                )}
+                    </section>
+                </>
+            ) : (
+                <div className="empty-state">
+                    <div className="empty-state-icon">❌</div>
+                    <h2 className="empty-state-text">Error</h2>
+                    <p className="empty-state-subtext">Unable to load group social links. Please check the URL and try again.</p>
+                </div>
+            )}
 
-                {/* Add/Edit Modal */}
-                <Modal
-                    isOpen={isModalOpen}
-                    onClose={closeModal}
-                    title={editingSocial ? 'Edit Social Link' : 'Add New Social Link'}
-                    className="max-w-lg"
-                >
-                    <GroupSocialForm
-                        onSubmit={handleFormSubmit}
-                        onCancel={closeModal}
-                        initialData={editingSocial}
-                        isLoading={formLoading}
-                    />
-                </Modal>
-            </div>
+            {/* Add/Edit Modal */}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                title={editingSocial ? 'Edit Social Link' : 'Add New Social Link'}
+            >
+                <GroupSocialForm
+                    onSubmit={handleFormSubmit}
+                    onCancel={closeModal}
+                    initialData={editingSocial}
+                    isLoading={formLoading}
+                />
+            </Modal>
         </div>
     );
 };

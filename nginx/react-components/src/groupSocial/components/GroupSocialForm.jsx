@@ -81,15 +81,15 @@ const GroupSocialForm = ({ onSubmit, onCancel, initialData = null, isLoading = f
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="platform" className="block text-sm font-medium text-gray-700">Platform <span className="text-red-500">*</span></label>
+        <form onSubmit={handleSubmit} className="social-form">
+            <div className="form-group">
+                <label htmlFor="platform" className="form-label">Platform <span style={{color: 'var(--danger-color)'}}>*</span></label>
                 <select
                     id="platform"
                     name="platform"
                     value={formData.platform}
                     onChange={handleInputChange}
-                    className={`mt-1 block w-full rounded-md border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.platform ? 'border-red-300' : 'border-gray-300'}`}
+                    className={`form-select ${errors.platform ? 'error' : ''}`}
                     required
                 >
                     <option value="">Select Platform</option>
@@ -97,11 +97,14 @@ const GroupSocialForm = ({ onSubmit, onCancel, initialData = null, isLoading = f
                         <option key={platform} value={platform}>{PLATFORM_ICONS[platform]} {platform}</option>
                     ))}
                 </select>
-                {errors.platform && <p className="text-xs text-red-600 mt-1">{errors.platform}</p>}
+                {errors.platform && <div className="form-error">{errors.platform}</div>}
             </div>
 
-            <div>
-                <label htmlFor="url" className="block text-sm font-medium text-gray-700">{formData.platform === 'Email' ? 'Email Address' : formData.platform === 'Phone' ? 'Phone Number' : 'URL'} <span className="text-red-500">*</span></label>
+            <div className="form-group">
+                <label htmlFor="url" className="form-label">
+                    {formData.platform === 'Email' ? 'Email Address' : formData.platform === 'Phone' ? 'Phone Number' : 'URL'} 
+                    <span style={{color: 'var(--danger-color)'}}>*</span>
+                </label>
                 <input
                     id="url"
                     name="url"
@@ -109,15 +112,17 @@ const GroupSocialForm = ({ onSubmit, onCancel, initialData = null, isLoading = f
                     value={formData.url}
                     onChange={handleInputChange}
                     placeholder={formData.platform ? getPlaceholderText(formData.platform) : 'Select a platform first'}
-                    className={`mt-1 block w-full rounded-md border shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.url ? 'border-red-300' : 'border-gray-300'}`}
+                    className={`form-input ${errors.url ? 'error' : ''}`}
                     required
                 />
-                {errors.url && <p className="text-xs text-red-600 mt-1">{errors.url}</p>}
+                {errors.url && <div className="form-error">{errors.url}</div>}
             </div>
 
-            <div className="flex justify-end gap-3">
-                <button type="button" onClick={onCancel} className="px-4 py-2 rounded-md bg-white border border-gray-300 text-sm text-gray-700 hover:bg-gray-50" disabled={isLoading}>Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50" disabled={isLoading}>
+            <div className="form-actions">
+                <button type="button" onClick={onCancel} className="btn-secondary" disabled={isLoading}>
+                    Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={isLoading}>
                     {isLoading ? (initialData ? 'Updating...' : 'Adding...') : (initialData ? 'Update Social Link' : 'Add Social Link')}
                 </button>
             </div>

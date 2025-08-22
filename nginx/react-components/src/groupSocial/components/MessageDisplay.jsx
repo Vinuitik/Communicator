@@ -34,22 +34,22 @@ const MessageDisplay = ({ message, onClose }) => {
         }
     };
 
-    const base = 'rounded-md p-3 mb-4 flex items-start gap-3';
+    const base = 'message';
     const typeClass = (type) => {
         switch (type) {
-            case 'success': return 'bg-green-50 border border-green-200 text-green-800';
-            case 'error': return 'bg-red-50 border border-red-200 text-red-800';
-            case 'warning': return 'bg-yellow-50 border border-yellow-200 text-yellow-800';
-            default: return 'bg-blue-50 border border-blue-200 text-blue-800';
+            case 'success': return 'message-success';
+            case 'error': return 'message-error';
+            case 'warning': return 'message-warning';
+            default: return 'message-info';
         }
     };
 
     return (
         <div className={`${base} ${typeClass(message.type)}`} role="status">
-            <div className="text-xl flex-shrink-0">{getMessageIcon(message.type)}</div>
-            <div className="flex-1 text-sm">{message.text}</div>
+            <div className="message-icon">{getMessageIcon(message.type)}</div>
+            <div className="message-text">{message.text}</div>
             {onClose && (
-                <button onClick={onClose} aria-label="Close message" className="text-xl opacity-80 hover:opacity-100">×</button>
+                <button onClick={onClose} aria-label="Close message" className="message-close">×</button>
             )}
         </div>
     );
