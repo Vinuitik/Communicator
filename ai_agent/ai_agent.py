@@ -10,8 +10,7 @@ from langgraph.prebuilt import create_react_agent
 
 import asyncio
 
-# --- Load env vars ---
-load_dotenv()
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 print(GEMINI_API_KEY)
@@ -26,6 +25,9 @@ class QueryInput(BaseModel):
 # --- LangChain agent setup ---
 @app.on_event("startup")
 async def setup_agent():
+    
+    print(GEMINI_API_KEY)
+    print("Hello world"+ GEMINI_API_KEY)
     global agent
 
     # 1. Connect to your MCP server

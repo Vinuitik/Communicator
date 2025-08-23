@@ -160,7 +160,6 @@ services:
      environment:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1
-       GEMINI_API_KEY: ${GEMINI_API_KEY}  # Pass from environment variable
      depends_on:
        - nginx  # Depends on nginx since it makes API calls through it
        - mcp-knowledge-server  # Depends on MCP server
