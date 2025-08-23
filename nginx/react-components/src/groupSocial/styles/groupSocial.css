@@ -644,6 +644,9 @@ body {
         align-self: flex-end;
     }
 }
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
 
 .group-info {
     margin-top: 1rem;

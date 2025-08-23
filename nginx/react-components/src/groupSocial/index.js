@@ -1,11 +1,12 @@
 /**
- * Main Entry Point for Social Media Management React App
+ * Main Entry Point for Group Social Media Management React App
  */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import SocialMediaApp from './components/SocialMediaApp.jsx';
+import GroupSocialApp from './components/GroupSocialApp.jsx';
 import './styles/tailwind.css';
+import './styles/groupSocial.css';
 
 // Initialize React app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (rootElement) {
         const root = ReactDOM.createRoot(rootElement);
-        root.render(<SocialMediaApp />);
+        root.render(<GroupSocialApp />);
     } else {
         console.error('Root element #group-social-root not found');
     }

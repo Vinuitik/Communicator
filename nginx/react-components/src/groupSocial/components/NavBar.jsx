@@ -1,44 +1,19 @@
-/**
- * Reusable Navigation Bar Component
- * Can be used across different pages and applications
- */
-
 import React from 'react';
 
-const Navigation = ({ title = 'Friends Tracker', links = [] }) => {
-    const defaultLinks = [
-        { href: '/calendarView/calendar.html', label: 'Home' },
-        { href: '/addFriendForm/addForm.html', label: 'Add Friend' },
-        { href: '/', label: 'All Friends' },
-        { href: '/', label: 'This Week' },
-        { href: '/api/groups/', label: 'Relationship Groups' },
-        { href: '/stats', label: 'Stats' }
-    ];
-
-    const navigationLinks = links.length > 0 ? links : defaultLinks;
-
+const NavBar = ({ title = 'Friends Tracker' }) => {
     return (
-        <nav className="fixed top-0 left-0 right-0 h-16 bg-primary-500 text-white z-50 shadow-card">
-            <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between">
-                <div className="font-semibold text-lg">
-                    {title}
-                </div>
-                
-                <ul className="flex items-center gap-1">
-                    {navigationLinks.map((link, index) => (
-                        <li key={index}>
-                            <a 
-                                href={link.href}
-                                className="text-white px-3 py-2 rounded-button text-sm font-medium hover:bg-white/10 transition-colors duration-200"
-                            >
-                                {link.label}
-                            </a>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+        <nav className="navbar">
+            <div className="navbar-logo">{title}</div>
+            <ul className="navbar-links">
+                <li><a href="/calendarView/calendar.html">Home</a></li>
+                <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
+                <li><a href="/">All Friends</a></li>
+                <li><a href="/">This Week</a></li>
+                <li><a href="/api/groups/">Relationship Groups</a></li>
+                <li><a href="/stats">Stats</a></li>
+            </ul>
         </nav>
     );
 };
 
-export default Navigation;
+export default NavBar;
