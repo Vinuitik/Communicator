@@ -77,7 +77,7 @@ const GroupSocialApp = () => {
     const handleEditSocial = async (formData) => {
         try {
             setFormLoading(true);
-            const updatedSocial = await GroupSocialAPIService.updateSocial(editingSocial.id, formData);
+            const updatedSocial = await GroupSocialAPIService.updateSocial(groupId, editingSocial.id, formData);
             setSocials(prev => 
                 prev.map(social => 
                     social.id === editingSocial.id ? updatedSocial : social
@@ -99,7 +99,7 @@ const GroupSocialApp = () => {
         }
 
         try {
-            await GroupSocialAPIService.deleteSocial(social.id);
+            await GroupSocialAPIService.deleteSocial(groupId, social.id);
             setSocials(prev => prev.filter(s => s.id !== social.id));
             showSuccess(`${social.platform} link deleted successfully!`);
         } catch (error) {

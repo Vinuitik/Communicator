@@ -83,6 +83,7 @@
                                     <div class="dropdown-content">
                                         <a th:href="@{'/api/groups/' + ${group.id}}" class="dropdown-item" th:data-group-id="${group.id}">Profile</a>
                                         <a th:href="@{'/api/groups/' + ${group.id} + '/knowledge'}" class="dropdown-item" title="Add knowledge about this group">Knowledge</a>
+                                        <a th:href="@{'/group/social/' + ${group.id}}" class="dropdown-item" title="View social interactions">Social</a>
                                         <button type="button" class="dropdown-item delete-button" th:data-group-id="${group.id}" data-action="delete" th:onclick="'deleteGroup(' + ${group.id} + ')'">Delete</button>
                                     </div>
                                 </div>
