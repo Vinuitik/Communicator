@@ -1,10 +1,11 @@
 /**
  * Main Entry Point for Group Social Media Management React App
+ * Updated to use the new Atomic Design structure
  */
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import GroupSocialApp from './components/GroupSocialApp.jsx';
+import { GroupSocialPage } from '../pages';
 import './styles/tailwind.css';
 import './styles/groupSocial.css';
 
@@ -14,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (rootElement) {
         const root = ReactDOM.createRoot(rootElement);
-        root.render(<GroupSocialApp />);
+        root.render(<GroupSocialPage />);
     } else {
         console.error('Root element #group-social-root not found');
     }
