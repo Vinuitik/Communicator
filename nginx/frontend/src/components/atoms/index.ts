@@ -7,3 +7,4 @@ export { Label } from './Label';
 export { Icon } from './Icon';
 export { Spinner } from './Spinner';
 export { Text } from './Text';
+export { NavLink } from './NavLink';

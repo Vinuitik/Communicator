@@ -10,8 +10,23 @@ export default {
   ],
   theme: {
     extend: {
-      // Custom colors for your design system
+      // Custom colors for your design system - matching your existing app
       colors: {
+        // Your app's primary purple color scheme
+        purple: {
+          50: '#f3f2ff',
+          100: '#e9e7ff',
+          200: '#d6d2ff',
+          300: '#b8b0ff',
+          400: '#9485ff',
+          500: '#6c5ce7', // Your main navbar color
+          600: '#5b4bd1',
+          700: '#4c3fb8',
+          800: '#3f3396',
+          900: '#362b79',
+          950: '#221b4d',
+        },
+        // Keep the blue for forms and buttons
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
