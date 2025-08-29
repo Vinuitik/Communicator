@@ -21,7 +21,8 @@ public class Connection {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    @EmbeddedId
+    private ConnectionId id;
     
     private String description;
 
@@ -42,4 +43,6 @@ public class Connection {
         this.friend1Id = Math.min(friendA, friendB);
         this.friend2Id = Math.max(friendA, friendB);
     }
+
+    // Lombok will generate constructors, getters, setters, etc.
 }
