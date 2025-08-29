@@ -18,9 +18,8 @@ public class GroupMemberController {
     @PostMapping("/addFriendToGroups")
     public ResponseEntity<?> addFriendToGroups(@RequestBody Map<String, Object> payload) {
         try {
-            Long friendId = Long.valueOf(payload.get("friendId").toString());
-            List<Integer> groupIdsInt = (List<Integer>) payload.get("groupIds");
-            List<Long> groupIds = groupIdsInt.stream().map(Long::valueOf).toList();
+            Integer friendId = Integer.valueOf(payload.get("friendId").toString());
+            List<Integer> groupIds = (List<Integer>) payload.get("groupIds");
             List<GroupMember> members = groupMemberService.addFriendToGroups(friendId, groupIds);
             return ResponseEntity.status(HttpStatus.CREATED).body(members);
         } catch (Exception e) {
@@ -31,9 +30,8 @@ public class GroupMemberController {
     @PostMapping("/addFriendsToGroup")
     public ResponseEntity<?> addFriendsToGroup(@RequestBody Map<String, Object> payload) {
         try {
-            Long groupId = Long.valueOf(payload.get("groupId").toString());
-            List<Integer> friendIdsInt = (List<Integer>) payload.get("friendIds");
-            List<Long> friendIds = friendIdsInt.stream().map(Long::valueOf).toList();
+            Integer groupId = Integer.valueOf(payload.get("groupId").toString());
+            List<Integer> friendIds = (List<Integer>) payload.get("friendIds");
             List<GroupMember> members = groupMemberService.addFriendsToGroup(friendIds, groupId);
             return ResponseEntity.status(HttpStatus.CREATED).body(members);
         } catch (Exception e) {
@@ -44,10 +42,8 @@ public class GroupMemberController {
     @PostMapping("/addFriendsToGroups")
     public ResponseEntity<?> addFriendsToGroups(@RequestBody Map<String, Object> payload) {
         try {
-            List<Integer> friendIdsInt = (List<Integer>) payload.get("friendIds");
-            List<Integer> groupIdsInt = (List<Integer>) payload.get("groupIds");
-            List<Long> friendIds = friendIdsInt.stream().map(Long::valueOf).toList();
-            List<Long> groupIds = groupIdsInt.stream().map(Long::valueOf).toList();
+            List<Integer> friendIds = (List<Integer>) payload.get("friendIds");
+            List<Integer> groupIds = (List<Integer>) payload.get("groupIds");
             List<GroupMember> members = groupMemberService.addFriendsToGroups(friendIds, groupIds);
             return ResponseEntity.status(HttpStatus.CREATED).body(members);
         } catch (Exception e) {

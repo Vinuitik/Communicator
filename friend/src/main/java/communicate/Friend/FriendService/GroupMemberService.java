@@ -1,7 +1,9 @@
 package communicate.Friend.FriendService;
 
 import communicate.Friend.FriendEntities.GroupMember;
+import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendRepositories.GroupMemberRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
@@ -12,35 +14,44 @@ public class GroupMemberService {
     @Autowired
     private GroupMemberRepository groupMemberRepository;
 
-    public List<GroupMember> addFriendToGroups(Long friendId, List<Long> groupIds) {
+    @Autowired
+    private EntityManager entityManager;
+
+    public List<GroupMember> addFriendToGroups(Integer friendId, List<Integer> groupIds) {
         List<GroupMember> members = new ArrayList<>();
-        for (Long groupId : groupIds) {
-            GroupMember member = new GroupMember();
-            member.setFriendId(friendId);
-            member.setGroupId(groupId);
+        Friend friendProxy = entityManager.getReference(Friend.class, friendId);
+        for (Integer groupId : groupIds) {
+            GroupMember member = GroupMember.builder()
+                    .groupId(groupId)
+                    .friend(friendProxy)
+                    .build();
             members.add(groupMemberRepository.save(member));
         }
         return members;
     }
 
-    public List<GroupMember> addFriendsToGroup(List<Long> friendIds, Long groupId) {
+    public List<GroupMember> addFriendsToGroup(List<Integer> friendIds, Integer groupId) {
         List<GroupMember> members = new ArrayList<>();
-        for (Long friendId : friendIds) {
-            GroupMember member = new GroupMember();
-            member.setFriendId(friendId);
-            member.setGroupId(groupId);
+        for (Integer friendId : friendIds) {
+            Friend friendProxy = entityManager.getReference(Friend.class, friendId);
+            GroupMember member = GroupMember.builder()
+                    .groupId(groupId)
+                    .friend(friendProxy)
+                    .build();
             members.add(groupMemberRepository.save(member));
         }
         return members;
     }
 
-    public List<GroupMember> addFriendsToGroups(List<Long> friendIds, List<Long> groupIds) {
+    public List<GroupMember> addFriendsToGroups(List<Integer> friendIds, List<Integer> groupIds) {
         List<GroupMember> members = new ArrayList<>();
-        for (Long friendId : friendIds) {
-            for (Long groupId : groupIds) {
-                GroupMember member = new GroupMember();
-                member.setFriendId(friendId);
-                member.setGroupId(groupId);
+        for (Integer friendId : friendIds) {
+            Friend friendProxy = entityManager.getReference(Friend.class, friendId);
+            for (Integer groupId : groupIds) {
+                GroupMember member = GroupMember.builder()
+                        .groupId(groupId)
+                        .friend(friendProxy)
+                        .build();
                 members.add(groupMemberRepository.save(member));
             }
         }
