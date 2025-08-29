@@ -1,0 +1,1 @@
+export { GroupSocialPage } from './GroupSocialPage';

@@ -5,6 +5,9 @@ import path from 'path'
 // Vite configuration - modern build tool that's faster than Webpack
 // WHY Vite? Hot reload is instant, builds are fast, works great with React
 export default defineConfig({
+  // Set base URL for production builds served from /react/ path
+  base: '/react/',
+  
   // React plugin enables JSX support and hot module replacement
   plugins: [react()],
   resolve: {

@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavLink } from '@/atoms/NavLink';
+import { NavLink } from '@/components/atoms/NavLink';
 
 export interface NavigationItem {
   href: string;
