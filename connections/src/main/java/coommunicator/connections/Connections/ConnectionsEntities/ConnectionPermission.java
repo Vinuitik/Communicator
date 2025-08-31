@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
@@ -33,7 +34,10 @@ public class ConnectionPermission{
     String description;
 
     @ManyToOne
-    @JoinColumn(name = "connection_id")
+    @JoinColumns({
+        @JoinColumn(name = "friend1_id", referencedColumnName = "friend1_id"),
+        @JoinColumn(name = "friend2_id", referencedColumnName = "friend2_id")
+    })
     @JsonBackReference
     @ToString.Exclude
     private Connection connection;

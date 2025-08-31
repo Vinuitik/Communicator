@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotNull;
@@ -50,7 +51,10 @@ public class ConnectionsKnowledge {
     private Integer interval;
 
     @ManyToOne
-    @JoinColumn(name = "connection_id")
+    @JoinColumns({
+        @JoinColumn(name = "friend1_id", referencedColumnName = "friend1_id"),
+        @JoinColumn(name = "friend2_id", referencedColumnName = "friend2_id")
+    })
     @JsonBackReference
     @ToString.Exclude
     private Connection connection;
