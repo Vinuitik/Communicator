@@ -1,6 +1,6 @@
 # ai_agent_service.py
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -58,9 +58,48 @@ async def setup_agent():
 @app.post("/chat")
 async def chat_with_agent(user_input: QueryInput):
     try:
+        print(user_input.message)
         result = await agent.ainvoke({
             "messages": [{"role": "user", "content": user_input.message}]
         })
+        print(result)
         return {"response": result}
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            # Receive message from the client
+            data = await websocket.receive_text()
+            
+            # Get the complete response
+            result = await agent.ainvoke({
+                "messages": [{"role": "user", "content": data}]
+            })
+            
+            # Extract AI message content - it's always the last message
+            ai_message_content = result['messages'][-1].content
+            
+            print(f"AI Response Content: {ai_message_content}")
+            
+            # Send the AI response to client
+            await websocket.send_json({
+                "type": "ai_response",
+                "content": ai_message_content
+            })
+
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close(code=1011, reason=str(e))
+
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close(code=1011, reason=str(e))

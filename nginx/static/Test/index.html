@@ -3,20 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Chat Tester</title>
+    <title>WebSocket Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h2>API Chat Tester</h2>
+        <h2>WebSocket Chat</h2>
+        <div id="chat-box"></div>
         <form id="chatForm">
-            <label for="message">Message:</label>
-            <input type="text" id="message" name="message" required>
-            <label for="question">Question:</label>
-            <input type="text" id="question" name="question">
+            <input type="text" id="message" placeholder="Type a message..." required>
             <button type="submit">Send</button>
         </form>
-        <div id="response"></div>
     </div>
     <script src="script.js"></script>
 </body>
