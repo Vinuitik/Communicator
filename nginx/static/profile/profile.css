@@ -1133,3 +1133,198 @@
     color: #6b7280;
     font-style: italic;
   }
+
+  /* Knowledge Table Styles */
+  
+  /* Knowledge Table Loading States */
+  .knowledge-loading,
+  .knowledge-error,
+  .knowledge-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .loading-subtext {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    margin-top: 8px;
+  }
+
+  .knowledge-error .error-icon,
+  .knowledge-empty .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin: 8px 0;
+    background: #fef2f2;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #fecaca;
+  }
+
+  .retry-btn,
+  .add-first-knowledge-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+  }
+
+  .retry-btn:hover,
+  .add-first-knowledge-btn:hover {
+    background: #2563eb;
+  }
+
+  /* Knowledge Table Content */
+  .knowledge-table-content {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .knowledge-table-content th {
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    padding: 16px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    width: 30%;
+    background: #f9fafb;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .knowledge-table-content td {
+    padding: 16px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    position: relative;
+    vertical-align: top;
+  }
+
+  .knowledge-table-content tr:last-child th,
+  .knowledge-table-content tr:last-child td {
+    border-bottom: none;
+  }
+
+  .knowledge-table-content tr:hover {
+    background: #f8fafc;
+  }
+
+  .knowledge-value {
+    display: inline-block;
+    color: #1f2937;
+    line-height: 1.5;
+    font-size: 0.9rem;
+  }
+
+  .knowledge-actions {
+    display: inline-block;
+    margin-left: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .knowledge-table-content tr:hover .knowledge-actions {
+    opacity: 1;
+  }
+
+  .edit-knowledge-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 16px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+  }
+
+  .edit-knowledge-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+    transform: scale(1.1);
+  }
+
+  /* Knowledge section specific styles */
+  .knowledge-section .section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .knowledge-section .section-title button {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background 0.2s ease;
+  }
+
+  .knowledge-section .section-title button:hover {
+    background: #059669;
+  }
+
+  /* Responsive design for knowledge table */
+  @media (max-width: 768px) {
+    .knowledge-table-content th,
+    .knowledge-table-content td {
+      padding: 12px 8px;
+      font-size: 0.875rem;
+    }
+
+    .knowledge-table-content th {
+      width: 35%;
+    }
+
+    .knowledge-actions {
+      margin-left: 8px;
+    }
+
+    .knowledge-loading,
+    .knowledge-error,
+    .knowledge-empty {
+      padding: 30px 15px;
+    }
+
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border-width: 3px;
+    }
+  }

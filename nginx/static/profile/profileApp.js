@@ -42,6 +42,12 @@ const ProfileApp = {
                 console.log('✓ Pagination initialized');
             }
             
+            // Initialize knowledge table functionality
+            if (typeof KnowledgeTable !== 'undefined') {
+                KnowledgeTable.init();
+                console.log('✓ KnowledgeTable initialized');
+            }
+            
             console.log('✓ Profile App fully initialized');
             
         } catch (error) {
@@ -65,6 +71,11 @@ const ProfileApp = {
             mediaModal: {
                 isVisible: MediaModal?.isVisible() || false,
                 currentMedia: MediaModal?.getCurrentMedia() || {}
+            },
+            knowledgeTable: {
+                isLoading: KnowledgeTable?.isLoadingData() || false,
+                hasData: KnowledgeTable?.getKnowledgeData() ? Object.keys(KnowledgeTable.getKnowledgeData()).length > 0 : false,
+                friendId: KnowledgeTable?.friendId || 'N/A'
             }
         };
     }

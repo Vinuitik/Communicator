@@ -150,45 +150,14 @@
         </div>
         
         <!-- Knowledge Section -->
-        <div class="profile-section">
+        <div class="profile-section knowledge-section">
           <div class="section-title">
-            Knowledge About James
+            Knowledge About <span th:text="${friend.name}">Friend</span>
             <button>Add Info</button>
           </div>
-          <table class="knowledge-table">
-            <tr>
-              <th>Birthday</th>
-              <td>April 15, 1995</td>
-            </tr>
-            <tr>
-              <th>Occupation</th>
-              <td>Software Developer at TechCorp</td>
-            </tr>
-            <tr>
-              <th>Favorite Food</th>
-              <td>Thai curry, especially Panang</td>
-            </tr>
-            <tr>
-              <th>Hobbies</th>
-              <td>Rock climbing, photography, hiking</td>
-            </tr>
-            <tr>
-              <th>Coffee Order</th>
-              <td>Black Americano, no sugar</td>
-            </tr>
-            <tr>
-              <th>Allergies</th>
-              <td>Peanuts (mild), shellfish</td>
-            </tr>
-            <tr>
-              <th>Gift Ideas</th>
-              <td>Photography accessories, climbing gear</td>
-            </tr>
-            <tr>
-              <th>Pet Peeves</th>
-              <td>Being late, loud chewing</td>
-            </tr>
-          </table>
+          <div class="knowledge-table">
+            <!-- Content will be dynamically loaded by KnowledgeTable module -->
+          </div>
         </div>
         
         <!-- Relationship Knowledge -->
@@ -422,6 +391,9 @@
   
   <!-- Pagination module -->
   <script src="/profile/modules/pagination.js"></script>
+  
+  <!-- Knowledge table module -->
+  <script src="/profile/modules/knowledgeTable.js"></script>
   
   <!-- Main application initialization -->
   <script>
