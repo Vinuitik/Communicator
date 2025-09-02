@@ -395,10 +395,15 @@
   <!-- Knowledge table module -->
   <script src="/profile/modules/knowledgeTable.js"></script>
   
+  <!-- AI Chat modules -->
+  <script src="/profile/modules/aiChatUI.js"></script>
+  <script src="/profile/modules/aiChat.js"></script>
+  
   <!-- Main application initialization -->
   <script>
-    // Make friendId available globally for modules
+    // Make friendId and friendName available globally for modules
     window.friendId = [[${friendId}]];
+    window.friendName = '[[${friend.name}]]';
   </script>
   <script src="/profile/profileApp.js"></script>
 </body>

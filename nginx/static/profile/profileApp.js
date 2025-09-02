@@ -48,6 +48,17 @@ const ProfileApp = {
                 console.log('✓ KnowledgeTable initialized');
             }
             
+            // Initialize AI chat functionality
+            if (typeof AiChatUI !== 'undefined') {
+                AiChatUI.init();
+                console.log('✓ AiChatUI initialized');
+            }
+            
+            if (typeof AiChat !== 'undefined') {
+                AiChat.init();
+                console.log('✓ AiChat initialized');
+            }
+            
             console.log('✓ Profile App fully initialized');
             
         } catch (error) {
@@ -76,6 +87,14 @@ const ProfileApp = {
                 isLoading: KnowledgeTable?.isLoadingData() || false,
                 hasData: KnowledgeTable?.getKnowledgeData() ? Object.keys(KnowledgeTable.getKnowledgeData()).length > 0 : false,
                 friendId: KnowledgeTable?.friendId || 'N/A'
+            },
+            aiChat: {
+                isExpanded: AiChatUI?.isExpanded || false,
+                isConnected: AiChat?.isConnected || false,
+                isConnecting: AiChat?.isConnecting || false,
+                unreadCount: AiChatUI?.unreadCount || 0,
+                messageCount: AiChatUI?.messageHistory?.length || 0,
+                reconnectAttempts: AiChat?.reconnectAttempts || 0
             }
         };
     }
