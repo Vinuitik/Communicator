@@ -141,7 +141,7 @@ async def summarize_friend_knowledge(input_data: SummarizeKnowledgeInput):
         knowledge_result = await get_knowledge_tool.ainvoke({
             "friend_id": friend_id,
             "page": 0,
-            "size": 100  # Get more knowledge items
+            "size": 30  # Get the important(now too much) knowledge items
         })
         
         # Step 2: Create prompt template for summarization
@@ -158,13 +158,13 @@ Instructions:
 5. Keep facts concise but informative
 
 Example format:
-{
+{{
   "Favorite Food": "Caesar salad",
   "Favorite Show": "Formula One",
   "Hobbies": "Photography and hiking",
   "Work": "Software engineer at tech startup",
   "Personality": "Outgoing and adventurous"
-}
+}}
 
 Return ONLY the JSON object, no additional text or formatting."""),
             ("user", "Analyze this friend knowledge data and create a structured summary:\n\n{knowledge_data}")
@@ -188,11 +188,7 @@ Return ONLY the JSON object, no additional text or formatting."""),
             "knowledge_data": knowledge_result
         })
         
-        return {
-            "friend_id": friend_id,
-            "summary": parsed_json,
-            "raw_knowledge_count": len(json.loads(knowledge_result).get("content", [])) if knowledge_result else 0
-        }
+        return parsed_json
         
     except Exception as e:
         return {"error": str(e), "details": "Error in knowledge summarization chain"}

@@ -4,28 +4,44 @@ body {
     margin: 0;
     padding: 0;
 }
+
+.main-container {
+    display: flex;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+    flex-wrap: wrap;
+}
+
 .container {
-    max-width: 400px;
-    margin: 40px auto;
+    flex: 1;
+    min-width: 400px;
     background: #fff;
     padding: 24px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
 }
+
 h2 {
     text-align: center;
     color: #333;
+    margin-bottom: 20px;
 }
+
 form {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
+
 input[type="text"] {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
+
 button {
     padding: 10px;
     background: #007bff;
@@ -35,9 +51,16 @@ button {
     cursor: pointer;
     font-size: 16px;
 }
+
 button:hover {
     background: #0056b3;
 }
+
+button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
 #response {
     margin-top: 20px;
     padding: 10px;
@@ -45,4 +68,108 @@ button:hover {
     border-radius: 4px;
     min-height: 40px;
     color: #222;
+}
+
+/* Chat specific styles */
+#chat-box {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 15px;
+    background: #fafafa;
+}
+
+.message {
+    margin-bottom: 10px;
+    padding: 5px;
+    border-radius: 4px;
+    background: white;
+}
+
+/* Knowledge summarization styles */
+.loading {
+    text-align: center;
+    color: #666;
+    margin: 15px 0;
+    font-style: italic;
+}
+
+.hidden {
+    display: none;
+}
+
+.knowledge-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: white;
+}
+
+.knowledge-table th,
+.knowledge-table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+}
+
+.knowledge-table th {
+    background: #f8f9fa;
+    font-weight: bold;
+    color: #333;
+}
+
+.knowledge-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.knowledge-table tr:hover {
+    background: #e9ecef;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 15px;
+    border: 1px solid #f5c6cb;
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 15px;
+    border: 1px solid #c3e6cb;
+}
+
+.knowledge-item {
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.knowledge-category {
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 5px;
+}
+
+.knowledge-content {
+    color: #333;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+    }
+    
+    .container {
+        min-width: auto;
+    }
 }
