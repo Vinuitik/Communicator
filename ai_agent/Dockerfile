@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set environment vars
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 # Set working directory
 WORKDIR /app
@@ -25,4 +26,4 @@ COPY . /app
 EXPOSE 8001
 
 # Run the service using the new main module
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

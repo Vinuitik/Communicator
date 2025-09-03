@@ -42,7 +42,7 @@ const KnowledgeTable = {
         this.showLoadingState();
 
         try {
-            const response = await fetch('http://localhost:8090/api/ai/summarize-knowledge', {
+            const response = await fetch('http://localhost:8090/api/ai/knowledge/summarize', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

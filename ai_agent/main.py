@@ -1,13 +1,23 @@
 from fastapi import FastAPI
-from .routers import chat, knowledge
-from .models.schemas import HealthResponse
-from .dependencies.deps import get_agent_service
+from fastapi.middleware.cors import CORSMiddleware
+from routers import chat, knowledge
+from models.schemas import HealthResponse
+from dependencies.deps import get_agent_service
 
 # Create FastAPI application
 app = FastAPI(
     title="AI Agent Service",
     description="A conversational AI agent service with knowledge integration",
     version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")
@@ -29,8 +39,8 @@ async def shutdown_event():
     print("Shutting down AI Agent Service...")
 
 # Include routers
-app.include_router(chat.router, prefix="/api")
-app.include_router(knowledge.router, prefix="/api")
+app.include_router(chat.router)
+app.include_router(knowledge.router)
 
 @app.get("/", response_model=HealthResponse)
 async def root():

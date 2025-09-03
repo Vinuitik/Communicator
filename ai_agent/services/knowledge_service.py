@@ -2,7 +2,8 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from .agent_service import AgentService
-from ..utils.json_parser import fix_json_format
+from utils.json_parser import fix_json_format
+from prompts.prompt_manager import load_prompt_parts
 
 class KnowledgeService:
     """Service for handling knowledge-related operations"""
@@ -56,30 +57,14 @@ class KnowledgeService:
         Returns:
             ChatPromptTemplate for summarizing friend knowledge
         """
-        return ChatPromptTemplate.from_messages([
-            ("system", """You are an expert at analyzing personal knowledge and creating structured summaries.
-            
-Your task is to analyze the knowledge data about a friend and create a structured JSON summary.
-
-Instructions:
-1. Group similar knowledge items into logical categories
-2. Extract key-value pairs that represent important facts about the friend
-3. Return ONLY a valid JSON object with category-fact pairs
-4. Use clear, descriptive category names
-5. Keep facts concise but informative
-
-Example format:
-{{
-  "Favorite Food": "Caesar salad",
-  "Favorite Show": "Formula One",
-  "Hobbies": "Photography and hiking",
-  "Work": "Software engineer at tech startup",
-  "Personality": "Outgoing and adventurous"
-}}
-
-Return ONLY the JSON object, no additional text or formatting."""),
-            ("user", "Analyze this friend knowledge data and create a structured summary:\n\n{knowledge_data}")
-        ])
+        messages = load_prompt_parts("knowledge_summary")
+        if not messages:
+            # Fallback to inline prompt if files are missing
+            return ChatPromptTemplate.from_messages([
+                ("system", "You are an expert at analyzing personal knowledge and creating structured summaries.\n\nReturn ONLY a JSON object."),
+                ("user", "Analyze this friend knowledge data and create a structured summary:\n\n{knowledge_data}")
+            ])
+        return ChatPromptTemplate.from_messages(messages)
     
     def get_available_knowledge_tools(self) -> list:
         """

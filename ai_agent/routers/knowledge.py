@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from ..models.schemas import SummarizeKnowledgeInput, ErrorResponse
-from ..services.knowledge_service import KnowledgeService
-from ..dependencies.deps import get_knowledge_service
+from models.schemas import SummarizeKnowledgeInput, ErrorResponse
+from services.knowledge_service import KnowledgeService
+from dependencies.deps import get_knowledge_service
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 

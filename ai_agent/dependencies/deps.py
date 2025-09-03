@@ -1,6 +1,6 @@
 from fastapi import Depends
-from ..services.agent_service import AgentService
-from ..services.knowledge_service import KnowledgeService
+from services.agent_service import AgentService
+from services.knowledge_service import KnowledgeService
 
 # Global service instances
 _agent_service = None

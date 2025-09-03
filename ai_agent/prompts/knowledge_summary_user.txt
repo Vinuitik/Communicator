@@ -1,0 +1,3 @@
+Analyze this friend knowledge data and create a structured summary:
+
+{knowledge_data}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
-from ..models.schemas import QueryInput, ChatResponse, ErrorResponse, WebSocketMessage
-from ..services.agent_service import AgentService
-from ..dependencies.deps import get_agent_service
+from models.schemas import QueryInput, ChatResponse, ErrorResponse, WebSocketMessage
+from services.agent_service import AgentService
+from dependencies.deps import get_agent_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
