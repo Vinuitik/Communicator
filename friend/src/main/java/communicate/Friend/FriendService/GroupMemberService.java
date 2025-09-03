@@ -57,4 +57,24 @@ public class GroupMemberService {
         }
         return members;
     }
+
+    // Get all groups for a specific friend
+    public List<Integer> getGroupsByFriendId(Integer friendId) {
+        return groupMemberRepository.findGroupIdsByFriendId(friendId);
+    }
+
+    // Get all group members for a specific friend
+    public List<GroupMember> getGroupMembersByFriendId(Integer friendId) {
+        return groupMemberRepository.findByFriend_Id(friendId);
+    }
+
+    // Get all friends in a specific group
+    public List<Friend> getFriendsByGroupId(Integer groupId) {
+        return groupMemberRepository.findFriendsByGroupId(groupId);
+    }
+
+    // Get all group members for a specific group
+    public List<GroupMember> getGroupMembersByGroupId(Integer groupId) {
+        return groupMemberRepository.findByGroupId(groupId);
+    }
 }

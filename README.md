@@ -116,6 +116,17 @@ public class Connections {
 }
 ```
 
+#### Group Membership
+```java
+@Entity
+public class GroupMember {
+    private Integer id;
+    private Integer groupId;    // Reference to group
+    private Friend friend;      // Associated friend
+    // Unique constraint on (groupId, friend_id)
+}
+```
+
 ### Database Schema
 - **Database**: PostgreSQL with pgvector extension
 - **ORM**: Hibernate/JPA with automatic schema generation
@@ -251,6 +262,20 @@ DELETE /deleteKnowledge/{id} # Remove knowledge
 GET    /analyticsList        # Get interaction analytics
 ```
 
+#### Group Member Management Endpoints
+```http
+# Adding friends to groups
+POST   /groupMember/addFriendToGroups    # Add one friend to multiple groups
+POST   /groupMember/addFriendsToGroup    # Add multiple friends to one group
+POST   /groupMember/addFriendsToGroups   # Add multiple friends to multiple groups
+
+# Retrieving group memberships
+GET    /groupMember/groups/friend/{friendId}        # Get all group IDs for a friend
+GET    /groupMember/members/friend/{friendId}       # Get all GroupMember objects for a friend
+GET    /groupMember/friends/group/{groupId}         # Get all friends in a specific group
+GET    /groupMember/members/group/{groupId}         # Get all GroupMember objects for a group
+```
+
 #### Request/Response Examples
 ```json
 # POST /addFriend
@@ -272,6 +297,37 @@ GET    /analyticsList        # Get interaction analytics
     }
   ]
 }
+
+# POST /groupMember/addFriendToGroups
+{
+  "friendId": 123,
+  "groupIds": [1, 2, 3]
+}
+
+# POST /groupMember/addFriendsToGroup  
+{
+  "groupId": 1,
+  "friendIds": [123, 456, 789]
+}
+
+# GET /groupMember/groups/friend/123 Response
+[1, 2, 3]  # Array of group IDs
+
+# GET /groupMember/friends/group/1 Response
+[
+  {
+    "id": 123,
+    "name": "John Doe",
+    "plannedSpeakingTime": "2024-02-01",
+    "experience": "**"
+  },
+  {
+    "id": 456, 
+    "name": "Jane Smith",
+    "plannedSpeakingTime": "2024-02-03",
+    "experience": "***"
+  }
+]
 ```
 
 ### File Repository API
@@ -373,6 +429,14 @@ services:
 - Bidirectional relationship modeling
 - Group membership management
 - Social network visualization (planned)
+
+### 6. **Group Membership Management**
+- Add friends to multiple groups simultaneously
+- Add multiple friends to a single group
+- Query all groups a friend belongs to
+- Query all friends within a specific group
+- Prevent duplicate memberships with database constraints
+- Flexible API endpoints for both ID-based and full object responses
 
 ## 🔄 Business Logic
 
