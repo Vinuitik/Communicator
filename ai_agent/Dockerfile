@@ -24,5 +24,5 @@ COPY . /app
 # Expose the port FastAPI runs on
 EXPOSE 8001
 
-# Run the service - fix the module name
-CMD ["uvicorn", "ai_agent:app", "--host", "0.0.0.0", "--port", "8001"]
+# Run the service using the new main module
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

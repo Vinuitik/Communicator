@@ -15,6 +15,18 @@ services:
       - postgres-data:/var/lib/postgresql/data
     #restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: redisCache
+    ports:
+      - "6379:6379"  # Expose Redis on default port 6379
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes  # Enable persistence
+    #restart: unless-stopped
+
   friend:
     build:
       context: ./friend  # Build the image from the current directory using the Dockerfile
@@ -167,6 +179,8 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
+  redis-data:
     driver: local
   file-repo-photos:
     driver: local
