@@ -3,6 +3,11 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from config.settings import settings
+import logging
+import asyncio
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 class AgentService:
     """Service for managing the LangChain agent and its dependencies"""
@@ -39,16 +44,32 @@ class AgentService:
             raise
     
     async def _setup_mcp_client(self) -> None:
-        """Setup the MCP client and retrieve tools"""
-        self.mcp_client = MultiServerMCPClient({
-            "my_mcp": {
-                "transport": "streamable_http",
-                "url": settings.mcp_server_url,
-            }
-        })
+        """Setup the MCP client and retrieve tools with retry logic"""
+        max_retries = settings.mcp_retry_attempts
+        retry_delay = getattr(settings, 'mcp_connection_retry_delay', 2)
         
-        self.tools = await self.mcp_client.get_tools()
-        print(f"Retrieved {len(self.tools)} tools from MCP server")
+        for attempt in range(max_retries + 1):
+            try:
+                logger.info(f"Attempting to connect to MCP server (attempt {attempt + 1}/{max_retries + 1})")
+                self.mcp_client = MultiServerMCPClient({
+                    "my_mcp": {
+                        "transport": "streamable_http",
+                        "url": settings.mcp_server_url,
+                    }
+                })
+                
+                self.tools = await self.mcp_client.get_tools()
+                logger.info(f"Successfully retrieved {len(self.tools)} tools from MCP server")
+                return
+                
+            except Exception as e:
+                logger.warning(f"MCP connection attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.error(f"Failed to connect to MCP server after {max_retries + 1} attempts")
+                    raise Exception(f"Could not connect to MCP server at {settings.mcp_server_url}: {str(e)}")
     
     def _setup_llm(self) -> None:
         """Setup the Google Gemini LLM"""

@@ -60,8 +60,10 @@ const KnowledgeTable = {
                 throw new Error(data.error);
             }
 
-            this.knowledgeData = data;
-            this.renderKnowledgeTable(data);
+            // Extract the summary object from the response
+            const summaryData = data.summary || data;
+            this.knowledgeData = summaryData;
+            this.renderKnowledgeTable(summaryData);
             
             if (typeof NotificationManager !== 'undefined') {
                 NotificationManager.showSuccess('Knowledge summary loaded successfully!');
@@ -132,36 +134,74 @@ const KnowledgeTable = {
             return;
         }
 
-        // Filter out error keys and empty values
-        const validEntries = Object.entries(knowledgeData).filter(
-            ([category, value]) => category !== 'error' && value && value.trim()
-        );
-
-        if (validEntries.length === 0) {
-            this.showEmptyState();
-            return;
-        }
-
         // Create table structure
         const table = document.createElement('table');
         table.className = 'knowledge-table-content';
 
-        // Render each knowledge item
-        validEntries.forEach(([category, value]) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <th>${this.formatCategoryName(category)}</th>
-                <td>
-                    <span class="knowledge-value">${this.escapeHtml(value)}</span>
-                    <div class="knowledge-actions">
-                        <button class="edit-knowledge-btn" data-category="${this.escapeHtml(category)}" data-value="${this.escapeHtml(value)}" title="Edit this information">
-                            ✏️
-                        </button>
-                    </div>
-                </td>
-            `;
-            table.appendChild(row);
+        // Process nested knowledge categories
+        Object.entries(knowledgeData).forEach(([categoryName, categoryData]) => {
+            if (categoryName === 'error' || !categoryData) return;
+
+            // Handle nested category structure (e.g., "Basic Information": { "Name": "Anna", ... })
+            if (typeof categoryData === 'object' && !Array.isArray(categoryData)) {
+                // Create category header
+                const categoryHeader = document.createElement('tr');
+                categoryHeader.className = 'category-header';
+                categoryHeader.innerHTML = `
+                    <th colspan="2" class="category-title">${this.escapeHtml(categoryName)}</th>
+                `;
+                table.appendChild(categoryHeader);
+
+                // Add sub-items within this category
+                Object.entries(categoryData).forEach(([subKey, subValue]) => {
+                    if (subValue && subValue.toString().trim()) {
+                        const row = document.createElement('tr');
+                        row.className = 'knowledge-item';
+                        row.innerHTML = `
+                            <th class="sub-category">${this.escapeHtml(subKey)}</th>
+                            <td>
+                                <span class="knowledge-value">${this.escapeHtml(subValue)}</span>
+                                <div class="knowledge-actions">
+                                    <button class="edit-knowledge-btn" 
+                                            data-category="${this.escapeHtml(categoryName)}" 
+                                            data-subcategory="${this.escapeHtml(subKey)}"
+                                            data-value="${this.escapeHtml(subValue)}" 
+                                            title="Edit this information">
+                                        ✏️
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        table.appendChild(row);
+                    }
+                });
+            } else {
+                // Handle simple key-value pairs
+                const row = document.createElement('tr');
+                row.className = 'knowledge-item';
+                row.innerHTML = `
+                    <th>${this.formatCategoryName(categoryName)}</th>
+                    <td>
+                        <span class="knowledge-value">${this.escapeHtml(categoryData)}</span>
+                        <div class="knowledge-actions">
+                            <button class="edit-knowledge-btn" 
+                                    data-category="${this.escapeHtml(categoryName)}" 
+                                    data-value="${this.escapeHtml(categoryData)}" 
+                                    title="Edit this information">
+                                ✏️
+                            </button>
+                        </div>
+                    </td>
+                `;
+                table.appendChild(row);
+            }
         });
+
+        // Check if table has any content
+        if (table.children.length === 0) {
+            this.showEmptyState();
+            return;
+        }
 
         tableContainer.appendChild(table);
         this.attachTableEventListeners();
@@ -207,8 +247,9 @@ const KnowledgeTable = {
         document.querySelectorAll('.edit-knowledge-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const category = e.target.dataset.category;
+                const subcategory = e.target.dataset.subcategory;
                 const value = e.target.dataset.value;
-                this.showEditKnowledgeModal(category, value);
+                this.showEditKnowledgeModal(category, subcategory, value);
             });
         });
     },
@@ -226,10 +267,12 @@ const KnowledgeTable = {
     /**
      * Show modal for editing existing knowledge (placeholder for future implementation)
      * @param {string} category - The category to edit
+     * @param {string} subcategory - The subcategory to edit (optional)
      * @param {string} value - The current value
      */
-    showEditKnowledgeModal(category, value) {
-        console.log('Editing knowledge:', category, value);
+    showEditKnowledgeModal(category, subcategory, value) {
+        const displayText = subcategory ? `${category} > ${subcategory}` : category;
+        console.log('Editing knowledge:', displayText, value);
         if (typeof NotificationManager !== 'undefined') {
             NotificationManager.showInfo('Edit knowledge feature coming soon!');
         }

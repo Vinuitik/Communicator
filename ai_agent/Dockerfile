@@ -9,18 +9,28 @@ ENV PYTHONPATH=/app
 # Set working directory
 WORKDIR /app
 
+# Install system dependencies first (cached layer if unchanged)
+RUN apt-get clean && \
+    apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 # Copy requirements first for better caching
 COPY requirements.txt /app/
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
+# Install Python dependencies (cached layer if requirements.txt unchanged)
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Copy project files (after dependencies for better Docker layer caching)
 COPY . /app
+
+# Create logs directory
+RUN mkdir -p /app/logs
 
 # Expose the port FastAPI runs on
 EXPOSE 8001

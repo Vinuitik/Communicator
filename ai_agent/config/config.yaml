@@ -1,0 +1,87 @@
+# AI Agent Configuration File
+# This file contains all configuration settings for the AI Agent microservice
+
+# Application Settings
+app:
+  name: "AI Agent Service"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8001
+  debug: false
+  log_level: "INFO"
+
+# LLM Configuration
+llm:
+  model: "gemini-2.5-flash"
+  temperature: 0.7
+  max_tokens: 2048
+  timeout: 30
+
+# MCP Server Configuration
+mcp:
+  server_url: "http://mcp-knowledge-server:8000/knowledgeMCP/"
+  timeout: 30
+  retry_attempts: 3
+  connection_retry_delay: 2  # seconds between retries
+
+# Database Configurations
+databases:
+  # MongoDB Configuration (from docker-compose: generatedData service)
+  mongodb:
+    url: "mongodb://mongo_user:example@generatedData:27017"
+    database: "generated_db"
+    connection_timeout: 5000
+    server_selection_timeout: 5000
+    max_pool_size: 100
+    min_pool_size: 10
+  
+  # Redis Configuration (from docker-compose: redis service)
+  redis:
+    url: "redis://redisCache:6379"
+    database: 0
+    connection_timeout: 5
+    retry_on_timeout: true
+    max_connections: 20
+
+# Cache Configuration
+cache:
+  default_ttl: 3600  # 1 hour in seconds
+  friend_summary_ttl: 7200  # 2 hours for friend summaries
+  tool_cache_ttl: 1800  # 30 minutes for tool results
+
+# Knowledge Service Configuration
+knowledge:
+  max_knowledge_items_per_request: 30
+  summarization_batch_size: 10
+  enable_caching: true
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file:
+    enabled: true
+    path: "logs/ai_agent.log"
+    max_size: "10MB"
+    backup_count: 5
+  console:
+    enabled: true
+
+# Security Configuration
+security:
+  cors:
+    allow_origins: ["*"]
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+
+# Development/Production Overrides
+development:
+  debug: true
+  log_level: "DEBUG"
+  
+production:
+  debug: false
+  log_level: "WARNING"
+  cors:
+    allow_origins: ["http://localhost:8090"]  # Only allow nginx

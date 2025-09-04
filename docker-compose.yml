@@ -174,7 +174,19 @@ services:
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
      #restart: unless-stopped
-
+  generatedData:
+    image: mongo:6.0
+    container_name: generatedData
+    ports:
+      - "27020:27017"  # Map host 27018 to container 27017 to avoid conflicts
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: generated_db
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - generated-data:/data/db
+    #restart: unless-stopped
 
 
 volumes:
@@ -201,4 +213,6 @@ volumes:
   maven-cache-connections:
     driver: local
   maven-cache-chrono:
+    driver: local
+  generated-data:
     driver: local

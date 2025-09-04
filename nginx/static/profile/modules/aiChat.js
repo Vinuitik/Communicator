@@ -158,12 +158,17 @@ const AiChat = {
 
         if (typeof data === 'string') {
             messageText = data;
+        } else if (data.content) {
+            // Handle the nested content structure like {"type":"ai_response","content":"Hello! Would you like to chat about Anna?"}
+            messageText = data.content;
+            messageType = data.type === 'ai_response' ? 'ai' : (data.type || 'ai');
         } else if (data.message) {
             messageText = data.message;
             messageType = data.type || 'ai';
         } else if (data.response) {
             messageText = data.response;
         } else {
+            // Fallback to JSON string if we can't extract content
             messageText = JSON.stringify(data);
         }
 

@@ -7,3 +7,6 @@ langgraph>=0.1.0
 langchain-mcp-adapters>=0.1.0
 langchain-google-genai>=1.0.0
 langchain-core>=0.1.0
+redis>=4.6.0
+motor>=3.1.1
+PyYAML>=6.0
