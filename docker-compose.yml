@@ -185,6 +185,8 @@ services:
        - "80"  # Internal exposure only, no external port mapping
      environment:
        TZ: ${HOST_TIMEZONE:-UTC}
+     volumes:
+       - npm-cache:/root/.npm
      #restart: unless-stopped
 
   generatedData:
@@ -226,6 +228,8 @@ volumes:
   maven-cache-connections:
     driver: local
   maven-cache-chrono:
+    driver: local
+  npm-cache:
     driver: local
   generated-data:
     driver: local

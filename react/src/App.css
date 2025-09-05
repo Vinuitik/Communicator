@@ -1,0 +1,40 @@
+/* App.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    @apply bg-gray-100 text-gray-900;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+}
+
+a {
+    @apply text-blue-500 hover:text-blue-700;
+}
+
+button {
+    @apply bg-blue-500 text-white font-semibold py-2 px-4 rounded;
+}
+
+input {
+    @apply border border-gray-300 rounded-md p-2;
+}
+
+.container {
+    @apply mx-auto px-4;
+}
+
+.flex-center {
+    @apply flex justify-center items-center;
+}
+
+.mt-4 {
+    @apply mt-4;
+}
+
+.mb-4 {
+    @apply mb-4;
+}
