@@ -126,6 +126,7 @@ services:
       - connections
       - mcp-knowledge-server
       - ai-agent
+      - react-ui
     #restart: unless-stopped
 
   fileRepository:
@@ -174,6 +175,18 @@ services:
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
      #restart: unless-stopped
+
+  react-ui:
+     build:
+       context: ./react
+       dockerfile: Dockerfile
+     container_name: react-ui
+     expose:
+       - "80"  # Internal exposure only, no external port mapping
+     environment:
+       TZ: ${HOST_TIMEZONE:-UTC}
+     #restart: unless-stopped
+
   generatedData:
     image: mongo:6.0
     container_name: generatedData
