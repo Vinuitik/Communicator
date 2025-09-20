@@ -19,17 +19,10 @@ import lombok.*;
 })
 public class Connection {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     @EmbeddedId
     private ConnectionId id;
     
     private String description;
-
-    @Column(name = "friend1_id")  // Explicit column name
-    private Long friend1Id;
-    @Column(name = "friend2_id")  // Explicit column name
-    private Long friend2Id;
 
     @OneToMany(mappedBy = "connection",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
@@ -40,8 +33,7 @@ public class Connection {
     private List<ConnectionPermission> permission;
 
     public Connection(Long friendA, Long friendB) {
-        this.friend1Id = Math.min(friendA, friendB);
-        this.friend2Id = Math.max(friendA, friendB);
+        this.id = new ConnectionId(Math.min(friendA, friendB), Math.max(friendA, friendB));
     }
 
     // Lombok will generate constructors, getters, setters, etc.

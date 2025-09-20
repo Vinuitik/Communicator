@@ -10,3 +10,4 @@ langchain-core>=0.1.0
 redis>=4.6.0
 motor>=3.1.1
 PyYAML>=6.0
+langchain-community>=0.2

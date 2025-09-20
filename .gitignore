@@ -1,5 +1,6 @@
 backup/service-account-key.json
 ai_agent/.env
+ai_agent/service-account-key.json
 
 resourceRepository/photos/**
 resourceRepository/videos/**

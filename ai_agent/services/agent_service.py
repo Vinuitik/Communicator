@@ -1,13 +1,17 @@
 from typing import Optional, List, Any, Dict
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chat_models import ChatVertexAI
 from langgraph.prebuilt import create_react_agent
 from config.settings import settings
 import logging
 import asyncio
+import os
 
 # Set up logger
 logger = logging.getLogger(__name__)
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/app/service-account-key.json"
 
 class AgentService:
     """Service for managing the LangChain agent and its dependencies"""
@@ -75,7 +79,6 @@ class AgentService:
         """Setup the Google Gemini LLM"""
         self.llm = ChatGoogleGenerativeAI(
             model=settings.llm_model,
-            google_api_key=settings.gemini_api_key,
             temperature=settings.llm_temperature,
             transport="rest"
         )
