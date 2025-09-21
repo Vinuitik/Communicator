@@ -64,6 +64,9 @@ class Settings:
         # Environment variables (still support for sensitive data)
         self.gemini_api_key = os.getenv("GEMINI_API_KEY")
         
+        self.citation_chunk_size = self.config["citation"]["chunk"]["size"]
+        self.citation_chunk_overlap = self.config["citation"]["chunk"]["overlap"]
+
         # Validate required settings
         if not self.gemini_api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")

@@ -4,7 +4,7 @@ import logging
 import hashlib
 import numpy as np
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 # LlamaIndex imports
 from llama_index.core import Document
@@ -19,24 +19,12 @@ from sentence_transformers import SentenceTransformer
 from .agent_service import AgentService
 from config.settings import settings
 
+from models.schemas import CitationResult, ChunkData, MCPKnowledgeDTO, ChunkDocument, EmbeddingDocument
+
 # Set up logger
 logger = logging.getLogger(__name__)
 
-@dataclass
-class CitationResult:
-    """Data class for citation results"""
-    source_text: str
-    source_metadata: Dict[str, Any]
-    confidence_score: float
-    chunk_id: str
-    
-@dataclass
-class ChunkData:
-    """Data class for document chunks"""
-    text: str
-    metadata: Dict[str, Any]
-    chunk_id: str
-    embedding: Optional[np.ndarray] = None
+
 
 class CitationService:
     """Service for finding citations and sources for facts using RAG approach"""
@@ -59,8 +47,8 @@ class CitationService:
         
         # Initialize text splitter
         self.text_splitter = SentenceSplitter(
-            chunk_size=settings.get("citation_chunk_size", 500),
-            chunk_overlap=settings.get("citation_chunk_overlap", 50)
+            chunk_size=settings.citation_chunk_size,
+            chunk_overlap=settings.citation_chunk_overlap
         )
         
         # FAISS index (will be built dynamically)
@@ -69,18 +57,18 @@ class CitationService:
         
         logger.info("CitationService initialized")
     
-    async def obtain_source(self, fact: str, sources: List[str]) -> List[CitationResult]:
+    async def obtain_source(self, fact: str, sources: List[MCPKnowledgeDTO]) -> List[CitationResult]:
         """
         Main public method to find citations for a given fact from provided sources
         
         Args:
             fact: The statement/fact to find citations for
-            sources: List of source documents/texts to search through
+            sources: List of MCPKnowledgeDTO objects to search through
             
         Returns:
             List of CitationResult objects with source attributions
         """
-        logger.info(f"Finding citations for fact: '{fact[:100]}...' from {len(sources)} sources")
+        logger.info(f"Finding citations for fact: '{fact[:100]}...' from {len(sources)} knowledge sources")
         
         try:
             # Step 1: Process and chunk all sources
@@ -106,71 +94,88 @@ class CitationService:
             logger.error(f"Error in obtain_source: {str(e)}", exc_info=True)
             raise RuntimeError(f"Error finding citations: {str(e)}")
     
-    async def _process_sources(self, sources: List[str]) -> List[ChunkData]:
+    async def _process_sources(self, sources: List[MCPKnowledgeDTO]) -> List[ChunkData]:
         """
         Process source documents into chunks using LlamaIndex
         
         Args:
-            sources: List of source texts
+            sources: List of MCPKnowledgeDTO objects
             
         Returns:
             List of ChunkData objects
         """
-        logger.debug(f"Processing {len(sources)} sources into chunks")
+        logger.debug(f"Processing {len(sources)} knowledge sources into chunks")
         all_chunks = []
         
-        for idx, source_text in enumerate(sources):
+        for idx, knowledge_dto in enumerate(sources):
+            source_text = knowledge_dto.fact
+            knowledge_id = knowledge_dto.id
+            
+            # Skip sources without valid IDs
+            if knowledge_id is None:
+                logger.warning(f"Knowledge source {idx} has no ID, skipping")
+                continue
+            
             # Skip very small sources (less than 60 words as per your requirement)
             if len(source_text.split()) < 60:
-                logger.debug(f"Source {idx} too small ({len(source_text.split())} words), keeping as single chunk")
-                chunk_id = self._generate_chunk_id(source_text, idx, 0)
+                logger.debug(f"Knowledge {knowledge_id} too small ({len(source_text.split())} words), keeping as single chunk")
+                chunk_id = self._generate_chunk_id(source_text, [knowledge_id], 0)
                 chunk_data = ChunkData(
                     text=source_text,
                     metadata={
-                        "source_index": idx,
                         "chunk_index": 0,
                         "total_chunks": 1,
                         "word_count": len(source_text.split()),
                         "char_start": 0,
-                        "char_end": len(source_text)
+                        "char_end": len(source_text),
+                        "importance": knowledge_dto.importance
                     },
-                    chunk_id=chunk_id
+                    chunk_id=chunk_id,
+                    knowledge_ids=[knowledge_id]
                 )
                 all_chunks.append(chunk_data)
                 continue
             
             # Create LlamaIndex document
-            document = Document(text=source_text, metadata={"source_index": idx})
+            document = Document(
+                text=source_text, 
+                metadata={
+                    "knowledge_id": knowledge_id,
+                    "importance": knowledge_dto.importance
+                }
+            )
             
             # Split into chunks
             nodes = self.text_splitter.get_nodes_from_documents([document])
             
-            logger.debug(f"Source {idx} split into {len(nodes)} chunks")
+            logger.debug(f"Knowledge {knowledge_id} split into {len(nodes)} chunks")
             
             # Convert nodes to ChunkData
             for chunk_idx, node in enumerate(nodes):
-                chunk_id = self._generate_chunk_id(node.text, idx, chunk_idx)
+                chunk_id = self._generate_chunk_id(node.text, [knowledge_id], chunk_idx)
                 chunk_data = ChunkData(
                     text=node.text,
                     metadata={
-                        "source_index": idx,
                         "chunk_index": chunk_idx,
                         "total_chunks": len(nodes),
                         "word_count": len(node.text.split()),
                         "char_start": getattr(node, 'start_char_idx', 0),
-                        "char_end": getattr(node, 'end_char_idx', len(node.text))
+                        "char_end": getattr(node, 'end_char_idx', len(node.text)),
+                        "importance": knowledge_dto.importance
                     },
-                    chunk_id=chunk_id
+                    chunk_id=chunk_id,
+                    knowledge_ids=[knowledge_id]
                 )
                 all_chunks.append(chunk_data)
         
         logger.debug(f"Total chunks generated: {len(all_chunks)}")
         return all_chunks
     
-    def _generate_chunk_id(self, text: str, source_idx: int, chunk_idx: int) -> str:
-        """Generate unique chunk ID based on content and position"""
+    def _generate_chunk_id(self, text: str, knowledge_ids: List[int], chunk_idx: int) -> str:
+        """Generate unique chunk ID based on content and knowledge IDs"""
         content_hash = hashlib.md5(text.encode()).hexdigest()[:8]
-        return f"chunk_{source_idx}_{chunk_idx}_{content_hash}"
+        knowledge_ids_str = "_".join(map(str, sorted(knowledge_ids)))
+        return f"chunk_{knowledge_ids_str}_{chunk_idx}_{content_hash}"
     
     async def _ensure_embeddings(self, chunks: List[ChunkData]) -> None:
         """
@@ -184,7 +189,10 @@ class CitationService:
         chunks_to_embed = []
         
         for chunk in chunks:
-            # Check if embedding already exists in database
+            # First, check if we can reuse an existing chunk from database
+            existing_chunk = await self._get_or_create_chunk(chunk)
+            
+            # Check if embedding already exists
             cached_embedding = await self._get_cached_embedding(chunk.chunk_id)
             
             if cached_embedding is not None:
@@ -205,6 +213,78 @@ class CitationService:
                 chunk.embedding = embedding
                 await self._cache_embedding(chunk.chunk_id, embedding)
     
+    async def _get_or_create_chunk(self, chunk_data: ChunkData) -> Optional[ChunkDocument]:
+        """
+        Get existing chunk from database or create a new one if it doesn't exist
+        Handles many-to-many relationship between chunks and knowledge items
+        
+        Args:
+            chunk_data: ChunkData object to find or create
+            
+        Returns:
+            ChunkDocument from database
+        """
+        if not self.mongo_repo:
+            return None
+        
+        try:
+            # Check if chunk with same text already exists
+            content_hash = hashlib.md5(chunk_data.text.encode()).hexdigest()
+            existing_chunk = await self.mongo_repo.find_one(
+                "chunks",
+                {"text": chunk_data.text}  # Find by exact text match
+            )
+            
+            current_time = datetime.now(timezone.utc)
+            
+            if existing_chunk:
+                # Update existing chunk to include new knowledge IDs
+                existing_knowledge_ids = set(existing_chunk.get("knowledge_ids", []))
+                new_knowledge_ids = set(chunk_data.knowledge_ids)
+                updated_knowledge_ids = list(existing_knowledge_ids.union(new_knowledge_ids))
+                
+                # Update the chunk with new knowledge IDs
+                await self.mongo_repo.update_one(
+                    "chunks",
+                    {"_id": existing_chunk["_id"]},
+                    {
+                        "$set": {
+                            "knowledge_ids": updated_knowledge_ids,
+                            "updated_at": current_time
+                        }
+                    }
+                )
+                
+                logger.debug(f"Updated existing chunk {chunk_data.chunk_id} with knowledge IDs: {new_knowledge_ids}")
+                
+                # Update chunk_data to use existing chunk_id for consistency
+                chunk_data.chunk_id = existing_chunk["chunk_id"]
+                chunk_data.knowledge_ids = updated_knowledge_ids
+                
+                return ChunkDocument(**existing_chunk)
+            else:
+                # Create new chunk document
+                chunk_doc = ChunkDocument(
+                    chunk_id=chunk_data.chunk_id,
+                    text=chunk_data.text,
+                    word_count=chunk_data.metadata.get("word_count", len(chunk_data.text.split())),
+                    char_start=chunk_data.metadata.get("char_start", 0),
+                    char_end=chunk_data.metadata.get("char_end", len(chunk_data.text)),
+                    knowledge_ids=chunk_data.knowledge_ids,
+                    created_at=current_time,
+                    updated_at=current_time
+                )
+                
+                # Insert into database
+                await self.mongo_repo.insert_one("chunks", chunk_doc.dict())
+                
+                logger.debug(f"Created new chunk {chunk_data.chunk_id} for knowledge IDs: {chunk_data.knowledge_ids}")
+                return chunk_doc
+                
+        except Exception as e:
+            logger.warning(f"Error handling chunk {chunk_data.chunk_id}: {str(e)}")
+            return None
+    
     async def _get_cached_embedding(self, chunk_id: str) -> Optional[np.ndarray]:
         """
         Retrieve cached embedding from database
@@ -220,7 +300,7 @@ class CitationService:
         
         try:
             cached_doc = await self.mongo_repo.find_one(
-                "chunk_embeddings",
+                "embeddings",
                 {"chunk_id": chunk_id}
             )
             
@@ -236,7 +316,7 @@ class CitationService:
     
     async def _cache_embedding(self, chunk_id: str, embedding: np.ndarray) -> None:
         """
-        Cache embedding in database
+        Cache embedding in database - separate from chunk storage
         
         Args:
             chunk_id: Unique identifier for the chunk
@@ -246,18 +326,19 @@ class CitationService:
             return
         
         try:
-            embedding_doc = {
-                "chunk_id": chunk_id,
-                "embedding": embedding.tolist(),  # Convert to list for JSON serialization
-                "created_at": datetime.utcnow(),
-                "model_name": "all-MiniLM-L6-v2"  # Track which model generated this
-            }
+            embedding_doc = EmbeddingDocument(
+                chunk_id=chunk_id,
+                embedding=embedding.tolist(),  # Convert to list for JSON serialization
+                model_name="all-MiniLM-L6-v2",
+                dimension=len(embedding),
+                created_at=datetime.now(timezone.utc)
+            )
             
             # Use upsert to avoid duplicates
             await self.mongo_repo.update_one(
-                "chunk_embeddings",
+                "embeddings",
                 {"chunk_id": chunk_id},
-                {"$set": embedding_doc},
+                {"$set": embedding_doc.dict()},
                 upsert=True
             )
             
@@ -368,6 +449,28 @@ class CitationService:
         logger.debug(f"Formatted {len(citations)} citations")
         return citations
     
+    def clear_index_and_chunks(self) -> None:
+        """
+        Clear the FAISS index and chunk store to free up memory.
+        This should be called when you want to start fresh or clean up resources.
+        """
+        logger.info("Clearing FAISS index and chunk store")
+        
+        # Clear FAISS index
+        if self.faiss_index is not None:
+            # Reset the FAISS index to None
+            self.faiss_index.reset()  # Clear all vectors from the index
+            self.faiss_index = None
+            logger.debug("FAISS index cleared")
+        
+        # Clear chunk store
+        if self.chunk_store:
+            chunks_cleared = len(self.chunk_store)
+            self.chunk_store.clear()
+            logger.debug(f"Cleared {chunks_cleared} chunks from chunk store")
+        
+        logger.info("Successfully cleared FAISS index and chunk store")
+    
     def get_citation_stats(self) -> Dict[str, Any]:
         """
         Get statistics about the citation service
@@ -380,5 +483,7 @@ class CitationService:
             "faiss_index_built": self.faiss_index is not None,
             "embedding_model": "all-MiniLM-L6-v2",
             "chunk_size": settings.get("citation_chunk_size", 500),
-            "chunk_overlap": settings.get("citation_chunk_overlap", 50)
+            "chunk_overlap": settings.get("citation_chunk_overlap", 50),
+            "storage_strategy": "separate_chunk_and_embedding_collections",
+            "supports_many_to_many": True
         }

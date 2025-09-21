@@ -52,8 +52,8 @@ public class ConnectionsKnowledge {
 
     @ManyToOne
     @JoinColumns({
-        @JoinColumn(name = "friend1_id", referencedColumnName = "friend1_id"),
-        @JoinColumn(name = "friend2_id", referencedColumnName = "friend2_id")
+        @JoinColumn(name = "friend1_id", referencedColumnName = "friend1Id"),
+        @JoinColumn(name = "friend2_id", referencedColumnName = "friend2Id")
     })
     @JsonBackReference
     @ToString.Exclude

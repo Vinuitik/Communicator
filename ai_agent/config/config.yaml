@@ -85,3 +85,8 @@ production:
   log_level: "WARNING"
   cors:
     allow_origins: ["http://localhost:8090"]  # Only allow nginx
+
+citation:
+  chunk:
+    size: 500
+    overlap: 50

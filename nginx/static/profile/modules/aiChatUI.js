@@ -261,9 +261,19 @@ const AiChatUI = {
         
         const timeString = this.formatTime(timestamp);
         
+        // Format message text based on sender
+        let formattedText;
+        if (isUser) {
+            // Escape HTML for user messages (security)
+            formattedText = this.escapeHtml(text);
+        } else {
+            // Parse Markdown for AI messages
+            formattedText = this.parseMarkdown(text);
+        }
+        
         messageEl.innerHTML = `
             <div class="message-content">
-                <div class="message-text">${this.escapeHtml(text)}</div>
+                <div class="message-text">${formattedText}</div>
                 <div class="message-time">${timeString}</div>
             </div>
         `;
@@ -485,6 +495,21 @@ const AiChatUI = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Parse Markdown to HTML for AI messages
+     * @param {string} text - Markdown text to parse
+     * @returns {string} - HTML string
+     */
+    parseMarkdown(text) {
+        if (typeof MarkdownParser !== 'undefined') {
+            return MarkdownParser.safeParse(text);
+        } else {
+            // Fallback to HTML escaping if MarkdownParser is not available
+            console.warn('MarkdownParser not available, falling back to HTML escaping');
+            return this.escapeHtml(text);
+        }
     },
 
     /**
