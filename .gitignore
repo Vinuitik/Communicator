@@ -1,8 +1,60 @@
+# Global ignore patterns for the entire Communicator project
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+*.log
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Environment files (global)
+.env
+.env.local
+.env.*.local
+
+# Service account keys and secrets
 backup/service-account-key.json
 ai_agent/.env
 ai_agent/service-account-key.json
+**/service-account-key.json
+**/*.key
+**/*.pem
+**/secrets.json
 
+# Cache directories
+.cache/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+
+# Build directories
+**/build/
+**/dist/
+**/*.egg-info/
+
+# Node modules (if any JavaScript projects)
+**/node_modules/
+
+# Resource files (as you already have)
 resourceRepository/photos/**
 resourceRepository/videos/**
 resourceRepository/voice/**
 resourceRepository/personalResources/**
+
+# Log files
+**/*.log
+**/logs/

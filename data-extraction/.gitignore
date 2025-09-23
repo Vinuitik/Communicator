@@ -1,0 +1,27 @@
+# Data Extraction Microservice specific ignores
+
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Application specific
+server.log
+*.log
+app/uploads/
+app/temp/
+app/cache/
+
+# Environment variables
+.env
+.env.local
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
