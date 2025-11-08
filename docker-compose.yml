@@ -13,7 +13,7 @@ services:
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    #restart: unless-stopped
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -25,7 +25,7 @@ services:
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes  # Enable persistence
-    #restart: unless-stopped
+    restart: unless-stopped
 
   friend:
     build:
@@ -44,7 +44,7 @@ services:
     depends_on:
       - postgres
     command: java -jar app.jar  # Match the JAR name specified in the Dockerfile
-    #restart: unless-stopped
+    restart: unless-stopped
 
   backup:
       build: 
@@ -56,7 +56,7 @@ services:
       depends_on:
         - postgres
         - fileRepository
-      #restart: unless-stopped
+      restart: unless-stopped
 
   group:
       build: 
@@ -74,7 +74,7 @@ services:
         - maven-cache-group:/root/.m2
       depends_on:
         - postgres
-      #restart: unless-stopped
+      restart: unless-stopped
 
   connections:
       build: 
@@ -92,7 +92,7 @@ services:
         - maven-cache-connections:/root/.m2
       depends_on:
         - postgres
-      #restart: unless-stopped
+      restart: unless-stopped
 
   chrono:
       build: 
@@ -108,7 +108,7 @@ services:
       depends_on:
         - friend
         - nginx
-      #restart: unless-stopped
+      restart: unless-stopped
 
 
   nginx:
@@ -127,7 +127,7 @@ services:
       - mcp-knowledge-server
       - ai-agent
       - react-ui
-    #restart: unless-stopped
+    restart: unless-stopped
 
   fileRepository:
     build:
@@ -146,7 +146,7 @@ services:
       - file-repo-connections:/app/connections
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
-    #restart: unless-stopped
+    restart: unless-stopped
 
   mcp-knowledge-server:
     build:
@@ -158,7 +158,7 @@ services:
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1
-    #restart: unless-stopped
+    restart: unless-stopped
 
   ai-agent:
      build:
@@ -174,7 +174,7 @@ services:
        PYTHONUNBUFFERED: 1
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
-     #restart: unless-stopped
+     restart: unless-stopped
 
   react-ui:
      build:
@@ -187,7 +187,7 @@ services:
        TZ: ${HOST_TIMEZONE:-UTC}
      volumes:
        - npm-cache:/root/.npm
-     #restart: unless-stopped
+     restart: unless-stopped
 
   generatedData:
     image: mongo:6.0
@@ -201,7 +201,7 @@ services:
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - generated-data:/data/db
-    #restart: unless-stopped
+    restart: unless-stopped
 
 
 volumes:

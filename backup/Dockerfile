@@ -1,16 +1,16 @@
-# Use OpenJDK with a more complete base image (includes apt-get)
-FROM openjdk:17-bullseye
+# Use Eclipse Temurin JDK with Ubuntu base image (includes apt-get)
+FROM eclipse-temurin:17-jdk-jammy
 
 # Set working directory
 WORKDIR /app
 
 # Install required system dependencies (PostgreSQL client, Python, pip)
 RUN apt-get update && \
-    apt-get install -y wget gnupg && \
-    echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    apt-get install -y --fix-missing wget gnupg && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg && \
     apt-get update && \
-    apt-get install -y postgresql-client-17 python3 python3-pip && \
+    apt-get install -y --fix-missing postgresql-client-17 python3 python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
 

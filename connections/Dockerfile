@@ -15,7 +15,7 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Create the final, smaller image
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 COPY --from=build /app/target/Connections.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
