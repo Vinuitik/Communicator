@@ -116,9 +116,9 @@ class KnowledgeService:
             await self.mongo_repo.insert_one("friend_summaries", summary_doc)
             logger.info(f"Successfully stored summary in MongoDB for friend_id: {friend_id}")
             
-            # Step 5: Cache friendID in Redis (set expiry if desired)
+            # Step 5: Cache friendID in Redis permanently (no expiry)
             logger.info(f"Caching friend_id in Redis with key: {cache_key}")
-            await self.redis_repo.set(cache_key, "cached", ex=settings.cache_friend_summary_ttl)  # Use config TTL
+            await self.redis_repo.set(cache_key, "cached")  # Permanent cache - no TTL
             logger.info(f"Successfully cached summary for friend_id: {friend_id}")
             
             logger.info(f"Knowledge summarization completed successfully for friend_id: {friend_id}")
