@@ -203,6 +203,73 @@ services:
       - generated-data:/data/db
     restart: unless-stopped
 
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    ports:
+      - "9092:9092"   # External access from host machine
+      - "9093:9093"   # Internal Docker network access
+    environment:
+      # KRaft mode configuration (no Zookeeper required)
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9094'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      
+      # Listener configuration - allows both internal (Docker) and external (host) connections
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:9094'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      
+      # Cluster and log configuration
+      CLUSTER_ID: 'communicator-kafka-cluster-001'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      
+      # Log retention - keep events for 7 days (perfect for event sourcing)
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_BYTES: 1073741824  # 1GB per partition
+      KAFKA_LOG_SEGMENT_BYTES: 104857600     # 100MB segments
+      
+      # Performance tuning
+      KAFKA_NUM_PARTITIONS: 3                # Default partitions for new topics
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1    # Single broker = replication factor 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      
+      # Auto-create topics when producer sends first message
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      
+      # JVM heap size (adjust based on your memory availability)
+      KAFKA_HEAP_OPTS: '-Xmx512M -Xms512M'
+      
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8089:8080"  # Access Kafka UI at http://localhost:8089
+    environment:
+      KAFKA_CLUSTERS_0_NAME: communicator-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      TZ: ${HOST_TIMEZONE:-UTC}
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
 
 volumes:
   postgres-data:
@@ -232,4 +299,6 @@ volumes:
   npm-cache:
     driver: local
   generated-data:
+    driver: local
+  kafka-data:
     driver: local
