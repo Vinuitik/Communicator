@@ -63,9 +63,19 @@ class Settings:
         
         # Environment variables (still support for sensitive data)
         self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
         
         self.citation_chunk_size = self.config["citation"]["chunk"]["size"]
         self.citation_chunk_overlap = self.config["citation"]["chunk"]["overlap"]
+
+        # Embedding settings
+        self.embedding_provider = self.config["embedding"]["provider"]
+        self.embedding_model = self.config["embedding"]["model"]
+        self.embedding_timeout = self.config["embedding"]["timeout"]
+        self.embedding_max_retries = self.config["embedding"]["max_retries"]
+        self.embedding_batch_size = self.config["embedding"]["batch_size"]
+        self.embedding_cache_enabled = self.config["embedding"]["cache_embeddings"]
+        self.embedding_cache_ttl = self.config["embedding"]["embedding_cache_ttl"]
 
         # Validate required settings
         if not self.gemini_api_key:
@@ -116,6 +126,18 @@ class Settings:
             "socket_timeout": self.redis_connection_timeout,
             "retry_on_timeout": self.redis_retry_on_timeout,
             "max_connections": self.redis_max_connections
+        }
+    
+    def get_embedding_config(self) -> Dict[str, Any]:
+        """Get embedding service configuration"""
+        return {
+            "provider": self.embedding_provider,
+            "model": self.embedding_model,
+            "timeout": self.embedding_timeout,
+            "max_retries": self.embedding_max_retries,
+            "batch_size": self.embedding_batch_size,
+            "cache_embeddings": self.embedding_cache_enabled,
+            "embedding_cache_ttl": self.embedding_cache_ttl
         }
 
 # Create global settings instance

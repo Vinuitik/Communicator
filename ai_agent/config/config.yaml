@@ -17,6 +17,21 @@ llm:
   max_tokens: 2048
   timeout: 30
 
+# Embedding Configuration
+embedding:
+  # Using HuggingFace Inference API (no GPU needed)
+  provider: "huggingface"
+  model: "sentence-transformers/all-MiniLM-L6-v2"  # Fast, efficient, 384 dimensions
+  # Alternative models:
+  # "sentence-transformers/all-mpnet-base-v2"  # Better quality, 768 dimensions, slower
+  # "BAAI/bge-small-en-v1.5"  # Good balance, 384 dimensions
+  # "intfloat/e5-base-v2"  # High quality, 768 dimensions
+  timeout: 30
+  max_retries: 3
+  batch_size: 32  # Process up to 32 texts in one API call
+  cache_embeddings: true
+  embedding_cache_ttl: 86400  # Cache embeddings for 24 hours
+
 # MCP Server Configuration
 mcp:
   server_url: "http://mcp-knowledge-server:8000/knowledgeMCP/"
