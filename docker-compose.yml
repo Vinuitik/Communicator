@@ -174,7 +174,7 @@ services:
        PYTHONUNBUFFERED: 1
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
-     restart: unless-stopped
+     #restart: unless-stopped
 
   react-ui:
      build:
@@ -207,8 +207,8 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
     ports:
-      - "9092:9092"   # External access from host machine
-      - "9093:9093"   # Internal Docker network access
+      - "9095:9092"   # External access from host machine (changed to avoid collision)
+      - "9096:9093"   # Internal Docker network access
     environment:
       # KRaft mode configuration (no Zookeeper required)
       KAFKA_NODE_ID: 1
@@ -218,7 +218,7 @@ services:
       
       # Listener configuration - allows both internal (Docker) and external (host) connections
       KAFKA_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:9094'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9095'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       

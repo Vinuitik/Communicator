@@ -52,12 +52,30 @@ async def websocket_endpoint(
                 # Extract AI message content - it's always the last message
                 ai_message_content = result['messages'][-1].content
                 
-                print(f"AI Response Content: {ai_message_content}")
+                print(f"AI Response Content (raw): {ai_message_content}")
                 
-                # Send the AI response to client
+                # Normalize content to always be a string
+                # Handle complex response format (list of dicts with 'text' field)
+                if isinstance(ai_message_content, list) and len(ai_message_content) > 0:
+                    # Extract text from the first item in the list
+                    first_item = ai_message_content[0]
+                    if isinstance(first_item, dict) and 'text' in first_item:
+                        text_content = first_item['text']
+                    else:
+                        text_content = str(first_item)
+                elif isinstance(ai_message_content, str):
+                    # Already a string, use as-is
+                    text_content = ai_message_content
+                else:
+                    # Fallback for unexpected formats
+                    text_content = str(ai_message_content)
+                
+                print(f"Normalized text content: {text_content}")
+                
+                # Send the AI response to client (always as a string)
                 response = WebSocketMessage(
                     type="ai_response",
-                    content=ai_message_content
+                    content=text_content
                 )
                 await websocket.send_json(response.dict())
                 

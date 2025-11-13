@@ -1,7 +1,6 @@
 from typing import Optional, List, Any, Dict
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.chat_models import ChatVertexAI
 from langgraph.prebuilt import create_react_agent
 from config.settings import settings
 import logging
