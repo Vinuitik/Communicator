@@ -129,7 +129,7 @@ const KnowledgeTable = {
         tableContainer.innerHTML = '';
 
         // Check if we have knowledge data
-        if (!knowledgeData || Object.keys(knowledgeData).length === 0) {
+        if (!knowledgeData || !knowledgeData.facts || knowledgeData.facts.length === 0) {
             this.showEmptyState();
             return;
         }
@@ -138,73 +138,118 @@ const KnowledgeTable = {
         const table = document.createElement('table');
         table.className = 'knowledge-table-content';
 
-        // Process nested knowledge categories
-        Object.entries(knowledgeData).forEach(([categoryName, categoryData]) => {
-            if (categoryName === 'error' || !categoryData) return;
+        // Add table header
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+                <th>Fact</th>
+                <th>Value</th>
+                <th>Confidence</th>
+                <th>References</th>
+            </tr>
+        `;
+        table.appendChild(thead);
 
-            // Handle nested category structure (e.g., "Basic Information": { "Name": "Anna", ... })
-            if (typeof categoryData === 'object' && !Array.isArray(categoryData)) {
-                // Create category header
-                const categoryHeader = document.createElement('tr');
-                categoryHeader.className = 'category-header';
-                categoryHeader.innerHTML = `
-                    <th colspan="2" class="category-title">${this.escapeHtml(categoryName)}</th>
-                `;
-                table.appendChild(categoryHeader);
+        const tbody = document.createElement('tbody');
 
-                // Add sub-items within this category
-                Object.entries(categoryData).forEach(([subKey, subValue]) => {
-                    if (subValue && subValue.toString().trim()) {
-                        const row = document.createElement('tr');
-                        row.className = 'knowledge-item';
-                        row.innerHTML = `
-                            <th class="sub-category">${this.escapeHtml(subKey)}</th>
-                            <td>
-                                <span class="knowledge-value">${this.escapeHtml(subValue)}</span>
-                                <div class="knowledge-actions">
-                                    <button class="edit-knowledge-btn" 
-                                            data-category="${this.escapeHtml(categoryName)}" 
-                                            data-subcategory="${this.escapeHtml(subKey)}"
-                                            data-value="${this.escapeHtml(subValue)}" 
-                                            title="Edit this information">
-                                        ✏️
-                                    </button>
-                                </div>
-                            </td>
-                        `;
-                        table.appendChild(row);
-                    }
-                });
-            } else {
-                // Handle simple key-value pairs
-                const row = document.createElement('tr');
-                row.className = 'knowledge-item';
-                row.innerHTML = `
-                    <th>${this.formatCategoryName(categoryName)}</th>
-                    <td>
-                        <span class="knowledge-value">${this.escapeHtml(categoryData)}</span>
-                        <div class="knowledge-actions">
-                            <button class="edit-knowledge-btn" 
-                                    data-category="${this.escapeHtml(categoryName)}" 
-                                    data-value="${this.escapeHtml(categoryData)}" 
-                                    title="Edit this information">
-                                ✏️
-                            </button>
+        // Process facts
+        knowledgeData.facts.forEach((fact) => {
+            const row = document.createElement('tr');
+            row.className = 'knowledge-item';
+
+            // Fact key cell
+            const keyCell = document.createElement('td');
+            keyCell.className = 'fact-key';
+            keyCell.textContent = fact.key || 'Unknown';
+
+            // Fact value cell
+            const valueCell = document.createElement('td');
+            valueCell.className = 'fact-value';
+            valueCell.textContent = fact.value || '';
+
+            // Confidence cell
+            const confidenceCell = document.createElement('td');
+            confidenceCell.className = 'fact-confidence';
+            const confidencePercent = Math.round((fact.stability_score || 0) * 100);
+            const confidenceClass = this.getConfidenceClass(confidencePercent);
+            confidenceCell.innerHTML = `<span class="confidence-badge ${confidenceClass}">${confidencePercent}%</span>`;
+
+            // References cell with tooltip
+            const referencesCell = document.createElement('td');
+            referencesCell.className = 'fact-references';
+            
+            if (fact.references && fact.references.length > 0) {
+                const refCount = fact.references.length;
+                const refButton = document.createElement('button');
+                refButton.className = 'references-btn';
+                refButton.innerHTML = `🔗 ${refCount} source${refCount > 1 ? 's' : ''}`;
+                refButton.title = 'Click to view supporting evidence';
+                
+                // Create tooltip container
+                const tooltip = document.createElement('div');
+                tooltip.className = 'references-tooltip';
+                tooltip.style.display = 'none';
+                
+                // Add reference texts to tooltip
+                fact.references.forEach((ref, index) => {
+                    const refItem = document.createElement('div');
+                    refItem.className = 'reference-item';
+                    refItem.innerHTML = `
+                        <div class="reference-header">
+                            <strong>Source ${index + 1}</strong>
+                            <span class="reference-score">${Math.round(ref.relevance_score * 100)}% match</span>
                         </div>
-                    </td>
-                `;
-                table.appendChild(row);
+                        <div class="reference-text">${this.escapeHtml(ref.chunk_text || '[Text not available]')}</div>
+                    `;
+                    tooltip.appendChild(refItem);
+                });
+                
+                refButton.appendChild(tooltip);
+                
+                // Toggle tooltip on click
+                refButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isVisible = tooltip.style.display === 'block';
+                    // Hide all other tooltips
+                    document.querySelectorAll('.references-tooltip').forEach(t => t.style.display = 'none');
+                    // Toggle this tooltip
+                    tooltip.style.display = isVisible ? 'none' : 'block';
+                });
+                
+                referencesCell.appendChild(refButton);
+            } else {
+                referencesCell.innerHTML = '<span class="no-references">No sources</span>';
             }
+
+            // Append cells to row
+            row.appendChild(keyCell);
+            row.appendChild(valueCell);
+            row.appendChild(confidenceCell);
+            row.appendChild(referencesCell);
+
+            tbody.appendChild(row);
         });
 
-        // Check if table has any content
-        if (table.children.length === 0) {
-            this.showEmptyState();
-            return;
-        }
-
+        table.appendChild(tbody);
         tableContainer.appendChild(table);
-        this.attachTableEventListeners();
+
+        // Close tooltips when clicking outside
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.references-tooltip').forEach(t => t.style.display = 'none');
+        });
+
+        logger.info(`Rendered ${knowledgeData.facts.length} facts`);
+    },
+
+    /**
+     * Get CSS class for confidence badge based on percentage
+     * @param {number} percent - Confidence percentage (0-100)
+     * @returns {string} - CSS class name
+     */
+    getConfidenceClass(percent) {
+        if (percent >= 80) return 'confidence-high';
+        if (percent >= 60) return 'confidence-medium';
+        return 'confidence-low';
     },
 
     /**
@@ -243,15 +288,8 @@ const KnowledgeTable = {
      * Attach event listeners to table elements
      */
     attachTableEventListeners() {
-        // Edit knowledge buttons
-        document.querySelectorAll('.edit-knowledge-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const category = e.target.dataset.category;
-                const subcategory = e.target.dataset.subcategory;
-                const value = e.target.dataset.value;
-                this.showEditKnowledgeModal(category, subcategory, value);
-            });
-        });
+        // Edit knowledge buttons - removed as new structure doesn't have edit buttons
+        // Can be added back if needed in the future
     },
 
     /**

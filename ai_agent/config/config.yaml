@@ -39,6 +39,11 @@ mcp:
   retry_attempts: 3
   connection_retry_delay: 2  # seconds between retries
 
+# Friend Service Configuration
+friend_service:
+  base_url: "http://friend:8085"
+  timeout: 30
+
 # Database Configurations
 databases:
   # MongoDB Configuration (from docker-compose: generatedData service)
@@ -105,3 +110,22 @@ citation:
   chunk:
     size: 500
     overlap: 50
+
+# Chunking Configuration (for new ChunkingService)
+chunking:
+  chunk_size_words: 100  # Words per chunk
+  chunk_overlap_words: 20  # Overlap between chunks for context preservation
+  min_chunk_size_words: 60  # Don't chunk if text is smaller than this
+  chunking_mode: "eager"  # "eager" = process on create/update, "lazy" = process on first use
+
+# Search Configuration (for new SearchService)
+search:
+  top_k_chunks: 5  # Number of top similar chunks to return per query
+  faiss_index_type: "IndexFlatL2"  # Exact search for small-medium datasets
+  min_relevance_threshold: 0.7  # Minimum cosine similarity score to consider relevant
+
+# Referencing/Validation Configuration (for new ReferencingService)
+referencing:
+  max_references_per_fact: 3  # Maximum number of chunk references to keep per fact
+  min_validation_confidence: 0.8  # Minimum confidence score for AI validation
+  discard_if_no_references: true  # Discard facts with no valid references

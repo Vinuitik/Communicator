@@ -1901,3 +1901,185 @@
       max-width: 90%;
     }
   }
+
+  /* ========================================
+     FACT-BASED KNOWLEDGE TABLE STYLES
+     ======================================== */
+
+  /* Table header with columns */
+  .knowledge-table-content thead th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 12px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+
+  /* Fact cells */
+  .fact-key {
+    font-weight: 600;
+    color: #1f2937;
+    width: 25%;
+  }
+
+  .fact-value {
+    color: #4b5563;
+    width: 35%;
+  }
+
+  .fact-confidence {
+    width: 15%;
+    text-align: center;
+  }
+
+  .fact-references {
+    width: 25%;
+    position: relative;
+  }
+
+  /* Confidence badges */
+  .confidence-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .confidence-high {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .confidence-medium {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .confidence-low {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  /* References button */
+  .references-btn {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .references-btn:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+  }
+
+  .no-references {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    font-style: italic;
+  }
+
+  /* References tooltip */
+  .references-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    z-index: 1000;
+    min-width: 400px;
+    max-width: 500px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .reference-item {
+    padding: 12px;
+    margin-bottom: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
+  }
+
+  .reference-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .reference-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .reference-header strong {
+    color: #1f2937;
+    font-size: 0.875rem;
+  }
+
+  .reference-score {
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .reference-text {
+    color: #4b5563;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-style: italic;
+    border-left: 2px solid #d1d5db;
+    padding-left: 8px;
+  }
+
+  /* Responsive adjustments for new table */
+  @media (max-width: 768px) {
+    .knowledge-table-content thead th {
+      font-size: 0.7rem;
+      padding: 8px 6px;
+    }
+
+    .fact-key,
+    .fact-value,
+    .fact-confidence,
+    .fact-references {
+      font-size: 0.8rem;
+      padding: 10px 6px;
+    }
+
+    .references-tooltip {
+      min-width: 300px;
+      max-width: 90vw;
+      left: auto;
+      right: 0;
+    }
+
+    .confidence-badge {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+    }
+
+    .references-btn {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+    }
+  }

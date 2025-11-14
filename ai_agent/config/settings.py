@@ -68,6 +68,26 @@ class Settings:
         self.citation_chunk_size = self.config["citation"]["chunk"]["size"]
         self.citation_chunk_overlap = self.config["citation"]["chunk"]["overlap"]
 
+        # Chunking settings
+        self.chunk_size_words = self.config["chunking"]["chunk_size_words"]
+        self.chunk_overlap_words = self.config["chunking"]["chunk_overlap_words"]
+        self.min_chunk_size_words = self.config["chunking"]["min_chunk_size_words"]
+        self.chunking_mode = self.config["chunking"]["chunking_mode"]
+        
+        # Search settings
+        self.top_k_chunks = self.config["search"]["top_k_chunks"]
+        self.faiss_index_type = self.config["search"]["faiss_index_type"]
+        self.min_relevance_threshold = self.config["search"]["min_relevance_threshold"]
+        
+        # Referencing/validation settings
+        self.max_references_per_fact = self.config["referencing"]["max_references_per_fact"]
+        self.min_validation_confidence = self.config["referencing"]["min_validation_confidence"]
+        self.discard_if_no_references = self.config["referencing"]["discard_if_no_references"]
+        
+        # Friend service settings
+        self.friend_service_url = self.config.get("friend_service", {}).get("base_url", "http://friend:8085")
+        self.friend_service_timeout = self.config.get("friend_service", {}).get("timeout", 30)
+
         # Embedding settings
         self.embedding_provider = self.config["embedding"]["provider"]
         self.embedding_model = self.config["embedding"]["model"]

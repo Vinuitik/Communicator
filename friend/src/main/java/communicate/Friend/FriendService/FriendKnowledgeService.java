@@ -99,4 +99,21 @@ public class FriendKnowledgeService {
         return getKnowledgeByFriendIdPaginated(friendId, page, 10); // Default size = 10
     }
 
+    /**
+     * Get all knowledge IDs for a specific friend
+     * Used by AI agent for building FAISS indexes
+     */
+    @Transactional
+    public List<Integer> getKnowledgeIdsByFriendId(Integer friendId) {
+        try {
+            List<FriendKnowledge> knowledgeList = knowledgeRepository.findByFriendId(friendId);
+            return knowledgeList.stream()
+                    .map(FriendKnowledge::getId)
+                    .toList();
+        } catch (Exception e) {
+            System.err.println("Error retrieving knowledge IDs for friend " + friendId + ": " + e.toString());
+            return List.of();
+        }
+    }
+
 }

@@ -160,4 +160,42 @@ public class FriendKnowledgeController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
+    /**
+     * Get all knowledge IDs for a specific friend
+     * Used by AI agent for building FAISS indexes
+     */
+    @GetMapping("getKnowledgeIds/{friendId}")
+    public ResponseEntity<List<Integer>> getKnowledgeIdsByFriendId(@PathVariable Integer friendId) {
+        try {
+            List<Integer> knowledgeIds = knowledgeService.getKnowledgeIdsByFriendId(friendId);
+            return ResponseEntity.ok(knowledgeIds);
+        } catch (Exception e) {
+            System.err.println("Error retrieving knowledge IDs for friend " + friendId + ": " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    /**
+     * Get the full text of a knowledge item by ID
+     * Used by AI agent for chunk text reconstruction
+     */
+    @GetMapping("getKnowledgeText/{id}")
+    public ResponseEntity<Map<String, String>> getKnowledgeTextById(@PathVariable Integer id) {
+        try {
+            FriendKnowledge knowledge = knowledgeService.getKnowledgeById(id);
+            if (knowledge.getId() == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("id", knowledge.getId().toString());
+            response.put("text", knowledge.getText());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("Error retrieving knowledge text for ID " + id + ": " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
 }

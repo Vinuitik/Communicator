@@ -37,15 +37,15 @@ class MCPKnowledgeDTO(BaseModel):
     importance: int
 
 class ChunkDocument(BaseModel):
-    """Schema for chunk document stored in MongoDB"""
+    """Schema for chunk document stored in MongoDB - contains only metadata, no text"""
     chunk_id: str
-    text: str
+    knowledge_id: int  # Single FK - 1:1 relationship with knowledge
+    chunk_index: int  # Position in original text (0, 1, 2...)
     word_count: int
-    char_start: int
-    char_end: int
-    knowledge_ids: List[int]  # Many-to-many: list of knowledge IDs that reference this chunk
+    char_start: int  # Start position in original knowledge text
+    char_end: int  # End position in original knowledge text
+    text_hash: str  # MD5 hash of original knowledge text for invalidation detection
     created_at: datetime
-    updated_at: datetime
 
 class EmbeddingDocument(BaseModel):
     """Schema for embedding document stored in MongoDB"""
@@ -54,6 +54,35 @@ class EmbeddingDocument(BaseModel):
     model_name: str
     dimension: int
     created_at: datetime
+
+class FactReferenceDocument(BaseModel):
+    """Schema for fact-to-chunk reference stored in MongoDB"""
+    fact_id: str  # FK to friend_summaries.facts[].fact_id (ObjectId as string)
+    chunk_id: str  # FK to knowledge_chunks.chunk_id
+    knowledge_id: int  # Denormalized for performance
+    friend_id: int  # Denormalized for filtering
+    relevance_score: float  # Cosine similarity (0.0 to 1.0)
+    validated: bool  # AI confirmed this reference
+    validation_confidence: Optional[float] = None
+    created_at: datetime
+    rank: int  # 1=strongest, 2=second, 3=third
+
+class FactDocument(BaseModel):
+    """Schema for individual fact stored in friend_summaries.facts array"""
+    fact_id: str  # Unique identifier (ObjectId as string)
+    key: str  # Fact category/key
+    value: str  # Fact value
+    stability_score: float  # Confidence score (0.0 - 1.0)
+    validated: bool  # AI validation status
+    created_at: datetime
+    updated_at: datetime
+
+class FriendSummaryDocument(BaseModel):
+    """Schema for friend summary document with structured facts"""
+    friend_id: int
+    facts: List[FactDocument]
+    last_updated: datetime
+    fact_count: int
 
 @dataclass
 class CitationResult:
