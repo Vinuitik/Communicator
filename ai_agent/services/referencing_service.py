@@ -223,7 +223,12 @@ Is this fact supported by the knowledge? Provide your answer as JSON.
         Returns:
             Fact ID if created successfully, None if discarded
         """
-        logger.info(f"Creating fact for friend {friend_id}: {fact_key}: {fact_value}")
+        logger.info("=" * 80)
+        logger.info(f"CREATING FACT WITH REFERENCES")
+        logger.info("=" * 80)
+        logger.info(f"Friend ID: {friend_id}")
+        logger.info(f"Fact Key: '{fact_key}'")
+        logger.info(f"Fact Value: '{fact_value}'")
         
         if not self.mongo_repo:
             logger.error("MongoDB repository required")
@@ -231,7 +236,15 @@ Is this fact supported by the knowledge? Provide your answer as JSON.
         
         # Step 1: Search for relevant chunks
         query = f"{fact_key} is {fact_value}"
+        logger.info(f"Step 1: Searching for chunks with query: '{query}'")
+        
         search_results = await self.search_service.search(friend_id, query)
+        
+        logger.info(f"Search returned {len(search_results) if search_results else 0} results")
+        if search_results:
+            logger.info("Top 3 search results:")
+            for idx, (chunk_id, score) in enumerate(search_results[:3], 1):
+                logger.info(f"  {idx}. Chunk: {chunk_id}, Score: {score:.4f}")
         
         if not search_results:
             logger.warning(f"No relevant chunks found for fact: {fact_key}: {fact_value}")
@@ -256,8 +269,16 @@ Is this fact supported by the knowledge? Provide your answer as JSON.
         logger.debug(f"Chunks reference {len(knowledge_ids)} knowledge items")
         
         # Step 3: Fetch full knowledge texts
+        logger.info(f"Step 3: Fetching {len(knowledge_ids)} full knowledge texts")
+        logger.info(f"Knowledge IDs to fetch: {knowledge_ids}")
+        
         knowledge_texts_map = await self._fetch_full_knowledge_texts(knowledge_ids)
         knowledge_texts = list(knowledge_texts_map.values())
+        
+        logger.info(f"Successfully fetched {len(knowledge_texts)} knowledge texts")
+        if knowledge_texts:
+            total_chars = sum(len(text) for text in knowledge_texts)
+            logger.info(f"Total knowledge text size: {total_chars} characters")
         
         if not knowledge_texts:
             logger.warning("Could not fetch knowledge texts (placeholder method)")

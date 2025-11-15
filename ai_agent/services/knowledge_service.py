@@ -79,12 +79,28 @@ class KnowledgeService:
             
             # Call the MCP tool to get knowledge
             logger.info(f"Calling get_friend_knowledge tool for friend_id: {friend_id}")
-            knowledge_result = await get_knowledge_tool.ainvoke({
+            tool_params = {
                 "friend_id": friend_id,
                 "page": 0,
                 "size": settings.knowledge_max_items_per_request
-            })
+            }
+            logger.info(f"Tool parameters: {tool_params}")
+            
+            knowledge_result = await get_knowledge_tool.ainvoke(tool_params)
+            
+            logger.info(f"Knowledge tool returned {len(str(knowledge_result))} characters")
+            logger.debug(f"Knowledge tool result type: {type(knowledge_result)}")
             logger.debug(f"Knowledge tool result: {knowledge_result}")
+            
+            # Parse and log structure
+            if isinstance(knowledge_result, str):
+                logger.info(f"Knowledge result is string format")
+            elif isinstance(knowledge_result, dict):
+                logger.info(f"Knowledge result is dict with keys: {knowledge_result.keys()}")
+            elif isinstance(knowledge_result, list):
+                logger.info(f"Knowledge result is list with {len(knowledge_result)} items")
+            else:
+                logger.warning(f"Unexpected knowledge result type: {type(knowledge_result)}")
             
             # Step 3: Create summarization chain and generate summary
             logger.debug("Creating summarization prompt")
@@ -98,13 +114,35 @@ class KnowledgeService:
             )
             
             # Generate summary
-            logger.info("Generating summary using LLM chain")
+            logger.info("=" * 80)
+            logger.info("STARTING LLM SUMMARY GENERATION")
+            logger.info("=" * 80)
+            logger.info(f"Input knowledge_data length: {len(str(knowledge_result))} chars")
+            
             summary_result = await chain.ainvoke({"knowledge_data": knowledge_result})
-            logger.debug(f"Summary result: {summary_result}")
+            
+            logger.info("=" * 80)
+            logger.info("LLM SUMMARY GENERATION COMPLETED")
+            logger.info("=" * 80)
+            logger.info(f"Summary result type: {type(summary_result)}")
+            logger.info(f"Summary result length: {len(str(summary_result))} chars")
+            logger.debug(f"Summary result content: {summary_result}")
             
             # Step 4: Parse summary into individual facts
+            logger.info("=" * 80)
+            logger.info("PARSING FACTS FROM SUMMARY")
+            logger.info("=" * 80)
+            
             facts = self._parse_summary_to_facts(summary_result)
+            
             logger.info(f"Parsed {len(facts)} facts from summary")
+            if facts:
+                logger.info("Sample facts (first 3):")
+                for idx, (key, value) in enumerate(facts[:3], 1):
+                    logger.info(f"  Fact {idx}: '{key}' = '{value}'")
+            else:
+                logger.warning("NO FACTS WERE PARSED FROM SUMMARY!")
+                logger.warning(f"Summary result was: {summary_result}")
             
             if not facts:
                 logger.warning(f"No valid facts extracted for friend {friend_id}")
@@ -130,6 +168,13 @@ class KnowledgeService:
                 }
             
             # Step 5: Validate each fact and create references
+            logger.info("=" * 80)
+            logger.info("STARTING FACT VALIDATION AND REFERENCE CREATION")
+            logger.info("=" * 80)
+            logger.info(f"Total facts to validate: {len(facts)}")
+            logger.info(f"Referencing service available: {self.referencing_service is not None}")
+            logger.info(f"Chunking service available: {self.chunking_service is not None}")
+            
             validated_fact_ids = []
             
             if self.referencing_service:
@@ -167,10 +212,16 @@ class KnowledgeService:
             # Step 7: Return facts with references
             result = await self.get_friend_facts_with_references(friend_id)
             
-            logger.info(
-                f"Knowledge summarization completed successfully for friend_id: {friend_id} "
-                f"- {result['fact_count']} validated facts"
-            )
+            logger.info("=" * 80)
+            logger.info("KNOWLEDGE GENERATION COMPLETED")
+            logger.info("=" * 80)
+            logger.info(f"Friend ID: {friend_id}")
+            logger.info(f"Total facts parsed: {len(facts)}")
+            logger.info(f"Facts validated: {len(validated_fact_ids)}")
+            logger.info(f"Facts discarded: {len(facts) - len(validated_fact_ids)}")
+            logger.info(f"Final fact count in result: {result['fact_count']}")
+            logger.info("=" * 80)
+            
             return result
             
         except Exception as e:

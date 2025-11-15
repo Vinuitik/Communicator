@@ -106,14 +106,18 @@ class SearchService:
         Returns:
             True if index built successfully, False otherwise
         """
-        logger.info(f"Building FAISS index for friend {friend_id}")
+        logger.info("=" * 80)
+        logger.info(f"BUILDING FAISS INDEX FOR FRIEND {friend_id}")
+        logger.info("=" * 80)
         
         if not self.mongo_repo:
             logger.error("MongoDB repository required to build index")
             return False
         
         # Fetch all knowledge IDs for this friend
+        logger.info(f"Step 1: Fetching knowledge IDs from Friend service...")
         knowledge_ids = await self._fetch_all_knowledge_ids_for_friend(friend_id)
+        logger.info(f"Retrieved {len(knowledge_ids) if knowledge_ids else 0} knowledge IDs")
         
         if not knowledge_ids:
             logger.warning(f"No knowledge items found for friend {friend_id}")
@@ -122,23 +126,27 @@ class SearchService:
         logger.debug(f"Found {len(knowledge_ids)} knowledge items for friend {friend_id}")
         
         # Fetch all chunks for these knowledge items
+        logger.info(f"Step 2: Fetching chunks from MongoDB for {len(knowledge_ids)} knowledge items...")
         chunks = await self.mongo_repo.find(
             "knowledge_chunks",
             {"knowledge_id": {"$in": knowledge_ids}}
         )
         
         if not chunks:
-            logger.warning(f"No chunks found for friend {friend_id}")
+            logger.warning(f"❌ No chunks found in MongoDB for friend {friend_id}")
+            logger.warning(f"This means knowledge items haven't been chunked yet!")
             return False
         
         chunk_ids = [chunk["chunk_id"] for chunk in chunks]
-        logger.debug(f"Found {len(chunk_ids)} chunks for friend {friend_id}")
+        logger.info(f"✓ Found {len(chunk_ids)} chunks for friend {friend_id}")
         
         # Fetch embeddings for these chunks
+        logger.info(f"Step 3: Fetching embeddings from MongoDB...")
         embeddings_docs = await self.mongo_repo.find(
             "chunk_embeddings",
             {"chunk_id": {"$in": chunk_ids}}
         )
+        logger.info(f"Found {len(embeddings_docs) if embeddings_docs else 0} embedding documents")
         
         if not embeddings_docs:
             logger.error(f"No embeddings found for friend {friend_id}")
@@ -199,28 +207,45 @@ class SearchService:
         if top_k is None:
             top_k = self.top_k
         
-        logger.info(f"Searching for friend {friend_id}, query: '{query[:100]}...', top_k={top_k}")
+        logger.info("=" * 80)
+        logger.info(f"SEARCH SERVICE: Starting search")
+        logger.info("=" * 80)
+        logger.info(f"Friend ID: {friend_id}")
+        logger.info(f"Query: '{query}'")
+        logger.info(f"Top K: {top_k}")
+        logger.info(f"Min relevance threshold: {self.min_relevance_threshold}")
         
         # Check if index exists for this friend
         if friend_id not in self.indexes:
-            logger.info(f"Index not found for friend {friend_id}, building...")
+            logger.info(f"❌ Index not found for friend {friend_id}")
+            logger.info(f"🔨 Building new FAISS index...")
             success = await self.build_index_for_friend(friend_id)
             if not success:
-                logger.error(f"Failed to build index for friend {friend_id}")
+                logger.error(f"❌ FAILED to build index for friend {friend_id}")
                 return []
+            logger.info(f"✓ Index built successfully for friend {friend_id}")
+        else:
+            logger.info(f"✓ Using existing index for friend {friend_id}")
         
         index, chunk_id_mapping = self.indexes[friend_id]
+        logger.info(f"Index has {len(chunk_id_mapping)} chunks loaded")
         
         # Embed the query
+        logger.info(f"Embedding query...")
         query_embedding = await self.embedding_service.embed_query(query)
         query_vector = np.array([query_embedding], dtype=np.float32)
+        logger.info(f"Query embedding dimension: {len(query_embedding)}")
         
         # Search in FAISS index
+        logger.info(f"Searching FAISS index...")
         distances, indices = index.search(query_vector, top_k)
+        logger.info(f"FAISS returned {len(indices[0])} results")
         
         # Convert results to (chunk_id, score) format
         results = []
-        for distance, idx in zip(distances[0], indices[0]):
+        logger.info(f"Converting distances to similarity scores...")
+        
+        for result_idx, (distance, idx) in enumerate(zip(distances[0], indices[0])):
             if idx < len(chunk_id_mapping):
                 chunk_id = chunk_id_mapping[idx]
                 
@@ -228,11 +253,19 @@ class SearchService:
                 # Using inverse distance formula
                 similarity_score = 1.0 / (1.0 + float(distance))
                 
+                logger.debug(f"  Result {result_idx + 1}: distance={distance:.4f}, score={similarity_score:.4f}, chunk={chunk_id}")
+                
                 # Filter by threshold
                 if similarity_score >= self.min_relevance_threshold:
                     results.append((chunk_id, similarity_score))
+                else:
+                    logger.debug(f"    ✗ Filtered out (below threshold {self.min_relevance_threshold})")
         
-        logger.info(f"Found {len(results)} relevant chunks (threshold={self.min_relevance_threshold})")
+        logger.info(f"Found {len(results)} relevant chunks passing threshold (threshold={self.min_relevance_threshold})")
+        if results:
+            logger.info("Top results:")
+            for idx, (chunk_id, score) in enumerate(results[:5], 1):
+                logger.info(f"  {idx}. {chunk_id}: {score:.4f}")
         
         return results
 

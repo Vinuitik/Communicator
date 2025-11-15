@@ -145,7 +145,13 @@ class ChunkingService:
         Returns:
             List of chunk IDs created
         """
-        logger.info(f"Processing knowledge {knowledge_id} ({len(knowledge_text)} chars)")
+        logger.info("=" * 80)
+        logger.info(f"CHUNKING SERVICE: Processing knowledge {knowledge_id}")
+        logger.info("=" * 80)
+        logger.info(f"Knowledge text length: {len(knowledge_text)} characters")
+        logger.info(f"Force regenerate: {force_regenerate}")
+        logger.info(f"Chunk size: {self.chunk_size_words} words")
+        logger.info(f"Chunk overlap: {self.chunk_overlap_words} words")
         
         if not self.mongo_repo:
             logger.warning("No MongoDB repository configured, skipping persistence")
@@ -170,7 +176,9 @@ class ChunkingService:
         await self._delete_chunks(knowledge_id)
         
         # Split text into chunks
+        logger.info(f"Splitting text into chunks...")
         chunk_tuples = self._split_into_chunks(knowledge_text)
+        logger.info(f"Created {len(chunk_tuples)} chunks")
         
         # Create chunk documents
         chunk_docs = []
@@ -196,15 +204,21 @@ class ChunkingService:
             chunk_ids.append(chunk_id)
         
         # Persist chunk documents
+        logger.info(f"Persisting {len(chunk_docs)} chunk documents to MongoDB...")
         await self.mongo_repo.insert_many(
             "knowledge_chunks",
             [doc.dict() for doc in chunk_docs]
         )
-        logger.info(f"Persisted {len(chunk_docs)} chunk documents")
+        logger.info(f"✓ Persisted {len(chunk_docs)} chunk documents to 'knowledge_chunks' collection")
         
         # Generate embeddings for all chunks
-        logger.info(f"Generating embeddings for {len(chunk_texts)} chunks")
+        logger.info(f"Generating embeddings for {len(chunk_texts)} chunks...")
+        logger.info(f"Sample chunk texts (first 2):")
+        for idx, text in enumerate(chunk_texts[:2], 1):
+            logger.info(f"  Chunk {idx}: '{text[:100]}...'")
+        
         embeddings = await self.embedding_service.embed_texts(chunk_texts)
+        logger.info(f"✓ Successfully generated {len(embeddings)} embeddings")
         
         # Create embedding documents
         embedding_docs = []
@@ -222,13 +236,20 @@ class ChunkingService:
             embedding_docs.append(embedding_doc)
         
         # Persist embedding documents
+        logger.info(f"Persisting {len(embedding_docs)} embedding documents to MongoDB...")
         await self.mongo_repo.insert_many(
             "chunk_embeddings",
             [doc.dict() for doc in embedding_docs]
         )
-        logger.info(f"Persisted {len(embedding_docs)} embedding documents")
+        logger.info(f"✓ Persisted {len(embedding_docs)} embedding documents to 'chunk_embeddings' collection")
         
-        logger.info(f"Successfully processed knowledge {knowledge_id} into {len(chunk_ids)} chunks")
+        logger.info("=" * 80)
+        logger.info(f"✓✓✓ CHUNKING COMPLETED for knowledge {knowledge_id}")
+        logger.info("=" * 80)
+        logger.info(f"Total chunks created: {len(chunk_ids)}")
+        logger.info(f"Chunk IDs: {chunk_ids[:3]}..." if len(chunk_ids) > 3 else f"Chunk IDs: {chunk_ids}")
+        logger.info("=" * 80)
+        
         return chunk_ids
 
     async def _delete_chunks(self, knowledge_id: int) -> None:
