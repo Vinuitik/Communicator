@@ -76,12 +76,14 @@ class AgentService:
     
     def _setup_llm(self) -> None:
         """Setup the Google Gemini LLM"""
+        # Use service account credentials instead of API key
         self.llm = ChatGoogleGenerativeAI(
             model=settings.llm_model,
             temperature=settings.llm_temperature,
+            google_api_key=None,  # Explicitly set to None to use service account
             transport="rest"
         )
-        print(f"LLM initialized with model: {settings.llm_model}")
+        print(f"LLM initialized with model: {settings.llm_model} using service account credentials")
     
     def _create_agent(self) -> None:
         """Create the ReAct agent with LLM and tools"""
