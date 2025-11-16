@@ -3,7 +3,7 @@
 Provides a minimal CRUD wrapper suitable for the project. Uses configuration
 from the settings module for connection parameters.
 """
-from typing import Optional, Any
+from typing import Optional, Any, List
 import os
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from config.settings import settings
@@ -52,10 +52,45 @@ class MongoRepository:
         res = await self.db[collection].insert_one(document)
         return res.inserted_id
 
+    async def insert_many(self, collection: str, documents: List[dict]) -> List[Any]:
+        """Insert multiple documents.
+        
+        Args:
+            collection: Collection name
+            documents: List of documents to insert
+            
+        Returns:
+            List of inserted IDs
+        """
+        if self.db is None:
+            raise RuntimeError("MongoDB client is not initialized")
+        res = await self.db[collection].insert_many(documents)
+        return res.inserted_ids
+
     async def find_one(self, collection: str, filter: dict) -> Optional[dict]:
         if self.db is None:
             raise RuntimeError("MongoDB client is not initialized")
         return await self.db[collection].find_one(filter)
+
+    async def find_many(self, collection: str, filter: dict, limit: Optional[int] = None) -> List[dict]:
+        """Find multiple documents matching the filter.
+        
+        Args:
+            collection: Collection name
+            filter: MongoDB filter query
+            limit: Optional limit on number of results
+            
+        Returns:
+            List of matching documents
+        """
+        if self.db is None:
+            raise RuntimeError("MongoDB client is not initialized")
+        
+        cursor = self.db[collection].find(filter)
+        if limit:
+            cursor = cursor.limit(limit)
+        
+        return await cursor.to_list(length=None)
 
     async def update_one(self, collection: str, filter: dict, update: dict, upsert: bool = False) -> dict:
         if self.db is None:
@@ -68,6 +103,35 @@ class MongoRepository:
             raise RuntimeError("MongoDB client is not initialized")
         res = await self.db[collection].delete_one(filter)
         return res.deleted_count
+
+    async def delete_many(self, collection: str, filter: dict) -> int:
+        """Delete multiple documents matching the filter.
+        
+        Args:
+            collection: Collection name
+            filter: MongoDB filter query
+            
+        Returns:
+            Number of documents deleted
+        """
+        if self.db is None:
+            raise RuntimeError("MongoDB client is not initialized")
+        res = await self.db[collection].delete_many(filter)
+        return res.deleted_count
+
+    async def count_documents(self, collection: str, filter: dict) -> int:
+        """Count documents matching the filter.
+        
+        Args:
+            collection: Collection name
+            filter: MongoDB filter query
+            
+        Returns:
+            Number of matching documents
+        """
+        if self.db is None:
+            raise RuntimeError("MongoDB client is not initialized")
+        return await self.db[collection].count_documents(filter)
 
     async def close(self):
         if self.client is not None:

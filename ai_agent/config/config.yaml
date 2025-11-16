@@ -19,16 +19,16 @@ llm:
 
 # Embedding Configuration
 embedding:
-  # Using HuggingFace Inference API (no GPU needed)
-  provider: "huggingface"
-  model: "sentence-transformers/all-MiniLM-L6-v2"  # Fast, efficient, 384 dimensions
-  # Alternative models:
+  # Using Ollama for local self-hosted embeddings (no API keys, no rate limits)
+  provider: "ollama"
+  model: "koill/sentence-transformers:all-minilm-l6-v2"  # Ollama-optimized MiniLM L6 v2, 384 dimensions, ~91 MB
+  # Alternative models (if you want to try others in Ollama):
   # "sentence-transformers/all-mpnet-base-v2"  # Better quality, 768 dimensions, slower
   # "BAAI/bge-small-en-v1.5"  # Good balance, 384 dimensions
-  # "intfloat/e5-base-v2"  # High quality, 768 dimensions
+  ollama_url: "http://ollama:11434"  # Ollama service URL (from docker-compose)
   timeout: 30
   max_retries: 3
-  batch_size: 32  # Process up to 32 texts in one API call
+  batch_size: 32  # Process up to 32 texts in one batch
   cache_embeddings: true
   embedding_cache_ttl: 86400  # Cache embeddings for 24 hours
 
@@ -122,7 +122,7 @@ chunking:
 search:
   top_k_chunks: 5  # Number of top similar chunks to return per query
   faiss_index_type: "IndexFlatL2"  # Exact search for small-medium datasets
-  min_relevance_threshold: 0.7  # Minimum cosine similarity score to consider relevant
+  min_relevance_threshold: 0.0  # Minimum cosine similarity score to consider relevant
 
 # Referencing/Validation Configuration (for new ReferencingService)
 referencing:

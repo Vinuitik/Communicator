@@ -96,6 +96,7 @@ class Settings:
         self.embedding_batch_size = self.config["embedding"]["batch_size"]
         self.embedding_cache_enabled = self.config["embedding"]["cache_embeddings"]
         self.embedding_cache_ttl = self.config["embedding"]["embedding_cache_ttl"]
+        self.embedding_ollama_url = self.config["embedding"].get("ollama_url", "http://ollama:11434")
 
         # Validate required settings
         if not self.gemini_api_key:
@@ -157,7 +158,8 @@ class Settings:
             "max_retries": self.embedding_max_retries,
             "batch_size": self.embedding_batch_size,
             "cache_embeddings": self.embedding_cache_enabled,
-            "embedding_cache_ttl": self.embedding_cache_ttl
+            "embedding_cache_ttl": self.embedding_cache_ttl,
+            "ollama_url": self.embedding_ollama_url
         }
 
 # Create global settings instance

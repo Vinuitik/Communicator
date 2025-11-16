@@ -174,7 +174,7 @@ const KnowledgeTable = {
             const confidenceClass = this.getConfidenceClass(confidencePercent);
             confidenceCell.innerHTML = `<span class="confidence-badge ${confidenceClass}">${confidencePercent}%</span>`;
 
-            // References cell with tooltip
+            // References cell with modal button
             const referencesCell = document.createElement('td');
             referencesCell.className = 'fact-references';
             
@@ -185,35 +185,10 @@ const KnowledgeTable = {
                 refButton.innerHTML = `🔗 ${refCount} source${refCount > 1 ? 's' : ''}`;
                 refButton.title = 'Click to view supporting evidence';
                 
-                // Create tooltip container
-                const tooltip = document.createElement('div');
-                tooltip.className = 'references-tooltip';
-                tooltip.style.display = 'none';
-                
-                // Add reference texts to tooltip
-                fact.references.forEach((ref, index) => {
-                    const refItem = document.createElement('div');
-                    refItem.className = 'reference-item';
-                    refItem.innerHTML = `
-                        <div class="reference-header">
-                            <strong>Source ${index + 1}</strong>
-                            <span class="reference-score">${Math.round(ref.relevance_score * 100)}% match</span>
-                        </div>
-                        <div class="reference-text">${this.escapeHtml(ref.chunk_text || '[Text not available]')}</div>
-                    `;
-                    tooltip.appendChild(refItem);
-                });
-                
-                refButton.appendChild(tooltip);
-                
-                // Toggle tooltip on click
+                // Open modal on click
                 refButton.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const isVisible = tooltip.style.display === 'block';
-                    // Hide all other tooltips
-                    document.querySelectorAll('.references-tooltip').forEach(t => t.style.display = 'none');
-                    // Toggle this tooltip
-                    tooltip.style.display = isVisible ? 'none' : 'block';
+                    this.showReferencesModal(fact.key, fact.value, fact.references);
                 });
                 
                 referencesCell.appendChild(refButton);
@@ -233,12 +208,94 @@ const KnowledgeTable = {
         table.appendChild(tbody);
         tableContainer.appendChild(table);
 
-        // Close tooltips when clicking outside
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.references-tooltip').forEach(t => t.style.display = 'none');
-        });
+        console.log(`Rendered ${knowledgeData.facts.length} facts`);
+    },
 
-        logger.info(`Rendered ${knowledgeData.facts.length} facts`);
+    /**
+     * Show references modal with supporting evidence
+     * @param {string} factKey - The fact key
+     * @param {string} factValue - The fact value
+     * @param {Array} references - Array of reference objects
+     */
+    showReferencesModal(factKey, factValue, references) {
+        // Create modal backdrop
+        const backdrop = document.createElement('div');
+        backdrop.className = 'references-modal-backdrop';
+        
+        // Create modal container
+        const modal = document.createElement('div');
+        modal.className = 'references-modal';
+        
+        // Modal header
+        const header = document.createElement('div');
+        header.className = 'references-modal-header';
+        header.innerHTML = `
+            <div>
+                <h3>Supporting Evidence</h3>
+                <p class="fact-context"><strong>${this.escapeHtml(factKey)}:</strong> ${this.escapeHtml(factValue)}</p>
+            </div>
+            <button class="references-modal-close" aria-label="Close">&times;</button>
+        `;
+        
+        // Modal body with references
+        const body = document.createElement('div');
+        body.className = 'references-modal-body';
+        
+        references.forEach((ref, index) => {
+            const refItem = document.createElement('div');
+            refItem.className = 'reference-modal-item';
+            const matchPercent = Math.round(ref.relevance_score * 100);
+            const matchClass = matchPercent >= 80 ? 'match-high' : matchPercent >= 60 ? 'match-medium' : 'match-low';
+            
+            refItem.innerHTML = `
+                <div class="reference-modal-header">
+                    <span class="reference-number">Source ${index + 1}</span>
+                    <span class="reference-match ${matchClass}">${matchPercent}% match</span>
+                </div>
+                <div class="reference-modal-text">${this.escapeHtml(ref.chunk_text || '[Text not available]')}</div>
+            `;
+            body.appendChild(refItem);
+        });
+        
+        // Modal footer
+        const footer = document.createElement('div');
+        footer.className = 'references-modal-footer';
+        footer.innerHTML = `
+            <button class="references-modal-close-btn">Close</button>
+        `;
+        
+        // Assemble modal
+        modal.appendChild(header);
+        modal.appendChild(body);
+        modal.appendChild(footer);
+        backdrop.appendChild(modal);
+        
+        // Add to page
+        document.body.appendChild(backdrop);
+        
+        // Animate in
+        setTimeout(() => backdrop.classList.add('active'), 10);
+        
+        // Close handlers
+        const closeModal = () => {
+            backdrop.classList.remove('active');
+            setTimeout(() => backdrop.remove(), 300);
+        };
+        
+        backdrop.querySelector('.references-modal-close').addEventListener('click', closeModal);
+        backdrop.querySelector('.references-modal-close-btn').addEventListener('click', closeModal);
+        backdrop.addEventListener('click', (e) => {
+            if (e.target === backdrop) closeModal();
+        });
+        
+        // ESC key to close
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     },
 
     /**

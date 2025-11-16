@@ -112,6 +112,47 @@ class AgentService:
         print(f"Agent response: {result}")
         return result
     
+    async def generate_response(
+        self, 
+        system_message: str, 
+        user_message: str
+    ) -> str:
+        """
+        Generate a direct LLM response without using the agent/tools.
+        
+        This is useful for simple text generation tasks like validation,
+        summarization, etc. where we don't need tool access.
+        
+        Args:
+            system_message: System prompt/instructions
+            user_message: User's input message
+            
+        Returns:
+            LLM's text response
+        """
+        if not self._initialized:
+            raise RuntimeError("Agent service not initialized. Call initialize() first.")
+        
+        logger.debug(f"Generating LLM response with system: {system_message[:100]}...")
+        
+        # Create messages in LangChain format
+        from langchain_core.messages import SystemMessage, HumanMessage
+        
+        messages = [
+            SystemMessage(content=system_message),
+            HumanMessage(content=user_message)
+        ]
+        
+        # Get LLM response
+        result = await self.llm.ainvoke(messages)
+        
+        # Extract text content from the response
+        response_text = result.content
+        
+        logger.debug(f"LLM response: {response_text[:200]}...")
+        
+        return response_text
+    
     def get_tool_by_name(self, tool_name: str) -> Optional[Any]:
         """
         Get a specific tool by name

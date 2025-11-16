@@ -1991,7 +1991,242 @@
     font-style: italic;
   }
 
-  /* References tooltip */
+  /* References Modal */
+  .references-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    transition: background 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+
+  .references-modal-backdrop.active {
+    background: rgba(0, 0, 0, 0.7);
+    opacity: 1;
+  }
+
+  .references-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9) translateY(20px);
+    transition: transform 0.3s ease;
+  }
+
+  .references-modal-backdrop.active .references-modal {
+    transform: scale(1) translateY(0);
+  }
+
+  .references-modal-header {
+    padding: 24px;
+    border-bottom: 2px solid #e1e4e8;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px 12px 0 0;
+  }
+
+  .references-modal-header h3 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 1.5rem;
+  }
+
+  .fact-context {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .fact-context strong {
+    color: #34495e;
+  }
+
+  .references-modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #7f8c8d;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .references-modal-close:hover {
+    background: #e74c3c;
+    color: white;
+    transform: rotate(90deg);
+  }
+
+  .references-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .references-modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .references-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .references-modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+  }
+
+  .references-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+  }
+
+  .reference-modal-item {
+    background: #f8f9fa;
+    border-left: 4px solid #3498db;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.2s ease;
+  }
+
+  .reference-modal-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .reference-modal-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .reference-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .reference-number {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+  }
+
+  .reference-match {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .reference-match.match-high {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .reference-match.match-medium {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .reference-match.match-low {
+    background: #f8d7da;
+    color: #721c24;
+  }
+
+  .reference-modal-text {
+    color: #495057;
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+
+  .references-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e1e4e8;
+    display: flex;
+    justify-content: flex-end;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+  }
+
+  .references-modal-close-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .references-modal-close-btn:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  }
+
+  .references-modal-close-btn:active {
+    transform: translateY(0);
+  }
+
+  /* Mobile responsive for references modal */
+  @media (max-width: 768px) {
+    .references-modal {
+      max-width: 95%;
+      max-height: 90vh;
+    }
+
+    .references-modal-header {
+      padding: 16px;
+    }
+
+    .references-modal-header h3 {
+      font-size: 1.25rem;
+    }
+
+    .fact-context {
+      font-size: 0.85rem;
+    }
+
+    .references-modal-body {
+      padding: 16px;
+    }
+
+    .reference-modal-item {
+      padding: 12px;
+    }
+
+    .references-modal-footer {
+      padding: 12px 16px;
+    }
+  }
+
+  /* Old tooltip styles - deprecated, hidden */
   .references-tooltip {
     position: absolute;
     top: 100%;

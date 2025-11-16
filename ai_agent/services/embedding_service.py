@@ -1,7 +1,7 @@
-"""Embedding service using HuggingFace Inference API.
+"""Embedding service using Ollama API.
 
-This service provides text embedding capabilities using HuggingFace's hosted models,
-eliminating the need for local GPU resources. Supports batching, caching, and retry logic.
+This service provides text embedding capabilities using a locally hosted Ollama instance,
+providing complete control and no rate limits. Supports batching, caching, and retry logic.
 """
 from typing import List, Union, Optional
 import asyncio
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
-    """Provides text embedding using HuggingFace Inference API.
+    """Provides text embedding using Ollama's local API.
     
     Contract:
     - Inputs: Text strings or list of strings to embed
@@ -24,7 +24,7 @@ class EmbeddingService:
     - Success: Returns embeddings with same order as input texts
     
     Features:
-    - Uses same encoder for both queries and documents (symmetric embedding)
+    - Uses locally hosted Ollama for complete control and no rate limits
     - Supports batch processing for efficiency
     - Optional Redis caching to avoid redundant API calls
     - Automatic retry logic with exponential backoff
@@ -47,16 +47,12 @@ class EmbeddingService:
         self.cache_enabled = embedding_config["cache_embeddings"]
         self.cache_ttl = embedding_config["embedding_cache_ttl"]
         
-        # Get API key from settings (already loaded from environment)
-        self.api_key = settings.huggingface_api_key
-        if not self.api_key:
-            logger.warning("HUGGINGFACE_API_KEY not found in environment variables")
-            raise ValueError("HUGGINGFACE_API_KEY must be set in .env file")
+        # Get Ollama configuration
+        self.ollama_url = embedding_config.get("ollama_url", "http://ollama:11434")
+        self.api_url = f"{self.ollama_url}/api/embeddings"
         
-        # HuggingFace Inference API endpoint
-        self.api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{self.model}"
-        
-        logger.info(f"Initialized EmbeddingService with model: {self.model}")
+        logger.info(f"Initialized EmbeddingService with Ollama model: {self.model}")
+        logger.info(f"Ollama API URL: {self.api_url}")
 
     def _get_cache_key(self, text: str) -> str:
         """Generate a cache key for a text string.
@@ -97,12 +93,12 @@ class EmbeddingService:
         except Exception as e:
             logger.warning(f"Failed to cache embedding: {e}")
 
-    async def _call_huggingface_api(
+    async def _call_ollama_api(
         self, 
         texts: List[str], 
         session: ClientSession
     ) -> List[List[float]]:
-        """Call HuggingFace Inference API to get embeddings.
+        """Call Ollama API to get embeddings.
         
         Args:
             texts: List of texts to embed
@@ -114,53 +110,51 @@ class EmbeddingService:
         Raises:
             Exception if API call fails after retries
         """
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        embeddings = []
         
-        payload = {
-            "inputs": texts,
-            "options": {
-                "wait_for_model": True  # Wait if model is loading
+        # Ollama API requires one text at a time for embeddings
+        for text in texts:
+            payload = {
+                "model": self.model,
+                "prompt": text
             }
-        }
-        
-        for attempt in range(self.max_retries):
-            try:
-                timeout = ClientTimeout(total=self.timeout)
-                async with session.post(
-                    self.api_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=timeout
-                ) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        logger.debug(f"Successfully got embeddings for {len(texts)} texts")
-                        return result
-                    elif response.status == 503:
-                        # Model is loading, wait and retry
-                        error_data = await response.json()
-                        wait_time = error_data.get("estimated_time", 20)
-                        logger.info(f"Model loading, waiting {wait_time}s...")
+            
+            for attempt in range(self.max_retries):
+                try:
+                    timeout = ClientTimeout(total=self.timeout)
+                    async with session.post(
+                        self.api_url,
+                        json=payload,
+                        timeout=timeout
+                    ) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            # Ollama returns embedding in 'embedding' field
+                            embedding = result.get("embedding")
+                            if embedding:
+                                embeddings.append(embedding)
+                                logger.debug(f"Successfully got embedding for text: {text[:50]}...")
+                                break
+                            else:
+                                raise Exception("No embedding in response")
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Ollama API error {response.status}: {error_text}")
+                            raise Exception(f"API returned status {response.status}: {error_text}")
+                            
+                except ClientError as e:
+                    logger.warning(f"Attempt {attempt + 1}/{self.max_retries} failed: {e}")
+                    if attempt < self.max_retries - 1:
+                        # Exponential backoff
+                        wait_time = 2 ** attempt
                         await asyncio.sleep(wait_time)
-                        continue
                     else:
-                        error_text = await response.text()
-                        logger.error(f"HuggingFace API error {response.status}: {error_text}")
-                        raise Exception(f"API returned status {response.status}: {error_text}")
-                        
-            except ClientError as e:
-                logger.warning(f"Attempt {attempt + 1}/{self.max_retries} failed: {e}")
-                if attempt < self.max_retries - 1:
-                    # Exponential backoff
-                    wait_time = 2 ** attempt
-                    await asyncio.sleep(wait_time)
-                else:
-                    raise
+                        raise
         
-        raise Exception(f"Failed to get embeddings after {self.max_retries} attempts")
+        if len(embeddings) != len(texts):
+            raise Exception(f"Failed to get embeddings for all texts. Got {len(embeddings)}/{len(texts)}")
+        
+        return embeddings
 
     async def embed_text(self, text: str) -> List[float]:
         """Embed a single text string.
@@ -232,7 +226,7 @@ class EmbeddingService:
                     batch_indices = text_indices[i:i + self.batch_size]
                     
                     logger.debug(f"Processing batch {i // self.batch_size + 1}: {len(batch_texts)} texts")
-                    batch_embeddings = await self._call_huggingface_api(batch_texts, session)
+                    batch_embeddings = await self._call_ollama_api(batch_texts, session)
                     
                     # Cache and store results
                     for text, embedding, idx in zip(batch_texts, batch_embeddings, batch_indices):
@@ -278,6 +272,7 @@ class EmbeddingService:
             Embedding dimension size
         """
         model_dimensions = {
+            "koill/sentence-transformers:all-minilm-l6-v2": 384,
             "sentence-transformers/all-MiniLM-L6-v2": 384,
             "sentence-transformers/all-mpnet-base-v2": 768,
             "BAAI/bge-small-en-v1.5": 384,

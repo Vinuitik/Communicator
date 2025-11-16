@@ -160,6 +160,36 @@ services:
       PYTHONUNBUFFERED: 1
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"  # Expose Ollama API
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+      OLLAMA_HOST: 0.0.0.0
+    volumes:
+      - ollama-data:/root/.ollama  # Persist models and cache
+      - ./ollama/startup.sh:/startup.sh  # Startup script to pull model
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        # Start Ollama server in background
+        /bin/ollama serve &
+        # Wait for Ollama to be ready
+        sleep 5
+        # Pull the embedding model if not already present
+        /bin/ollama pull koill/sentence-transformers:all-minilm-l6-v2 || true
+        # Keep container running
+        wait
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
   ai-agent:
      build:
        context: ./ai_agent
@@ -174,6 +204,7 @@ services:
        PYTHONUNBUFFERED: 1
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
+       - ollama  # Depends on Ollama for embeddings
      #restart: unless-stopped
 
   react-ui:
@@ -301,4 +332,6 @@ volumes:
   generated-data:
     driver: local
   kafka-data:
+    driver: local
+  ollama-data:
     driver: local

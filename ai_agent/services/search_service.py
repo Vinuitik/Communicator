@@ -11,6 +11,7 @@ import faiss
 
 from config.settings import settings
 from .embedding_service import EmbeddingService
+from .friend_api_service import FriendApiService
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +27,21 @@ class SearchService:
     - Thread-safe index operations
     """
 
-    def __init__(self, embedding_service: EmbeddingService, mongo_repo=None):
+    def __init__(
+        self, 
+        embedding_service: EmbeddingService, 
+        friend_api_service: FriendApiService,
+        mongo_repo=None
+    ):
         """Initialize the search service.
         
         Args:
             embedding_service: Service for embedding queries
+            friend_api_service: Service for Friend API calls
             mongo_repo: MongoDB repository for loading embeddings
         """
         self.embedding_service = embedding_service
+        self.friend_api_service = friend_api_service
         self.mongo_repo = mongo_repo
         
         # Load configuration
@@ -50,52 +58,6 @@ class SearchService:
             f"index_type={self.index_type}, "
             f"threshold={self.min_relevance_threshold}"
         )
-
-    async def _fetch_all_knowledge_ids_for_friend(self, friend_id: int) -> List[int]:
-        """Fetch all knowledge IDs for a friend from Java Friend service.
-        
-        Calls GET /getKnowledgeIds/{friendId} endpoint to retrieve
-        all knowledge IDs for a friend.
-        
-        Args:
-            friend_id: ID of the friend
-            
-        Returns:
-            List of knowledge IDs
-        """
-        import aiohttp
-        from config.settings import settings
-        
-        base_url = settings.friend_service_url
-        timeout = settings.friend_service_timeout
-        url = f"{base_url}/getKnowledgeIds/{friend_id}"
-        
-        logger.info(f"Fetching knowledge IDs for friend {friend_id} from {url}")
-        
-        try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        knowledge_ids = await response.json()
-                        # Response is already a List<Integer>
-                        logger.info(f"Retrieved {len(knowledge_ids)} knowledge IDs for friend {friend_id}")
-                        return knowledge_ids
-                    elif response.status == 404:
-                        logger.warning(f"Friend {friend_id} not found or has no knowledge")
-                        return []
-                    else:
-                        error_text = await response.text()
-                        logger.error(
-                            f"Failed to fetch knowledge IDs for friend {friend_id}: "
-                            f"HTTP {response.status} - {error_text}"
-                        )
-                        return []
-        except aiohttp.ClientError as e:
-            logger.error(f"Network error fetching knowledge IDs for friend {friend_id}: {e}")
-            return []
-        except Exception as e:
-            logger.error(f"Unexpected error fetching knowledge IDs for friend {friend_id}: {e}")
-            return []
 
     async def build_index_for_friend(self, friend_id: int) -> bool:
         """Build FAISS index for all chunks belonging to a friend's knowledge.
@@ -114,9 +76,9 @@ class SearchService:
             logger.error("MongoDB repository required to build index")
             return False
         
-        # Fetch all knowledge IDs for this friend
+        # Fetch all knowledge IDs for this friend using FriendApiService
         logger.info(f"Step 1: Fetching knowledge IDs from Friend service...")
-        knowledge_ids = await self._fetch_all_knowledge_ids_for_friend(friend_id)
+        knowledge_ids = await self.friend_api_service.fetch_knowledge_ids_for_friend(friend_id)
         logger.info(f"Retrieved {len(knowledge_ids) if knowledge_ids else 0} knowledge IDs")
         
         if not knowledge_ids:
@@ -127,7 +89,7 @@ class SearchService:
         
         # Fetch all chunks for these knowledge items
         logger.info(f"Step 2: Fetching chunks from MongoDB for {len(knowledge_ids)} knowledge items...")
-        chunks = await self.mongo_repo.find(
+        chunks = await self.mongo_repo.find_many(
             "knowledge_chunks",
             {"knowledge_id": {"$in": knowledge_ids}}
         )
@@ -142,7 +104,7 @@ class SearchService:
         
         # Fetch embeddings for these chunks
         logger.info(f"Step 3: Fetching embeddings from MongoDB...")
-        embeddings_docs = await self.mongo_repo.find(
+        embeddings_docs = await self.mongo_repo.find_many(
             "chunk_embeddings",
             {"chunk_id": {"$in": chunk_ids}}
         )

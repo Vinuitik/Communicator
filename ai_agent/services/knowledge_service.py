@@ -1,48 +1,85 @@
-from typing import Dict, Any, List, Tuple, Optional
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from .agent_service import AgentService
-from .referencing_service import ReferencingService
-from .chunking_service import ChunkingService
-from utils.json_parser import fix_json_format
-from prompts.prompt_manager import load_prompt_parts
-from config.settings import settings
-from datetime import datetime, timezone
-import json
-import logging
+"""Knowledge Service - orchestrates knowledge summarization workflow.
 
-# Set up logger
+This service coordinates the entire knowledge summarization process,
+delegating specific tasks to specialized services while maintaining
+the high-level workflow logic.
+"""
+from typing import Dict, Any, List, Tuple
+import logging
+from datetime import datetime, timezone
+
+from config.settings import settings
+from .agent_service import AgentService
+from .fact_service import FactService
+from .chunking_service import ChunkingService
+from .friend_api_service import FriendApiService
+from .knowledge_cache_service import KnowledgeCacheService
+from prompts.summary_prompt_service import SummaryPromptService
+from repositories.fact_repository import FactRepository
+
 logger = logging.getLogger(__name__)
 
+
 class KnowledgeService:
-    """Service for handling knowledge-related operations"""
+    """Orchestrates knowledge summarization with fact validation.
+    
+    Workflow:
+    1. Check cache for existing summary
+    2. Fetch knowledge from Friend API
+    3. Ensure knowledge is chunked (lazy chunking)
+    4. Generate LLM summary using prompts
+    5. Parse summary into facts
+    6. Validate each fact and create references
+    7. Cache result and return
+    """
     
     def __init__(
         self, 
-        agent_service: AgentService, 
-        referencing_service: ReferencingService = None,
-        chunking_service: ChunkingService = None,
-        redis_repo=None, 
+        agent_service: AgentService,
+        fact_service: FactService,
+        chunking_service: ChunkingService,
+        friend_api_service: FriendApiService,
+        cache_service: KnowledgeCacheService,
+        prompt_service: SummaryPromptService,
+        fact_repository: FactRepository,
         mongo_repo=None
     ):
+        """Initialize the knowledge service.
+        
+        Args:
+            agent_service: Service for LLM interactions
+            fact_service: Service for fact validation and references
+            chunking_service: Service for text chunking
+            friend_api_service: Service for Friend API calls
+            cache_service: Service for Redis caching
+            prompt_service: Service for prompt management
+            fact_repository: Repository for fact operations
+            mongo_repo: MongoDB repository
+        """
         self.agent_service = agent_service
-        self.referencing_service = referencing_service
+        self.fact_service = fact_service
         self.chunking_service = chunking_service
-        self.redis_repo = redis_repo
+        self.friend_api_service = friend_api_service
+        self.cache_service = cache_service
+        self.prompt_service = prompt_service
+        self.fact_repository = fact_repository
         self.mongo_repo = mongo_repo
+        
+        logger.info("Initialized KnowledgeService with all dependencies")
     
     async def summarize_friend_knowledge(self, friend_id: int) -> Dict[str, Any]:
-        """
-        Create a knowledge summary for a friend with Redis/MongoDB caching.
-        Now uses fact-based storage with validation and references.
+        """Create a knowledge summary for a friend with Redis/MongoDB caching.
+        
+        Uses fact-based storage with validation and references.
         
         Workflow:
         1. Check Redis for friendID key
         2. If exists, fetch facts from MongoDB
         3. If not exists:
+           - Fetch knowledge from Friend API
            - Generate LLM summary
            - Parse into key-value facts
-           - Validate each fact with ReferencingService
+           - Validate each fact with FactService
            - Store validated facts in MongoDB
            - Cache friendID in Redis
         
@@ -53,113 +90,30 @@ class KnowledgeService:
             Structured facts with references
         """
         logger.info(f"Starting knowledge summarization for friend_id: {friend_id}")
+        
         try:
-            if not self.redis_repo or not self.mongo_repo:
-                logger.error("Redis and MongoDB repositories are required but not available")
-                raise RuntimeError("Redis and MongoDB repositories are required")
-            
-            # Step 1: Check Redis cache for friend_id key
-            cache_key = f"friend_summary:{friend_id}"
-            logger.debug(f"Checking Redis cache with key: {cache_key}")
-            cached_exists = await self.redis_repo.get(cache_key)
-            
-            if cached_exists:
+            # Step 1: Check cache
+            logger.info("Step 1: Checking cache...")
+            if await self.cache_service.is_summary_cached(friend_id):
                 logger.info(f"Cache hit for friend_id: {friend_id}, fetching facts from MongoDB")
-                # Fetch facts with references
                 return await self.get_friend_facts_with_references(friend_id)
             
             logger.info(f"No cache found for friend_id: {friend_id}, generating new summary")
             
-            # Step 2: Get friend knowledge using MCP tool
-            logger.debug("Getting knowledge tool from agent service")
-            get_knowledge_tool = self.agent_service.get_tool_by_name("get_friend_knowledge")
-            if not get_knowledge_tool:
-                logger.error("get_friend_knowledge tool not found in agent service")
-                raise ValueError("get_friend_knowledge tool not found")
-            
-            # Call the MCP tool to get knowledge
-            logger.info(f"Calling get_friend_knowledge tool for friend_id: {friend_id}")
-            tool_params = {
-                "friend_id": friend_id,
-                "page": 0,
-                "size": settings.knowledge_max_items_per_request
-            }
-            logger.info(f"Tool parameters: {tool_params}")
-            
-            knowledge_result = await get_knowledge_tool.ainvoke(tool_params)
-            
-            logger.info(f"Knowledge tool returned {len(str(knowledge_result))} characters")
-            logger.debug(f"Knowledge tool result type: {type(knowledge_result)}")
-            logger.debug(f"Knowledge tool result: {knowledge_result}")
-            
-            # Parse and log structure
-            if isinstance(knowledge_result, str):
-                logger.info(f"Knowledge result is string format")
-            elif isinstance(knowledge_result, dict):
-                logger.info(f"Knowledge result is dict with keys: {knowledge_result.keys()}")
-            elif isinstance(knowledge_result, list):
-                logger.info(f"Knowledge result is list with {len(knowledge_result)} items")
-            else:
-                logger.warning(f"Unexpected knowledge result type: {type(knowledge_result)}")
-            
-            # Step 3: Create summarization chain and generate summary
-            logger.debug("Creating summarization prompt")
-            summarization_prompt = self._create_summarization_prompt()
-            
-            chain = (
-                summarization_prompt 
-                | self.agent_service.llm 
-                | StrOutputParser() 
-                | fix_json_format
+            # Step 2: Fetch knowledge from Friend API
+            logger.info("Step 2: Fetching knowledge from Friend API...")
+            knowledge_items = await self.friend_api_service.fetch_knowledge_paginated(
+                friend_id=friend_id,
+                page=0,
+                size=settings.knowledge_max_items_per_request
             )
             
-            # Generate summary
-            logger.info("=" * 80)
-            logger.info("STARTING LLM SUMMARY GENERATION")
-            logger.info("=" * 80)
-            logger.info(f"Input knowledge_data length: {len(str(knowledge_result))} chars")
+            logger.info(f"Retrieved {len(knowledge_items)} knowledge items")
             
-            summary_result = await chain.ainvoke({"knowledge_data": knowledge_result})
-            
-            logger.info("=" * 80)
-            logger.info("LLM SUMMARY GENERATION COMPLETED")
-            logger.info("=" * 80)
-            logger.info(f"Summary result type: {type(summary_result)}")
-            logger.info(f"Summary result length: {len(str(summary_result))} chars")
-            logger.debug(f"Summary result content: {summary_result}")
-            
-            # Step 4: Parse summary into individual facts
-            logger.info("=" * 80)
-            logger.info("PARSING FACTS FROM SUMMARY")
-            logger.info("=" * 80)
-            
-            facts = self._parse_summary_to_facts(summary_result)
-            
-            logger.info(f"Parsed {len(facts)} facts from summary")
-            if facts:
-                logger.info("Sample facts (first 3):")
-                for idx, (key, value) in enumerate(facts[:3], 1):
-                    logger.info(f"  Fact {idx}: '{key}' = '{value}'")
-            else:
-                logger.warning("NO FACTS WERE PARSED FROM SUMMARY!")
-                logger.warning(f"Summary result was: {summary_result}")
-            
-            if not facts:
-                logger.warning(f"No valid facts extracted for friend {friend_id}")
-                # Store empty summary
-                await self.mongo_repo.update_one(
-                    "friend_summaries",
-                    {"friend_id": friend_id},
-                    {
-                        "$set": {
-                            "facts": [],
-                            "last_updated": datetime.now(timezone.utc),
-                            "fact_count": 0
-                        }
-                    },
-                    upsert=True
-                )
-                await self.redis_repo.set(cache_key, "cached")
+            if not knowledge_items:
+                logger.warning(f"No knowledge items found for friend {friend_id}")
+                await self.fact_repository.create_empty_summary(friend_id)
+                await self.cache_service.cache_summary(friend_id)
                 return {
                     "friend_id": friend_id,
                     "facts": [],
@@ -167,47 +121,91 @@ class KnowledgeService:
                     "last_updated": datetime.now(timezone.utc)
                 }
             
-            # Step 5: Validate each fact and create references
+            # Step 2.5: Ensure all knowledge is chunked (lazy chunking)
+            logger.info("Step 2.5: Starting lazy chunking phase...")
+            if self.chunking_service:
+                try:
+                    chunk_stats, knowledge_texts = await self._ensure_knowledge_chunked(
+                        friend_id, knowledge_items
+                    )
+                    logger.info(f"Lazy chunking complete: {len(chunk_stats)} knowledge items processed")
+                    
+                    # Step 2.6: Ensure embeddings exist for all chunks
+                    logger.info("Step 2.6: Ensuring embeddings exist for all chunks...")
+                    all_chunk_ids = []
+                    for knowledge_id in chunk_stats.keys():
+                        chunks = await self.mongo_repo.find_many(
+                            "knowledge_chunks",
+                            {"knowledge_id": knowledge_id}
+                        )
+                        all_chunk_ids.extend([chunk["chunk_id"] for chunk in chunks])
+                    
+                    if all_chunk_ids:
+                        embeddings_created = await self.chunking_service.ensure_embeddings_exist(
+                            all_chunk_ids, 
+                            knowledge_texts
+                        )
+                        logger.info(f"✓ Created {embeddings_created} new embeddings")
+                    
+                except Exception as e:
+                    logger.error(f"Lazy chunking failed: {e}", exc_info=True)
+                    logger.warning("Continuing without chunking - validation may fail")
+            else:
+                logger.warning("⚠️ Chunking service not available - skipping lazy chunking")
+            
+            # Step 3: Generate summary using SummaryPromptService
+            logger.info("Step 3: Generating LLM summary...")
+            summary_result = await self.prompt_service.generate_summary(
+                knowledge_data=knowledge_items,
+                llm=self.agent_service.llm
+            )
+            
+            # Step 4: Parse summary into facts using SummaryPromptService
+            logger.info("Step 4: Parsing facts from summary...")
+            facts = self.prompt_service.parse_summary_to_facts(summary_result)
+            
+            if not facts:
+                logger.warning(f"No valid facts extracted for friend {friend_id}")
+                await self.fact_repository.create_empty_summary(friend_id)
+                await self.cache_service.cache_summary(friend_id)
+                return {
+                    "friend_id": friend_id,
+                    "facts": [],
+                    "fact_count": 0,
+                    "last_updated": datetime.now(timezone.utc)
+                }
+            
+            # Step 5: Validate each fact and create references using FactService
             logger.info("=" * 80)
             logger.info("STARTING FACT VALIDATION AND REFERENCE CREATION")
             logger.info("=" * 80)
             logger.info(f"Total facts to validate: {len(facts)}")
-            logger.info(f"Referencing service available: {self.referencing_service is not None}")
-            logger.info(f"Chunking service available: {self.chunking_service is not None}")
             
             validated_fact_ids = []
             
-            if self.referencing_service:
-                logger.info(f"Validating {len(facts)} facts with ReferencingService")
-                
-                for fact_key, fact_value in facts:
-                    try:
-                        fact_id = await self.referencing_service.create_fact_with_references(
-                            friend_id=friend_id,
-                            fact_key=fact_key,
-                            fact_value=fact_value
-                        )
-                        
-                        if fact_id:
-                            validated_fact_ids.append(fact_id)
-                            logger.debug(f"Validated fact: {fact_key} = {fact_value}")
-                        else:
-                            logger.debug(f"Fact discarded (validation failed): {fact_key} = {fact_value}")
+            for fact_key, fact_value in facts:
+                try:
+                    fact_id = await self.fact_service.create_fact_with_references(
+                        friend_id=friend_id,
+                        fact_key=fact_key,
+                        fact_value=fact_value
+                    )
                     
-                    except Exception as e:
-                        logger.error(f"Error validating fact {fact_key}: {e}")
-                        continue
+                    if fact_id:
+                        validated_fact_ids.append(fact_id)
+                        logger.debug(f"Validated fact: {fact_key} = {fact_value}")
+                    else:
+                        logger.debug(f"Fact discarded (validation failed): {fact_key} = {fact_value}")
                 
-                logger.info(f"Successfully validated {len(validated_fact_ids)}/{len(facts)} facts")
-            else:
-                logger.warning("ReferencingService not available, facts stored without validation")
-                # Fallback: store facts without validation (legacy mode)
-                # This shouldn't happen in production but provides graceful degradation
-                pass
+                except Exception as e:
+                    logger.error(f"Error validating fact {fact_key}: {e}")
+                    continue
             
-            # Step 6: Cache friendID in Redis permanently
-            logger.info(f"Caching friend_id in Redis with key: {cache_key}")
-            await self.redis_repo.set(cache_key, "cached")
+            logger.info(f"Successfully validated {len(validated_fact_ids)}/{len(facts)} facts")
+            
+            # Step 6: Cache friendID in Redis
+            logger.info(f"Step 6: Caching summary...")
+            await self.cache_service.cache_summary(friend_id)
             
             # Step 7: Return facts with references
             result = await self.get_friend_facts_with_references(friend_id)
@@ -228,140 +226,122 @@ class KnowledgeService:
             logger.error(f"Error in knowledge summarization for friend_id {friend_id}: {str(e)}", exc_info=True)
             raise RuntimeError(f"Error in knowledge summarization: {str(e)}")
     
-    def _create_summarization_prompt(self) -> ChatPromptTemplate:
-        """
-        Create the prompt template for knowledge summarization
-        
-        Returns:
-            ChatPromptTemplate for summarizing friend knowledge
-        """
-        logger.debug("Loading prompt parts for knowledge_summary")
-        messages = load_prompt_parts("knowledge_summary")
-        logger.debug(f"Loaded prompt messages: {messages}")
-        
-        if not messages:
-            # Fallback to inline prompt if files are missing
-            logger.warning("No prompt messages found, using fallback inline prompt")
-            return ChatPromptTemplate.from_messages([
-                ("system", "You are an expert at analyzing personal knowledge and creating structured summaries.\n\nReturn ONLY a JSON object."),
-                ("user", "Analyze this friend knowledge data and create a structured summary:\n\n{knowledge_data}")
-            ])
-        
-        logger.debug("Successfully created prompt template from loaded messages")
-        return ChatPromptTemplate.from_messages(messages)
-    
-    def _parse_summary_to_facts(self, summary_json: Dict[str, Any]) -> List[Tuple[str, str]]:
-        """
-        Parse LLM summary JSON into individual key-value fact pairs.
-        Recursively traverses nested structures (like frontend does).
-        Filters out empty keys and values (instant disqualification).
+    async def _ensure_knowledge_chunked(
+        self, 
+        friend_id: int, 
+        knowledge_items: List[Dict[str, Any]]
+    ) -> Tuple[Dict[int, int], Dict[int, str]]:
+        """Ensure all knowledge items are chunked before validation (lazy chunking).
         
         Args:
-            summary_json: The JSON summary from LLM
+            friend_id: ID of the friend
+            knowledge_items: Knowledge items from Friend API
             
         Returns:
-            List of (key, value) tuples with valid, non-empty data
+            Tuple of (chunk_stats, knowledge_texts) where:
+            - chunk_stats: Dictionary mapping knowledge_id -> chunk_count
+            - knowledge_texts: Dictionary mapping knowledge_id -> full_text
         """
-        facts = []
+        logger.info("=" * 80)
+        logger.info("LAZY CHUNKING: Ensuring all knowledge items are chunked")
+        logger.info("=" * 80)
         
-        def extract_facts(data, parent_key=""):
-            """Recursively extract facts from nested JSON"""
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    # Skip error keys or null values
-                    if key == "error" or value is None:
-                        continue
-                    
-                    # Build hierarchical key if nested
-                    full_key = f"{parent_key} > {key}" if parent_key else key
-                    
-                    if isinstance(value, dict):
-                        # Recurse into nested object
-                        extract_facts(value, full_key)
-                    elif isinstance(value, list):
-                        # Handle arrays (join as comma-separated string)
-                        if value:
-                            value_str = ", ".join(str(v) for v in value if v)
-                            if value_str.strip():
-                                facts.append((full_key, value_str))
-                    else:
-                        # Leaf value - validate before adding
-                        value_str = str(value).strip()
-                        if value_str:  # INSTANT DISQUALIFICATION for empty values
-                            facts.append((full_key, value_str))
+        if not self.mongo_repo:
+            logger.error("MongoDB repository required for lazy chunking")
+            return {}, {}
+        
+        if not self.chunking_service:
+            logger.error("Chunking service required for lazy chunking")
+            return {}, {}
+        
+        logger.info(f"Found {len(knowledge_items)} knowledge items to check")
+        
+        if not knowledge_items:
+            logger.warning("No knowledge items found to chunk")
+            return {}, {}
+        
+        chunk_stats = {}
+        knowledge_texts = {}
+        items_needing_chunking = []
+        items_already_chunked = []
+        
+        # Check which items need chunking
+        for item in knowledge_items:
+            knowledge_id = item["id"]
             
-            elif isinstance(data, str):
-                # Top-level string (shouldn't happen but handle it)
-                if data.strip() and parent_key:
-                    facts.append((parent_key, data.strip()))
-        
-        # Start extraction
-        extract_facts(summary_json)
-        
-        # Filter out facts with empty keys (final safety check)
-        valid_facts = [
-            (key.strip(), value) 
-            for key, value in facts 
-            if key and key.strip() and value and value.strip()
-        ]
-        
-        logger.info(f"Extracted {len(valid_facts)} valid facts from summary")
-        return valid_facts
-    
-    async def _fetch_full_knowledge_text(self, knowledge_id: int) -> Optional[str]:
-        """
-        Fetch full knowledge text for a given knowledge ID from Java Friend service.
-        
-        Calls GET /getKnowledgeText/{id} endpoint.
-        
-        Args:
-            knowledge_id: ID of the knowledge item
+            # Fetch full knowledge text using FriendApiService
+            logger.debug(f"  Fetching text for knowledge {knowledge_id}...")
+            knowledge_text = await self.friend_api_service.fetch_knowledge_text(knowledge_id)
             
-        Returns:
-            Full knowledge text or None if not found
-        """
-        import aiohttp
-        from config.settings import settings
+            if knowledge_text:
+                knowledge_texts[knowledge_id] = knowledge_text
+            else:
+                logger.warning(f"  ❌ Failed to fetch text for knowledge {knowledge_id}")
+            
+            # Check if chunks exist for this knowledge item
+            existing_chunks = await self.mongo_repo.find_many(
+                "knowledge_chunks",
+                {"knowledge_id": knowledge_id}
+            )
+            
+            if existing_chunks:
+                items_already_chunked.append(knowledge_id)
+                chunk_stats[knowledge_id] = len(existing_chunks)
+                logger.debug(f"  ✓ Knowledge {knowledge_id}: {len(existing_chunks)} chunks already exist")
+            else:
+                # Needs chunking
+                logger.debug(f"  🔨 Knowledge {knowledge_id}: needs chunking")
+                
+                if knowledge_text:
+                    items_needing_chunking.append({
+                        "id": knowledge_id,
+                        "text": knowledge_text
+                    })
+                else:
+                    chunk_stats[knowledge_id] = 0
         
-        base_url = settings.friend_service_url
-        timeout = settings.friend_service_timeout
-        url = f"{base_url}/getKnowledgeText/{knowledge_id}"
+        logger.info(f"Chunk status: {len(items_already_chunked)} cached, {len(items_needing_chunking)} need chunking")
         
-        logger.debug(f"Fetching knowledge text for ID {knowledge_id} from {url}")
+        # Chunk items that need it
+        if items_needing_chunking:
+            logger.info(f"Starting chunking for {len(items_needing_chunking)} knowledge items...")
+            
+            for idx, item in enumerate(items_needing_chunking, 1):
+                knowledge_id = item["id"]
+                knowledge_text = item["text"]
+                
+                logger.info(f"Chunking {idx}/{len(items_needing_chunking)}: knowledge_id={knowledge_id}")
+                logger.debug(f"  Text preview: '{knowledge_text[:100]}...'")
+                
+                try:
+                    chunk_ids = await self.chunking_service.process_knowledge(
+                        knowledge_id=knowledge_id,
+                        knowledge_text=knowledge_text,
+                        force_regenerate=False
+                    )
+                    
+                    chunk_stats[knowledge_id] = len(chunk_ids)
+                    logger.info(f"  ✓ Created {len(chunk_ids)} chunks for knowledge {knowledge_id}")
+                    
+                except Exception as e:
+                    logger.error(f"  ❌ Failed to chunk knowledge {knowledge_id}: {e}", exc_info=True)
+                    chunk_stats[knowledge_id] = 0
         
-        try:
-            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
-                async with session.get(url) as response:
-                    if response.status == 200:
-                        knowledge_item = await response.json()
-                        # Response format: {"id": "123", "text": "..."}
-                        text = knowledge_item.get("text")
-                        if text:
-                            logger.debug(f"Retrieved knowledge text for ID {knowledge_id} ({len(text)} chars)")
-                            return text
-                        else:
-                            logger.warning(f"Knowledge {knowledge_id} has no text content")
-                            return None
-                    elif response.status == 404:
-                        logger.warning(f"Knowledge {knowledge_id} not found")
-                        return None
-                    else:
-                        error_text = await response.text()
-                        logger.error(
-                            f"Failed to fetch knowledge {knowledge_id}: "
-                            f"HTTP {response.status} - {error_text}"
-                        )
-                        return None
-        except aiohttp.ClientError as e:
-            logger.error(f"Network error fetching knowledge {knowledge_id}: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error fetching knowledge {knowledge_id}: {e}")
-            return None
+        logger.info("=" * 80)
+        logger.info("LAZY CHUNKING COMPLETED")
+        logger.info("=" * 80)
+        logger.info(f"Total knowledge items: {len(knowledge_items)}")
+        logger.info(f"Already chunked: {len(items_already_chunked)}")
+        logger.info(f"Newly chunked: {len(items_needing_chunking)}")
+        logger.info(f"Total chunks created: {sum(chunk_stats.values())}")
+        logger.info(f"Knowledge texts fetched: {len(knowledge_texts)}")
+        logger.info("=" * 80)
+        
+        return chunk_stats, knowledge_texts
     
     async def get_friend_facts_with_references(self, friend_id: int) -> Dict[str, Any]:
-        """
-        Get all facts for a friend with embedded reference information.
+        """Get all facts for a friend with embedded reference information.
+        
         Includes chunk texts for frontend tooltip display.
         
         Args:
@@ -375,11 +355,8 @@ class KnowledgeService:
         if not self.mongo_repo:
             raise RuntimeError("MongoDB repository required")
         
-        # Fetch friend summary
-        summary_doc = await self.mongo_repo.find_one(
-            "friend_summaries",
-            {"friend_id": friend_id}
-        )
+        # Fetch friend summary using FactRepository
+        summary_doc = await self.fact_repository.get_friend_summary(friend_id)
         
         if not summary_doc or "facts" not in summary_doc:
             logger.warning(f"No facts found for friend {friend_id}")
@@ -396,14 +373,8 @@ class KnowledgeService:
         for fact in summary_doc.get("facts", []):
             fact_id = fact.get("fact_id")
             
-            # Fetch references for this fact
-            references = await self.mongo_repo.find(
-                "fact_references",
-                {"fact_id": fact_id}
-            )
-            
-            # Sort by rank
-            references.sort(key=lambda x: x.get("rank", 999))
+            # Fetch references for this fact using FactService
+            references = await self.fact_service.get_fact_references(fact_id)
             
             # Reconstruct chunk texts for each reference
             enriched_references = []
@@ -421,8 +392,8 @@ class KnowledgeService:
                     logger.warning(f"Chunk {chunk_id} not found")
                     continue
                 
-                # Fetch full knowledge text
-                full_text = await self._fetch_full_knowledge_text(knowledge_id)
+                # Fetch full knowledge text using FriendApiService
+                full_text = await self.friend_api_service.fetch_knowledge_text(knowledge_id)
                 
                 if full_text and self.chunking_service:
                     # Reconstruct chunk text from positions
@@ -468,14 +439,3 @@ class KnowledgeService:
         
         logger.info(f"Returning {len(facts_with_refs)} facts with references")
         return result
-    
-    def get_available_knowledge_tools(self) -> list:
-        """
-        Get list of available knowledge-related tools
-        
-        Returns:
-            List of knowledge tool names
-        """
-        all_tools = self.agent_service.list_available_tools()
-        knowledge_tools = [tool for tool in all_tools if 'knowledge' in tool.lower()]
-        return knowledge_tools

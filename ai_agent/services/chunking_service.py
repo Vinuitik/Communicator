@@ -4,7 +4,7 @@ This service handles the eager chunking of knowledge texts into overlapping segm
 generates embeddings for each chunk, and persists both chunk metadata and embeddings
 to MongoDB for efficient retrieval.
 """
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 import hashlib
 import logging
 from datetime import datetime, timezone
@@ -162,14 +162,16 @@ class ChunkingService:
         
         # Check if chunks already exist and text hasn't changed
         if not force_regenerate:
-            existing_chunks = await self.mongo_repo.find(
+            existing_chunks = await self.mongo_repo.find_many(
                 "knowledge_chunks",
                 {"knowledge_id": knowledge_id, "text_hash": text_hash}
             )
             
             if existing_chunks:
                 chunk_ids = [chunk["chunk_id"] for chunk in existing_chunks]
-                logger.info(f"Knowledge {knowledge_id} unchanged, using {len(chunk_ids)} existing chunks")
+                logger.info(f"✓✓✓ CACHE HIT: Knowledge {knowledge_id} unchanged, using {len(chunk_ids)} existing chunks")
+                logger.info(f"Chunk IDs: {chunk_ids[:3]}..." if len(chunk_ids) > 3 else f"Chunk IDs: {chunk_ids}")
+                logger.info("=" * 80)
                 return chunk_ids
         
         # Delete old chunks and embeddings
@@ -262,7 +264,7 @@ class ChunkingService:
             return
         
         # Get all chunk IDs for this knowledge
-        chunks = await self.mongo_repo.find(
+        chunks = await self.mongo_repo.find_many(
             "knowledge_chunks",
             {"knowledge_id": knowledge_id}
         )
@@ -325,6 +327,108 @@ class ChunkingService:
             knowledge_id: ID of the knowledge item
         """
         await self._delete_chunks(knowledge_id)
+
+    async def ensure_embeddings_exist(self, chunk_ids: List[str], knowledge_texts: Dict[int, str]) -> int:
+        """Ensure embeddings exist for given chunks (lazy embedding generation).
+        
+        This method checks which chunks are missing embeddings and generates only those.
+        Used in lazy chunking scenarios where chunks exist but embeddings might be missing.
+        
+        Args:
+            chunk_ids: List of chunk IDs to check
+            knowledge_texts: Map of knowledge_id -> full text (for reconstructing chunk text)
+            
+        Returns:
+            Number of embeddings created
+        """
+        logger.info("=" * 80)
+        logger.info("LAZY EMBEDDING: Ensuring embeddings exist for chunks")
+        logger.info("=" * 80)
+        logger.info(f"Checking {len(chunk_ids)} chunks for embeddings")
+        
+        if not self.mongo_repo:
+            logger.warning("No MongoDB repository, cannot ensure embeddings")
+            return 0
+        
+        # Find chunks that already have embeddings
+        existing_embeddings = await self.mongo_repo.find_many(
+            "chunk_embeddings",
+            {"chunk_id": {"$in": chunk_ids}}
+        )
+        existing_chunk_ids = {doc["chunk_id"] for doc in existing_embeddings}
+        logger.info(f"Found {len(existing_chunk_ids)} chunks with existing embeddings")
+        
+        # Find chunks missing embeddings
+        missing_chunk_ids = [cid for cid in chunk_ids if cid not in existing_chunk_ids]
+        
+        if not missing_chunk_ids:
+            logger.info("✓ All chunks already have embeddings")
+            logger.info("=" * 80)
+            return 0
+        
+        logger.info(f"Need to generate embeddings for {len(missing_chunk_ids)} chunks")
+        
+        # Fetch chunk metadata to reconstruct texts
+        chunk_docs = await self.mongo_repo.find_many(
+            "knowledge_chunks",
+            {"chunk_id": {"$in": missing_chunk_ids}}
+        )
+        
+        # Reconstruct chunk texts
+        chunk_texts = []
+        chunk_ids_ordered = []
+        
+        for chunk_doc in chunk_docs:
+            knowledge_id = chunk_doc["knowledge_id"]
+            full_text = knowledge_texts.get(knowledge_id)
+            
+            if not full_text:
+                logger.warning(f"Missing knowledge text for knowledge_id {knowledge_id}, skipping chunk {chunk_doc['chunk_id']}")
+                continue
+            
+            # Reconstruct chunk text from positions
+            char_start = chunk_doc["char_start"]
+            char_end = chunk_doc["char_end"]
+            chunk_text = full_text[char_start:char_end]
+            
+            chunk_texts.append(chunk_text)
+            chunk_ids_ordered.append(chunk_doc["chunk_id"])
+        
+        if not chunk_texts:
+            logger.warning("No chunk texts to embed")
+            return 0
+        
+        logger.info(f"Generating embeddings for {len(chunk_texts)} chunks...")
+        
+        # Generate embeddings
+        embeddings = await self.embedding_service.embed_texts(chunk_texts)
+        logger.info(f"✓ Generated {len(embeddings)} embeddings")
+        
+        # Create embedding documents
+        embedding_docs = []
+        embedding_dimension = self.embedding_service.get_embedding_dimension()
+        embedding_model = settings.embedding_model
+        
+        for chunk_id, embedding in zip(chunk_ids_ordered, embeddings):
+            embedding_doc = EmbeddingDocument(
+                chunk_id=chunk_id,
+                embedding=embedding,
+                model_name=embedding_model,
+                dimension=embedding_dimension,
+                created_at=datetime.now(timezone.utc)
+            )
+            embedding_docs.append(embedding_doc)
+        
+        # Persist embeddings
+        logger.info(f"Persisting {len(embedding_docs)} embeddings to MongoDB...")
+        await self.mongo_repo.insert_many(
+            "chunk_embeddings",
+            [doc.dict() for doc in embedding_docs]
+        )
+        logger.info(f"✓ Persisted {len(embedding_docs)} embeddings")
+        logger.info("=" * 80)
+        
+        return len(embedding_docs)
 
     async def get_chunk_count(self, knowledge_id: int) -> int:
         """Get the number of chunks for a knowledge item.
