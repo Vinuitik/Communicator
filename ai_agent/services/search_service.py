@@ -130,12 +130,18 @@ class SearchService:
         # Create FAISS index
         dimension = embeddings_matrix.shape[1]
         
-        if self.index_type == "IndexFlatL2":
+        if self.index_type == "IndexFlatIP":
+            # Normalize embeddings for cosine similarity
+            logger.info("Normalizing embeddings for cosine similarity (IndexFlatIP)")
+            faiss.normalize_L2(embeddings_matrix)
+            index = faiss.IndexFlatIP(dimension)
+        elif self.index_type == "IndexFlatL2":
             index = faiss.IndexFlatL2(dimension)
         else:
-            # Fallback to flat index for other types (can be extended)
-            logger.warning(f"Index type {self.index_type} not fully supported, using IndexFlatL2")
-            index = faiss.IndexFlatL2(dimension)
+            # Fallback to IP with normalization
+            logger.warning(f"Index type {self.index_type} not fully supported, using IndexFlatIP")
+            faiss.normalize_L2(embeddings_matrix)
+            index = faiss.IndexFlatIP(dimension)
         
         # Add embeddings to index
         index.add(embeddings_matrix)
@@ -196,6 +202,12 @@ class SearchService:
         logger.info(f"Embedding query...")
         query_embedding = await self.embedding_service.embed_query(query)
         query_vector = np.array([query_embedding], dtype=np.float32)
+        
+        # Normalize query for cosine similarity if using IndexFlatIP
+        if self.index_type == "IndexFlatIP" or self.index_type not in ["IndexFlatL2"]:
+            logger.debug("Normalizing query vector for cosine similarity")
+            faiss.normalize_L2(query_vector)
+        
         logger.info(f"Query embedding dimension: {len(query_embedding)}")
         
         # Search in FAISS index
@@ -211,9 +223,13 @@ class SearchService:
             if idx < len(chunk_id_mapping):
                 chunk_id = chunk_id_mapping[idx]
                 
-                # Convert L2 distance to similarity score (0-1 range)
-                # Using inverse distance formula
-                similarity_score = 1.0 / (1.0 + float(distance))
+                # For IndexFlatIP with normalized vectors, distance IS cosine similarity
+                # Range: -1 (opposite) to 1 (identical), typically 0-1 for similar docs
+                if self.index_type == "IndexFlatIP" or self.index_type not in ["IndexFlatL2"]:
+                    similarity_score = float(distance)  # Already cosine similarity
+                else:
+                    # For IndexFlatL2, convert L2 distance to similarity
+                    similarity_score = 1.0 / (1.0 + float(distance))
                 
                 logger.debug(f"  Result {result_idx + 1}: distance={distance:.4f}, score={similarity_score:.4f}, chunk={chunk_id}")
                 
@@ -240,6 +256,9 @@ class SearchService:
             friend_id: ID of the friend
         """
         if friend_id in self.indexes:
+            index, chunk_id_mapping = self.indexes[friend_id]
+            # Explicitly reset FAISS index to free memory
+            index.reset()
             del self.indexes[friend_id]
             logger.info(f"Cleared FAISS index for friend {friend_id}")
         else:
@@ -248,6 +267,9 @@ class SearchService:
     def clear_all_indexes(self) -> None:
         """Clear all FAISS indexes to free memory."""
         count = len(self.indexes)
+        # Explicitly reset all FAISS indexes before clearing
+        for friend_id, (index, _) in list(self.indexes.items()):
+            index.reset()
         self.indexes.clear()
         logger.info(f"Cleared {count} FAISS indexes")
 

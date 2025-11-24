@@ -121,8 +121,8 @@ chunking:
 # Search Configuration (for new SearchService)
 search:
   top_k_chunks: 5  # Number of top similar chunks to return per query
-  faiss_index_type: "IndexFlatL2"  # Exact search for small-medium datasets
-  min_relevance_threshold: 0.0  # Minimum cosine similarity score to consider relevant
+  faiss_index_type: "IndexFlatIP"  # Inner Product for cosine similarity (with normalized vectors)
+  min_relevance_threshold: 0.7  # Minimum cosine similarity score to consider relevant (0-1 range)
 
 # Referencing/Validation Configuration (for new ReferencingService)
 referencing:

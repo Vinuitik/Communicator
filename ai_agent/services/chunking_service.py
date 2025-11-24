@@ -78,6 +78,8 @@ class ChunkingService:
     def _split_into_chunks(self, text: str) -> List[Tuple[str, int, int]]:
         """Split text into overlapping chunks using interleaving windows.
         
+        Optimized: O(n) complexity by precomputing word positions instead of O(n²).
+        
         Args:
             text: Text to chunk
             
@@ -92,6 +94,13 @@ class ChunkingService:
             logger.debug(f"Text too short ({total_words} words), keeping as single chunk")
             return [(text, 0, len(text))]
         
+        # Precompute starting character position for each word - O(n)
+        word_char_positions = []
+        char_pos = 0
+        for word in words:
+            word_char_positions.append(char_pos)
+            char_pos += len(word) + 1  # +1 for space after word
+        
         chunks = []
         start_word = 0
         
@@ -103,13 +112,16 @@ class ChunkingService:
             chunk_words = words[start_word:end_word]
             chunk_text = ' '.join(chunk_words)
             
-            # Calculate character positions in original text
-            # Reconstruct text up to start to get char position
-            char_start = len(' '.join(words[:start_word]))
-            if start_word > 0:
-                char_start += 1  # Account for space after previous chunk
+            # Get character positions from precomputed array - O(1)
+            char_start = word_char_positions[start_word]
             
-            char_end = char_start + len(chunk_text)
+            # Calculate end position
+            if end_word < total_words:
+                # End is one char before the next word's start (to exclude trailing space)
+                char_end = word_char_positions[end_word] - 1
+            else:
+                # Last chunk goes to end of text
+                char_end = len(text)
             
             chunks.append((chunk_text, char_start, char_end))
             

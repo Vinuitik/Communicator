@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import numpy as np
 from aiohttp import ClientSession, ClientTimeout, ClientError
 from config.settings import settings
 
@@ -53,6 +54,21 @@ class EmbeddingService:
         
         logger.info(f"Initialized EmbeddingService with Ollama model: {self.model}")
         logger.info(f"Ollama API URL: {self.api_url}")
+
+    def _normalize_embedding(self, embedding: List[float]) -> List[float]:
+        """Normalize an embedding vector to unit length for cosine similarity.
+        
+        Args:
+            embedding: Embedding vector
+            
+        Returns:
+            Normalized embedding vector
+        """
+        arr = np.array(embedding, dtype=np.float32)
+        norm = np.linalg.norm(arr)
+        if norm > 0:
+            arr = arr / norm
+        return arr.tolist()
 
     def _get_cache_key(self, text: str) -> str:
         """Generate a cache key for a text string.
@@ -132,7 +148,9 @@ class EmbeddingService:
                             # Ollama returns embedding in 'embedding' field
                             embedding = result.get("embedding")
                             if embedding:
-                                embeddings.append(embedding)
+                                # Normalize for cosine similarity
+                                normalized_embedding = self._normalize_embedding(embedding)
+                                embeddings.append(normalized_embedding)
                                 logger.debug(f"Successfully got embedding for text: {text[:50]}...")
                                 break
                             else:
