@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from config.settings import settings
 from models.schemas import ChunkDocument, EmbeddingDocument
 from .embedding_service import EmbeddingService
+from repositories.chunk_repository import ChunkRepository
+from repositories.embedding_repository import EmbeddingRepository
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +25,26 @@ class ChunkingService:
     - Splits long texts into overlapping chunks (interleaving windows)
     - Skips chunking for short texts (keeps as single chunk)
     - Eagerly generates embeddings for all chunks
-    - Persists chunk metadata (positions, indices) and embeddings separately
+    - Delegates persistence to repositories (Single Responsibility)
     - Handles chunk invalidation when knowledge text changes
     """
 
-    def __init__(self, embedding_service: EmbeddingService, mongo_repo=None):
+    def __init__(
+        self, 
+        embedding_service: EmbeddingService, 
+        chunk_repository: ChunkRepository,
+        embedding_repository: EmbeddingRepository
+    ):
         """Initialize the chunking service.
         
         Args:
             embedding_service: Service for generating embeddings
-            mongo_repo: MongoDB repository for persistence
+            chunk_repository: Repository for chunk persistence
+            embedding_repository: Repository for embedding persistence
         """
         self.embedding_service = embedding_service
-        self.mongo_repo = mongo_repo
+        self.chunk_repo = chunk_repository
+        self.embedding_repo = embedding_repository
         
         # Load configuration
         self.chunk_size_words = settings.chunk_size_words
@@ -165,18 +174,13 @@ class ChunkingService:
         logger.info(f"Chunk size: {self.chunk_size_words} words")
         logger.info(f"Chunk overlap: {self.chunk_overlap_words} words")
         
-        if not self.mongo_repo:
-            logger.warning("No MongoDB repository configured, skipping persistence")
-            return []
-        
         # Calculate text hash for change detection
         text_hash = self._calculate_text_hash(knowledge_text)
         
         # Check if chunks already exist and text hasn't changed
         if not force_regenerate:
-            existing_chunks = await self.mongo_repo.find_many(
-                "knowledge_chunks",
-                {"knowledge_id": knowledge_id, "text_hash": text_hash}
+            existing_chunks = await self.chunk_repo.find_chunks_by_knowledge_and_hash(
+                knowledge_id, text_hash
             )
             
             if existing_chunks:
@@ -187,7 +191,7 @@ class ChunkingService:
                 return chunk_ids
         
         # Delete old chunks and embeddings
-        await self._delete_chunks(knowledge_id)
+        await self.chunk_repo.delete_chunks_and_embeddings(knowledge_id)
         
         # Split text into chunks
         logger.info(f"Splitting text into chunks...")
@@ -195,35 +199,14 @@ class ChunkingService:
         logger.info(f"Created {len(chunk_tuples)} chunks")
         
         # Create chunk documents
-        chunk_docs = []
-        chunk_texts = []
-        chunk_ids = []
-        
-        for chunk_index, (chunk_text, char_start, char_end) in enumerate(chunk_tuples):
-            chunk_id = self._generate_chunk_id(knowledge_id, chunk_index, text_hash)
-            
-            chunk_doc = ChunkDocument(
-                chunk_id=chunk_id,
-                knowledge_id=knowledge_id,
-                chunk_index=chunk_index,
-                word_count=len(chunk_text.split()),
-                char_start=char_start,
-                char_end=char_end,
-                text_hash=text_hash,
-                created_at=datetime.now(timezone.utc)
-            )
-            
-            chunk_docs.append(chunk_doc)
-            chunk_texts.append(chunk_text)
-            chunk_ids.append(chunk_id)
+        chunk_docs, chunk_texts, chunk_ids = self.chunk_repo.create_chunk_documents(
+            chunk_tuples, knowledge_id, text_hash, self._generate_chunk_id
+        )
         
         # Persist chunk documents
         logger.info(f"Persisting {len(chunk_docs)} chunk documents to MongoDB...")
-        await self.mongo_repo.insert_many(
-            "knowledge_chunks",
-            [doc.dict() for doc in chunk_docs]
-        )
-        logger.info(f"✓ Persisted {len(chunk_docs)} chunk documents to 'knowledge_chunks' collection")
+        await self.chunk_repo.save_chunks(chunk_docs)
+        logger.info(f"✓ Persisted {len(chunk_docs)} chunk documents")
         
         # Generate embeddings for all chunks
         logger.info(f"Generating embeddings for {len(chunk_texts)} chunks...")
@@ -235,27 +218,16 @@ class ChunkingService:
         logger.info(f"✓ Successfully generated {len(embeddings)} embeddings")
         
         # Create embedding documents
-        embedding_docs = []
         embedding_dimension = self.embedding_service.get_embedding_dimension()
         embedding_model = settings.embedding_model
-        
-        for chunk_id, embedding in zip(chunk_ids, embeddings):
-            embedding_doc = EmbeddingDocument(
-                chunk_id=chunk_id,
-                embedding=embedding,  # Already a list from embedding service
-                model_name=embedding_model,
-                dimension=embedding_dimension,
-                created_at=datetime.now(timezone.utc)
-            )
-            embedding_docs.append(embedding_doc)
+        embedding_docs = self.embedding_repo.create_embedding_documents(
+            chunk_ids, embeddings, embedding_dimension, embedding_model
+        )
         
         # Persist embedding documents
         logger.info(f"Persisting {len(embedding_docs)} embedding documents to MongoDB...")
-        await self.mongo_repo.insert_many(
-            "chunk_embeddings",
-            [doc.dict() for doc in embedding_docs]
-        )
-        logger.info(f"✓ Persisted {len(embedding_docs)} embedding documents to 'chunk_embeddings' collection")
+        await self.embedding_repo.save_embeddings(embedding_docs)
+        logger.info(f"✓ Persisted {len(embedding_docs)} embedding documents")
         
         logger.info("=" * 80)
         logger.info(f"✓✓✓ CHUNKING COMPLETED for knowledge {knowledge_id}")
@@ -265,42 +237,6 @@ class ChunkingService:
         logger.info("=" * 80)
         
         return chunk_ids
-
-    async def _delete_chunks(self, knowledge_id: int) -> None:
-        """Delete all chunks and embeddings for a knowledge item.
-        
-        Args:
-            knowledge_id: ID of the knowledge item
-        """
-        if not self.mongo_repo:
-            return
-        
-        # Get all chunk IDs for this knowledge
-        chunks = await self.mongo_repo.find_many(
-            "knowledge_chunks",
-            {"knowledge_id": knowledge_id}
-        )
-        chunk_ids = [chunk["chunk_id"] for chunk in chunks]
-        
-        if not chunk_ids:
-            logger.debug(f"No existing chunks found for knowledge {knowledge_id}")
-            return
-        
-        logger.info(f"Deleting {len(chunk_ids)} chunks for knowledge {knowledge_id}")
-        
-        # Delete chunks
-        await self.mongo_repo.delete_many(
-            "knowledge_chunks",
-            {"knowledge_id": knowledge_id}
-        )
-        
-        # Delete embeddings
-        await self.mongo_repo.delete_many(
-            "chunk_embeddings",
-            {"chunk_id": {"$in": chunk_ids}}
-        )
-        
-        logger.debug(f"Deleted chunks and embeddings for knowledge {knowledge_id}")
 
     async def get_chunk_text(self, chunk_id: str, full_knowledge_text: str) -> str:
         """Reconstruct chunk text from original knowledge using stored positions.
@@ -312,14 +248,8 @@ class ChunkingService:
         Returns:
             Reconstructed chunk text
         """
-        if not self.mongo_repo:
-            raise ValueError("MongoDB repository required to fetch chunk metadata")
-        
         # Fetch chunk metadata
-        chunk_doc = await self.mongo_repo.find_one(
-            "knowledge_chunks",
-            {"chunk_id": chunk_id}
-        )
+        chunk_doc = await self.chunk_repo.find_chunk_by_id(chunk_id)
         
         if not chunk_doc:
             raise ValueError(f"Chunk {chunk_id} not found")
@@ -338,7 +268,7 @@ class ChunkingService:
         Args:
             knowledge_id: ID of the knowledge item
         """
-        await self._delete_chunks(knowledge_id)
+        await self.chunk_repo.delete_chunks_and_embeddings(knowledge_id)
 
     async def ensure_embeddings_exist(self, chunk_ids: List[str], knowledge_texts: Dict[int, str]) -> int:
         """Ensure embeddings exist for given chunks (lazy embedding generation).
@@ -358,20 +288,11 @@ class ChunkingService:
         logger.info("=" * 80)
         logger.info(f"Checking {len(chunk_ids)} chunks for embeddings")
         
-        if not self.mongo_repo:
-            logger.warning("No MongoDB repository, cannot ensure embeddings")
-            return 0
-        
-        # Find chunks that already have embeddings
-        existing_embeddings = await self.mongo_repo.find_many(
-            "chunk_embeddings",
-            {"chunk_id": {"$in": chunk_ids}}
-        )
-        existing_chunk_ids = {doc["chunk_id"] for doc in existing_embeddings}
-        logger.info(f"Found {len(existing_chunk_ids)} chunks with existing embeddings")
-        
         # Find chunks missing embeddings
-        missing_chunk_ids = [cid for cid in chunk_ids if cid not in existing_chunk_ids]
+        missing_chunk_ids = await self.chunk_repo.find_chunks_missing_embeddings(chunk_ids)
+        
+        existing_count = len(chunk_ids) - len(missing_chunk_ids)
+        logger.info(f"Found {existing_count} chunks with existing embeddings")
         
         if not missing_chunk_ids:
             logger.info("✓ All chunks already have embeddings")
@@ -381,10 +302,7 @@ class ChunkingService:
         logger.info(f"Need to generate embeddings for {len(missing_chunk_ids)} chunks")
         
         # Fetch chunk metadata to reconstruct texts
-        chunk_docs = await self.mongo_repo.find_many(
-            "knowledge_chunks",
-            {"chunk_id": {"$in": missing_chunk_ids}}
-        )
+        chunk_docs = await self.chunk_repo.find_chunks_by_ids(missing_chunk_ids)
         
         # Reconstruct chunk texts
         chunk_texts = []
@@ -417,26 +335,15 @@ class ChunkingService:
         logger.info(f"✓ Generated {len(embeddings)} embeddings")
         
         # Create embedding documents
-        embedding_docs = []
         embedding_dimension = self.embedding_service.get_embedding_dimension()
         embedding_model = settings.embedding_model
-        
-        for chunk_id, embedding in zip(chunk_ids_ordered, embeddings):
-            embedding_doc = EmbeddingDocument(
-                chunk_id=chunk_id,
-                embedding=embedding,
-                model_name=embedding_model,
-                dimension=embedding_dimension,
-                created_at=datetime.now(timezone.utc)
-            )
-            embedding_docs.append(embedding_doc)
+        embedding_docs = self.embedding_repo.create_embedding_documents(
+            chunk_ids_ordered, embeddings, embedding_dimension, embedding_model
+        )
         
         # Persist embeddings
         logger.info(f"Persisting {len(embedding_docs)} embeddings to MongoDB...")
-        await self.mongo_repo.insert_many(
-            "chunk_embeddings",
-            [doc.dict() for doc in embedding_docs]
-        )
+        await self.embedding_repo.save_embeddings(embedding_docs)
         logger.info(f"✓ Persisted {len(embedding_docs)} embeddings")
         logger.info("=" * 80)
         
@@ -451,12 +358,4 @@ class ChunkingService:
         Returns:
             Number of chunks
         """
-        if not self.mongo_repo:
-            return 0
-        
-        count = await self.mongo_repo.count_documents(
-            "knowledge_chunks",
-            {"knowledge_id": knowledge_id}
-        )
-        
-        return count
+        return await self.chunk_repo.count_chunks_by_knowledge_id(knowledge_id)

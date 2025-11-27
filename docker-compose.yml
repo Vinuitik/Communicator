@@ -205,7 +205,7 @@ services:
      depends_on:
        - mcp-knowledge-server  # Depends on MCP server
        - ollama  # Depends on Ollama for embeddings
-     #restart: unless-stopped
+     restart: unless-stopped
 
   react-ui:
      build:
