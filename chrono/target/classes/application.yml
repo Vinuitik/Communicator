@@ -1,0 +1,22 @@
+chrono:
+  coefficients:
+    # Alpha values for decay (when no new data for the day)
+    decay:
+      excellent: 0.07   # *** rating - very slow decay for good experiences
+      good: 0.2         # ** rating
+      poor: 0.57        # * rating - faster decay for poor experiences
+
+  # Cron expression for running every day at midnight
+  schedule: "0 0 0 * * ?"
+
+  # Friend service configuration
+  friendService:
+    baseUrl: "http://nginx/api/friend"
+    timeout: 30000  # 30 seconds
+    batchSize: 200  # Optimal batch size for interaction checks
+    friendPageSize: 500  # Friends to process per page (can be larger since it's just friend data)
+
+logging:
+  level:
+    com.communicator.chrono: DEBUG
+    root: INFO
