@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRM Events</title>
+    <link rel="stylesheet" href="./events.css">
+</head>
+<body>
+    <main class="page">
+        <section class="card hero">
+            <h1>Create Event</h1>
+            <p id="contextText" class="muted">Create per-friend recurring events.</p>
+        </section>
+
+        <section class="card">
+            <form id="eventForm" class="form-grid">
+                <label>Friend ID
+                    <input id="friendId" type="number" min="1" required>
+                </label>
+
+                <label>Title
+                    <input id="title" type="text" maxlength="120" required>
+                </label>
+
+                <label>Event Type
+                    <input id="eventType" type="text" maxlength="60" placeholder="birthday, custom, holiday" required>
+                </label>
+
+                <label>Base Date
+                    <input id="baseDate" type="date" required>
+                </label>
+
+                <label>Recurrence Days
+                    <input id="recurrenceDays" type="number" min="1" value="365" required>
+                </label>
+
+                <label class="check-row">
+                    <input id="keepMeetingDate" type="checkbox" checked>
+                    Keep date aligned (for year-like cycles)
+                </label>
+
+                <label class="check-row">
+                    <input id="active" type="checkbox" checked>
+                    Active
+                </label>
+
+                <label class="full">Notes
+                    <textarea id="notes" rows="3" maxlength="500"></textarea>
+                </label>
+
+                <div class="actions full">
+                    <button type="submit">Create Event</button>
+                    <a id="meetingLink" class="link-btn" href="/meeting/">Open Meeting View</a>
+                </div>
+            </form>
+            <p id="result" class="muted" aria-live="polite">Idle</p>
+        </section>
+    </main>
+    <script src="./events.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRM Meeting Lab</title>
+    <link rel="stylesheet" href="./meeting.css">
+</head>
+<body>
+    <main class="page">
+        <section class="hero-card">
+            <div class="hero-mark" aria-hidden="true">
+                <span class="figure figure-left"></span>
+                <span class="figure figure-right"></span>
+                <span class="figure-hand"></span>
+            </div>
+            <p class="brand">FRM</p>
+            <h1>Meeting Lab</h1>
+            <p class="subtitle" id="friendContext">Manual testing area for meeting scheduling flow.</p>
+        </section>
+
+        <section class="panel-grid">
+            <article class="panel">
+                <h2>Heatmap</h2>
+                <p>Recent meeting activity by day (Git-style).</p>
+                <div class="legend">
+                    <span>Less</span>
+                    <span class="swatch lvl-0"></span>
+                    <span class="swatch lvl-1"></span>
+                    <span class="swatch lvl-2"></span>
+                    <span class="swatch lvl-3"></span>
+                    <span class="swatch lvl-4"></span>
+                    <span>More</span>
+                </div>
+            </article>
+
+            <article class="panel">
+                <h2>Quick Note</h2>
+                <p>Use route format: <strong>/meeting/{friendId}</strong></p>
+                <p id="hintText">Friend ID not detected yet.</p>
+            </article>
+        </section>
+
+        <section class="panel">
+            <h2>Meeting Timeline</h2>
+            <div id="heatmap" class="heatmap" aria-label="Meeting heatmap"></div>
+            <p id="heatmapStatus" class="muted">Loading heatmap...</p>
+        </section>
+
+        <section class="actions">
+            <button id="pingBtn" type="button">Ping UI</button>
+            <a id="eventsLink" class="link-btn" href="/events/">Open Events Form</a>
+            <p id="statusText" aria-live="polite">Idle</p>
+        </section>
+    </main>
+
+    <script src="./meeting.js"></script>
+</body>
+</html>

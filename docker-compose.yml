@@ -29,7 +29,8 @@ services:
 
   friend:
     build:
-      context: ./friend  # Build the image from the current directory using the Dockerfile
+      context: .
+      dockerfile: friend/Dockerfile
     volumes:
       - maven-cache-friend:/root/.m2
     container_name: friend
@@ -96,8 +97,8 @@ services:
 
   chrono:
       build: 
-        context: ./chrono
-        dockerfile: Dockerfile
+        context: .
+        dockerfile: chrono/Dockerfile
       container_name: chronoService
       expose:
         - "8087"  # Internal exposure only, no external port mapping
