@@ -14,6 +14,7 @@ public class ChronoProperties {
     private Coefficients coefficients;
     private String schedule;
     private FriendService friendService;
+    private Grpc grpc;
     
     @Data
     public static class Coefficients {
@@ -26,6 +27,13 @@ public class ChronoProperties {
         private int timeout;
         private int batchSize = 200; // Default batch size for interaction checks
         private int friendPageSize = 500; // Default page size for friend pagination
+    }
+
+    @Data
+    public static class Grpc {
+        private String host = "friend";
+        private int port = 9091;
+        private int timeoutMs = 10000;
     }
     
     /**

@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class ChronoJobService {
 
     private final FriendServiceClient friendServiceClient;
+    private final MeetingGenerationGrpcClient meetingGenerationGrpcClient;
     private final ChronoProperties chronoProperties;
 
     /**
@@ -27,6 +28,13 @@ public class ChronoJobService {
     public void applyDailyDecay() {
         log.info("Starting daily decay process");
         LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        try {
+            int generatedMeetings = meetingGenerationGrpcClient.generateMissingNextMeetingsForAllFriends();
+            log.info("Meeting generation completed via gRPC. Created meetings: {}", generatedMeetings);
+        } catch (Exception e) {
+            log.error("Meeting generation via gRPC failed", e);
+        }
         
         try {
             // Get total friend count to calculate total pages

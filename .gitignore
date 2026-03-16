@@ -45,6 +45,8 @@ ai_agent/service-account-key.json
 **/build/
 **/dist/
 **/*.egg-info/
+**/target/
+**/*.class
 
 # Node modules (if any JavaScript projects)
 **/node_modules/

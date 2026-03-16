@@ -16,6 +16,11 @@ chrono:
     batchSize: 200  # Optimal batch size for interaction checks
     friendPageSize: 500  # Friends to process per page (can be larger since it's just friend data)
 
+  grpc:
+    host: "friend"
+    port: 9091
+    timeoutMs: 10000
+
 logging:
   level:
     com.communicator.chrono: DEBUG

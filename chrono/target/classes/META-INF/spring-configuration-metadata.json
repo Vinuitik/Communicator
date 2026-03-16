@@ -16,6 +16,12 @@
       "type": "com.communicator.chrono.config.ChronoProperties$FriendService",
       "sourceType": "com.communicator.chrono.config.ChronoProperties",
       "sourceMethod": "public com.communicator.chrono.config.ChronoProperties.FriendService getFriendService() "
+    },
+    {
+      "name": "chrono.grpc",
+      "type": "com.communicator.chrono.config.ChronoProperties$Grpc",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties",
+      "sourceMethod": "public com.communicator.chrono.config.ChronoProperties.Grpc getGrpc() "
     }
   ],
   "properties": [
@@ -43,6 +49,21 @@
       "name": "chrono.friend-service.timeout",
       "type": "java.lang.Integer",
       "sourceType": "com.communicator.chrono.config.ChronoProperties$FriendService"
+    },
+    {
+      "name": "chrono.grpc.host",
+      "type": "java.lang.String",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$Grpc"
+    },
+    {
+      "name": "chrono.grpc.port",
+      "type": "java.lang.Integer",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$Grpc"
+    },
+    {
+      "name": "chrono.grpc.timeout-ms",
+      "type": "java.lang.Integer",
+      "sourceType": "com.communicator.chrono.config.ChronoProperties$Grpc"
     },
     {
       "name": "chrono.schedule",
