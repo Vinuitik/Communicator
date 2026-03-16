@@ -8,10 +8,14 @@ import communicate.Friend.DTOs.MCP_Friend_DTO;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
+import communicate.Friend.FriendEntities.FriendEvent;
 import communicate.Friend.FriendEntities.FriendKnowledge;
+import communicate.Friend.FriendEntities.Meeting;
 import communicate.Friend.FriendService.AnalyticsService;
+import communicate.Friend.FriendService.FriendEventService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.MeetingService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 
 import org.springframework.http.HttpStatus;
@@ -47,6 +52,8 @@ public class FriendController {
     private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;
     private final AnalyticsService analyticsService;
+    private final FriendEventService friendEventService;
+    private final MeetingService meetingService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -319,6 +326,175 @@ public class FriendController {
         } catch (Exception e) {
             System.err.println("Error getting friends count: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PostMapping("friends/{friendId}/events")
+    public ResponseEntity<?> createFriendEvent(
+            @PathVariable Integer friendId,
+            @Valid @RequestBody FriendEvent friendEvent) {
+        try {
+            Friend friend = friendService.getFriendById(friendId);
+            if (friend == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend not found");
+            }
+
+            friendEvent.setId(null);
+            friendEvent.setFriend(friend);
+            FriendEvent created = friendEventService.save(friendEvent);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            System.err.println("Error creating friend event: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while creating event.");
+        }
+    }
+
+    @GetMapping("friends/{friendId}/events")
+    public ResponseEntity<List<FriendEvent>> getFriendEvents(@PathVariable Integer friendId) {
+        try {
+            Friend friend = friendService.getFriendById(friendId);
+            if (friend == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+            return ResponseEntity.ok(friendEventService.getByFriendId(friendId));
+        } catch (Exception e) {
+            System.err.println("Error getting friend events: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PutMapping("friends/{friendId}/events/{eventId}")
+    public ResponseEntity<?> updateFriendEvent(
+            @PathVariable Integer friendId,
+            @PathVariable Integer eventId,
+            @Valid @RequestBody FriendEvent updateData) {
+        try {
+            FriendEvent updated = friendEventService.updateForFriend(eventId, friendId, updateData);
+            if (updated == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found for friend");
+            }
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            System.err.println("Error updating friend event: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while updating event.");
+        }
+    }
+
+    @DeleteMapping("friends/{friendId}/events/{eventId}")
+    public ResponseEntity<?> deleteFriendEvent(
+            @PathVariable Integer friendId,
+            @PathVariable Integer eventId) {
+        try {
+            boolean deleted = friendEventService.deleteForFriend(eventId, friendId);
+            if (!deleted) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event not found for friend");
+            }
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            System.err.println("Error deleting friend event: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while deleting event.");
+        }
+    }
+
+    @GetMapping("friends/{friendId}/meetings")
+    public ResponseEntity<List<Meeting>> getFriendMeetings(@PathVariable Integer friendId) {
+        try {
+            Friend friend = friendService.getFriendById(friendId);
+            if (friend == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+            return ResponseEntity.ok(meetingService.getByFriendId(friendId));
+        } catch (Exception e) {
+            System.err.println("Error getting friend meetings: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PostMapping("friends/{friendId}/meetings")
+    public ResponseEntity<?> createFriendMeeting(
+            @PathVariable Integer friendId,
+            @Valid @RequestBody Meeting meeting) {
+        try {
+            Friend friend = friendService.getFriendById(friendId);
+            if (friend == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend not found");
+            }
+
+            meeting.setId(null);
+            meeting.setFriend(friend);
+
+            if (meeting.getEvent() != null && meeting.getEvent().getId() != null) {
+                Optional<FriendEvent> eventOpt = friendEventService.getByIdAndFriendId(meeting.getEvent().getId(), friendId);
+                if (eventOpt.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Event does not belong to friend");
+                }
+                meeting.setEvent(eventOpt.get());
+            } else {
+                meeting.setEvent(null);
+            }
+
+            Meeting created = meetingService.save(meeting);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            System.err.println("Error creating meeting: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while creating meeting.");
+        }
+    }
+
+    @PutMapping("meetings/{meetingId}")
+    public ResponseEntity<?> updateMeeting(
+            @PathVariable Integer meetingId,
+            @Valid @RequestBody Meeting updateData) {
+        try {
+            Optional<Meeting> existingOpt = meetingService.getById(meetingId);
+            if (existingOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meeting not found");
+            }
+
+            Meeting existing = existingOpt.get();
+            updateData.setId(meetingId);
+            updateData.setFriend(existing.getFriend());
+
+            if (updateData.getEvent() != null && updateData.getEvent().getId() != null) {
+                Integer ownerFriendId = existing.getFriend() != null ? existing.getFriend().getId() : null;
+                if (ownerFriendId == null) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Meeting has no friend owner");
+                }
+
+                Optional<FriendEvent> eventOpt = friendEventService.getByIdAndFriendId(updateData.getEvent().getId(), ownerFriendId);
+                if (eventOpt.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Event does not belong to meeting friend");
+                }
+                updateData.setEvent(eventOpt.get());
+            }
+
+            Meeting updated = meetingService.updateMeeting(meetingId, updateData);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            System.err.println("Error updating meeting: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while updating meeting.");
+        }
+    }
+
+    @DeleteMapping("meetings/{meetingId}")
+    public ResponseEntity<?> deleteMeeting(@PathVariable Integer meetingId) {
+        try {
+            Optional<Meeting> existingOpt = meetingService.getById(meetingId);
+            if (existingOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Meeting not found");
+            }
+
+            meetingService.deleteById(meetingId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            System.err.println("Error deleting meeting: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An error occurred while deleting meeting.");
         }
     }
 }
