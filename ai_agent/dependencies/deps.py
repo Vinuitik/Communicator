@@ -21,6 +21,8 @@ from services.knowledge_service import KnowledgeService
 from repositories.redis_repository import RedisRepository
 from repositories.mongo_repository import MongoRepository
 from repositories.fact_repository import FactRepository
+from repositories.embedding_repository import EmbeddingRepository
+from repositories.chunk_repository import ChunkRepository
 
 # Prompt service import
 from prompts.summary_prompt_service import SummaryPromptService
@@ -44,6 +46,8 @@ _prompt_service = None
 _redis_repo: RedisRepository | None = None
 _mongo_repo: MongoRepository | None = None
 _fact_repo: FactRepository | None = None
+_embedding_repo: EmbeddingRepository | None = None
+_chunk_repo: ChunkRepository | None = None
 
 
 # ==================== Repository Dependencies ====================
@@ -107,6 +111,49 @@ async def get_fact_repository(
         logger.debug("Returning existing fact repository instance")
     
     return _fact_repo
+
+
+async def get_embedding_repository(
+    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+) -> EmbeddingRepository:
+    """Get shared EmbeddingRepository instance."""
+    global _embedding_repo
+    logger.debug("Getting embedding repository instance")
+
+    if _embedding_repo is None:
+        try:
+            logger.info("Initializing new embedding repository instance")
+            _embedding_repo = EmbeddingRepository(mongo_repo)
+            logger.info("Embedding repository initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize embedding repository: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("Returning existing embedding repository instance")
+
+    return _embedding_repo
+
+
+async def get_chunk_repository(
+    mongo_repo: MongoRepository = Depends(get_mongo_repository),
+    embedding_repository: EmbeddingRepository = Depends(get_embedding_repository)
+) -> ChunkRepository:
+    """Get shared ChunkRepository instance."""
+    global _chunk_repo
+    logger.debug("Getting chunk repository instance")
+
+    if _chunk_repo is None:
+        try:
+            logger.info("Initializing new chunk repository instance")
+            _chunk_repo = ChunkRepository(mongo_repo, embedding_repository)
+            logger.info("Chunk repository initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize chunk repository: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("Returning existing chunk repository instance")
+
+    return _chunk_repo
 
 
 # ==================== Core Service Dependencies ====================
@@ -234,7 +281,8 @@ async def get_fact_validation_service(
 
 async def get_chunking_service(
     embedding_service: EmbeddingService = Depends(get_embedding_service),
-    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+    chunk_repo: ChunkRepository = Depends(get_chunk_repository),
+    embedding_repo: EmbeddingRepository = Depends(get_embedding_repository)
 ) -> ChunkingService:
     """Get ChunkingService instance."""
     global _chunking_service
@@ -243,7 +291,11 @@ async def get_chunking_service(
     if _chunking_service is None:
         try:
             logger.info("Initializing new chunking service instance")
-            _chunking_service = ChunkingService(embedding_service, mongo_repo)
+            _chunking_service = ChunkingService(
+                embedding_service,
+                chunk_repo,
+                embedding_repo
+            )
             logger.info("Chunking service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize chunking service: {e}", exc_info=True)

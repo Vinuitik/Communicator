@@ -1,5 +1,6 @@
 from typing import Optional, List, Any, Dict
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langgraph.prebuilt import create_react_agent
 from config.settings import settings
 from services.mcp_service import MCPService
@@ -48,11 +49,10 @@ class AgentService:
     def _setup_llm(self) -> None:
         """Setup the Google Gemini LLM"""
         # Use service account credentials instead of API key
-        self.llm = ChatGoogleGenerativeAI(
+        self.llm = ChatVertexAI(
             model=settings.llm_model,
             temperature=settings.llm_temperature,
-            google_api_key=None,  # Explicitly set to None to use service account
-            transport="rest"
+            location = "us-central1"
         )
         print(f"LLM initialized with model: {settings.llm_model} using service account credentials")
     

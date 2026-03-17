@@ -31,13 +31,17 @@ export class KnowledgeManager {
         // Extract entity ID from URL
         const urlPath = window.location.pathname;
         const pathParts = urlPath.split('/');
+        const parseId = (value) => {
+            const parsed = parseInt(value, 10);
+            return Number.isNaN(parsed) ? null : parsed;
+        };
         
         // Look for specific patterns based on entity type
         if (this.config.entityType === 'group') {
             // Pattern: /api/groups/{id}/knowledge
             const groupsIndex = pathParts.indexOf('groups');
             if (groupsIndex >= 0 && pathParts[groupsIndex + 1] && pathParts[groupsIndex + 2] === 'knowledge') {
-                this.entityId = parseInt(pathParts[groupsIndex + 1]);
+                this.entityId = parseId(pathParts[groupsIndex + 1]);
             }
         } else {
             // Pattern for friends: /knowledge/{id} or /{entityType}/{id}/knowledge
@@ -45,11 +49,19 @@ export class KnowledgeManager {
             if (knowledgeIndex >= 0) {
                 // Pattern: /knowledge/{id}
                 if (pathParts[knowledgeIndex + 1]) {
-                    this.entityId = parseInt(pathParts[knowledgeIndex + 1]);
+                    this.entityId = parseId(pathParts[knowledgeIndex + 1]);
                 }
                 // Pattern: /{entityType}/{id}/knowledge
                 else if (knowledgeIndex > 0 && pathParts[knowledgeIndex - 1]) {
-                    this.entityId = parseInt(pathParts[knowledgeIndex - 1]);
+                    this.entityId = parseId(pathParts[knowledgeIndex - 1]);
+                }
+            }
+
+            // Pattern: /talked/{id} (with or without API prefixes)
+            if (!this.entityId) {
+                const talkedIndex = pathParts.indexOf('talked');
+                if (talkedIndex >= 0 && pathParts[talkedIndex + 1]) {
+                    this.entityId = parseId(pathParts[talkedIndex + 1]);
                 }
             }
         }
@@ -58,7 +70,23 @@ export class KnowledgeManager {
         if (!this.entityId) {
             const container = document.querySelector(`[data-${this.config.entityIdKey}]`);
             if (container) {
-                this.entityId = parseInt(container.getAttribute(`data-${this.config.entityIdKey}`));
+                this.entityId = parseId(container.getAttribute(`data-${this.config.entityIdKey}`));
+            }
+        }
+
+        // Alternative: hidden field used on talked/edit forms
+        if (!this.entityId) {
+            const hiddenIdInput = document.getElementById('friend-id');
+            if (hiddenIdInput && hiddenIdInput.value) {
+                this.entityId = parseId(hiddenIdInput.value);
+            }
+        }
+
+        // Final fallback: use the last numeric segment in the URL if present
+        if (!this.entityId) {
+            const numericSegment = [...pathParts].reverse().find(part => /^\d+$/.test(part));
+            if (numericSegment) {
+                this.entityId = parseId(numericSegment);
             }
         }
         
@@ -143,11 +171,6 @@ export class KnowledgeManager {
     
     async handleFormSubmit(e) {
         e.preventDefault();
-        
-        if (!this.entityId) {
-            this.showError(`No ${this.config.entityType} ID available`);
-            return;
-        }
         
         const fact = this.elements.factInput?.value.trim();
         const importance = this.elements.importanceInput?.value.trim();
