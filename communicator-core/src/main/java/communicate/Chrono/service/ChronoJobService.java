@@ -1,9 +1,6 @@
 package communicate.Chrono.service;
 
 import communicate.Chrono.config.ChronoProperties;
-import communicate.Chrono.dto.FriendSummary;
-import communicate.Chrono.dto.FriendUpdateRequest;
-import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendRepositories.AnalyticsRepository;
 import communicate.Friend.FriendRepositories.FriendRepository;
@@ -16,9 +13,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,14 +57,12 @@ public class ChronoJobService {
 
                 List<Integer> friendIds = friendPage.getContent().stream()
                         .map(Friend::getId)
-                        .collect(Collectors.toList());
+                        .toList();
 
                 // Batch check: which friends had interactions on yesterday
-                Set<Integer> withInteractions = analyticsRepository
-                        .findByFriendIdInAndDate(friendIds, yesterday)
-                        .stream()
-                        .map(Analytics::getFriendId)
-                        .collect(Collectors.toSet());
+                Set<Integer> withInteractions = new HashSet<>(
+                        analyticsRepository.findFriendIdsWithInteractionsOnDate(friendIds, yesterday)
+                );
 
                 for (Friend friend : friendPage.getContent()) {
                     if (!withInteractions.contains(friend.getId())) {
