@@ -8,6 +8,7 @@
 *~
 .DS_Store
 Thumbs.db
+.claude
 
 # OS generated files
 *.log
@@ -60,3 +61,27 @@ resourceRepository/personalResources/**
 # Log files
 **/*.log
 **/logs/
+
+# Graphify (keep final outputs, ignore intermediates)
+.graphify_python
+.graphify_*.json
+.graphify_*.txt
+.graphify_incremental.json
+.graphify_old.json
+
+# Ignore any accidental graphify output directories inside source trees.
+# Keep only the canonical committable outputs under graphify-runs/**/graphify-out/.
+**/graphify-out/**
+!graphify-runs/**/graphify-out/
+!graphify-runs/**/graphify-out/**
+
+# Chunk scratch files (generated during semantic extraction)
+**/graphify-out/.graphify_chunk_*.json
+**/graphify-out/.needs_update
+
+# Recommended run output location (committable): graphify-runs/**/graphify-out/
+# (Do not ignore graphify-runs itself; only ignore temp files within it.)
+graphify-runs/**/.graphify_*.json
+graphify-runs/**/.graphify_*.txt
+graphify-runs/**/graphify-out/.graphify_chunk_*.json
+graphify-runs/**/graphify-out/.needs_update
