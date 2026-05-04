@@ -27,13 +27,11 @@ services:
     command: redis-server --appendonly yes
     restart: unless-stopped
 
-  friend:
+  communicator-core:
     build:
       context: .
-      dockerfile: friend/Dockerfile
-    volumes:
-      - maven-cache-friend:/root/.m2
-    container_name: friend
+      dockerfile: communicator-core/Dockerfile
+    container_name: communicator-core
     expose:
       - "8085"
     environment:
@@ -42,60 +40,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: example
       FILE_REPOSITORY_SERVICE_URL: http://fileRepository:5000
       TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - maven-cache-core:/root/.m2
     depends_on:
       - postgres
-    command: java -jar app.jar
-    restart: unless-stopped
-
-  group:
-    build:
-      context: ./group
-      dockerfile: Dockerfile
-    container_name: groupService
-    expose:
-      - "8086"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
-      SPRING_DATASOURCE_USERNAME: myapp_user
-      SPRING_DATASOURCE_PASSWORD: example
-      TZ: ${HOST_TIMEZONE:-UTC}
-    volumes:
-      - maven-cache-group:/root/.m2
-    depends_on:
-      - postgres
-    restart: unless-stopped
-
-  connections:
-    build:
-      context: ./connections
-      dockerfile: Dockerfile
-    container_name: connectionService
-    expose:
-      - "8088"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
-      SPRING_DATASOURCE_USERNAME: myapp_user
-      SPRING_DATASOURCE_PASSWORD: example
-      TZ: ${HOST_TIMEZONE:-UTC}
-    volumes:
-      - maven-cache-connections:/root/.m2
-    depends_on:
-      - postgres
-    restart: unless-stopped
-
-  chrono:
-    build:
-      context: .
-      dockerfile: chrono/Dockerfile
-    container_name: chronoService
-    expose:
-      - "8087"
-    environment:
-      TZ: ${HOST_TIMEZONE:-UTC}
-    volumes:
-      - maven-cache-chrono:/root/.m2
-    depends_on:
-      - friend
     restart: unless-stopped
 
   nginx:
@@ -110,9 +58,7 @@ services:
     ports:
       - "8090:80"
     depends_on:
-      - friend
-      - group
-      - connections
+      - communicator-core
       - mcp-knowledge-server
       - ai-agent
     restart: unless-stopped
@@ -231,13 +177,7 @@ volumes:
     driver: local
   file-repo-backups:
     driver: local
-  maven-cache-friend:
-    driver: local
-  maven-cache-group:
-    driver: local
-  maven-cache-connections:
-    driver: local
-  maven-cache-chrono:
+  maven-cache-core:
     driver: local
   generated-data:
     driver: local

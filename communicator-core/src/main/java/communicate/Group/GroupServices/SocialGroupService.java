@@ -1,0 +1,58 @@
+package communicate.Group.GroupServices;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
+
+import communicate.Group.GroupEntities.SocialGroup;
+import communicate.Group.GroupRepositories.SocialGroupRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class SocialGroupService {
+
+    private final SocialGroupRepository socialGroupRepository;
+
+    public List<SocialGroup> getAllGroups() {
+        return socialGroupRepository.findAll();
+    }
+
+    @Transactional
+    public SocialGroup getGroupById(Integer id) {
+        Optional<SocialGroup> group = socialGroupRepository.findById(id);
+        return group.orElse(null);
+    }
+
+    public SocialGroup createGroup(SocialGroup group) {
+        return socialGroupRepository.save(group);
+    }
+
+    public SocialGroup updateGroup(Integer id, SocialGroup updatedGroup) {
+        if (socialGroupRepository.existsById(id)) {
+            updatedGroup.setId(id);
+            return socialGroupRepository.save(updatedGroup);
+        }
+        return null;
+    }
+
+    public boolean deleteGroup(Integer id) {
+        if (socialGroupRepository.existsById(id)) {
+            socialGroupRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    @Transactional
+    public void setPrimaryPhoto(Long photoId, Integer groupId) {
+        SocialGroup group = socialGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found with id: " + groupId));
+        group.setPrimaryPhotoId(photoId);
+        socialGroupRepository.save(group);
+    }
+}
+

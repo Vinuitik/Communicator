@@ -1,0 +1,16 @@
+# EMA coefficients for real-time updates (used by friend's EmaUpdateService)
+ema:
+  coefficients:
+    newData:
+      excellent: 0.6
+      good: 0.7
+      poor: 0.8
+
+# Chrono decay + schedule (used by ChronoJobService + MovingAverageCalculationService)
+chrono:
+  coefficients:
+    decay:
+      excellent: 0.07
+      good: 0.2
+      poor: 0.57
+  schedule: "0 0 0 * * ?"

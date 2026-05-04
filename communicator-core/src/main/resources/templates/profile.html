@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="'Friend Profile - ' + ${friend.name}">Friend Profile</title>
+  <link rel="stylesheet" href="/profile/profile.css">
+  <link rel="stylesheet" href="/navigation/navigation.css">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png">
+  <link rel="manifest" href="/favicon_io/site.webmanifest">
+</head>
+<body>
+  <nav class="navbar">
+        <div class="navbar-logo">Friends Tracker</div>
+        <ul class="navbar-links">
+            <li><a href="/calendarView/calendar.html">Home</a></li>
+            <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
+            <li><a href="/" id="navAllFriends">All Friends</a></li>
+            <li><a href="/" id="navWeek">This Week</a></li>
+            <li><a href="/stats">Stats</a></li>
+        </ul>
+    </nav>
+  <div class="container">
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <img th:src="'/api/fileRepository/file/' + ${friend.id} + '/' + ${mainPhotoName}" 
+     th:alt="${friend.name + ' profile photo'}"
+     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNiZGMzYzciPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiBmaWxsPSIjZTllY2VmIiBzdHJva2U9IiNkZWUyZTYiIHN0cm9rZS13aWR0aD0iMiIvPjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiIGZpbGw9IiNhZGI1YmQiLz48L3N2Zz4='; this.onerror=null;">
+      <div class="profile-header-text">
+        <h1 th:text="${friend.name}">Friend Name</h1>
+        <div class="profile-subtitle" th:text="${friend.relationshipType + ' • Known since ' + friend.dateMet}">Relationship info</div>
+        <div class="quick-stats">
+          <div class="stat-item"><i>📅</i> Last met: 2 weeks ago</div>
+          <div class="stat-item"><i>🗓️</i> Next: March 25, 2025</div>
+          <div class="stat-item"><i>🏆</i> Close friend</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Main content grid -->
+    <div class="profile-grid">
+      <!-- Left column -->
+      <div class="left-column">
+        <!-- Media Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Media Gallery
+            <button id="mediaUploadButton">Add Media</button> 
+          </div>
+          <div class="media-gallery">
+            
+            <!-- Photos -->
+            <div th:each="photo : ${photos}" class="media-item">
+              <img th:src="'/api/fileRepository/file/' + ${friendId} + '/' + ${photo.photoName}" 
+                  th:alt="${photo.photoName}"
+                  th:data-photo-name="${photo.photoName}"
+                  th:data-media-name="${photo.photoName}"
+                  th:data-friend-id="${friendId}"
+                  th:data-photo-id="${photo.id}"
+                  th:data-media-id="${photo.id}"
+                  data-media-type="photo"
+                  onclick="openMediaModalFromElement(this)">
+            </div>
+
+            <!-- Videos -->
+            <div th:each="video : ${videos}" class="media-item video">
+              <div class="video-thumbnail" 
+                  th:data-video-name="${video.videoName}"
+                  th:data-friend-id="${friendId}"
+                  th:data-video-id="${video.id}"
+                  th:data-media-id="${video.id}"
+                  data-media-type="video"
+                  onclick="openMediaModalFromElement(this)">
+                <div class="video-indicator">▶</div>
+              </div>
+            </div>
+            
+            <!-- Personal Resources -->
+            <div th:each="resource : ${resources}" class="media-item resource">
+              <div class="resource-item" 
+                th:data-resource-name="${resource.resourceName}" 
+                th:data-friend-id="${friendId}"
+                th:data-mime-type="${resource.mimeType}"
+                th:data-media-id="${resource.id}"
+                data-media-type="resource"
+                onclick="openMediaModalFromElement(this)">
+                <div class="resource-icon">
+                    <span th:if="${resource.mimeType.contains('pdf')}">📄</span>
+                    <span th:if="${resource.mimeType.contains('document') or resource.mimeType.contains('word')}">📝</span>
+                    <span th:if="${resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel')}">📊</span>
+                    <span th:if="${resource.mimeType.contains('text')}">📋</span>
+                    <span th:unless="${resource.mimeType.contains('pdf') or resource.mimeType.contains('document') or resource.mimeType.contains('word') or resource.mimeType.contains('spreadsheet') or resource.mimeType.contains('excel') or resource.mimeType.contains('text')}">📁</span>
+                </div>
+                <div class="resource-name" th:text="${resource.resourceName}">Resource Name</div>
+                <div class="resource-type" th:text="${resource.mimeType}">MIME Type</div>
+              </div>
+            </div>
+            
+            <!-- Fallback for no media -->
+            <div th:if="${#lists.isEmpty(photos) and #lists.isEmpty(videos) and #lists.isEmpty(resources)}" 
+                 class="no-media-placeholder">
+              <p>No photos, videos, or resources yet. Click "Add Media" to get started!</p>
+            </div>
+          </div>
+          
+          <!-- Media Pagination -->
+          <div class="media-pagination" id="mediaPagination">
+            <div class="pagination-container">
+              <button class="pagination-btn pagination-prev" id="prevPageBtn" disabled>
+                <span>‹</span>
+              </button>
+              
+              <div class="pagination-numbers" id="paginationNumbers">
+                <!-- Pagination numbers will be inserted here by JavaScript -->
+                <button class="pagination-number active" data-page="1">1</button>
+                <button class="pagination-number" data-page="2">2</button>
+                <button class="pagination-number" data-page="3">3</button>
+                <div class="pagination-input-container" style="display: none;">
+                  <input type="number" class="pagination-input" id="pageInput" min="1" placeholder="...">
+                  <button class="pagination-go-btn" id="goToPageBtn">Go</button>
+                </div>
+                <button class="pagination-number" data-page="4">4</button>
+                <button class="pagination-number" data-page="5">5</button>
+              </div>
+              
+              <button class="pagination-btn pagination-next" id="nextPageBtn">
+                <span>›</span>
+              </button>
+            </div>
+            
+            <div class="pagination-info">
+              <span id="pageInfo">Page 1 of 5 • 48 items</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Social Links -->
+        <div class="profile-section">
+          <div class="section-title">
+            Social Media
+            <button class="add-social-btn" th:data-friend-id="${friendId}">Add Social</button>
+          </div>
+          <div class="social-links" id="socialLinksContainer">
+            <!-- Social links will be loaded dynamically -->
+            <div class="social-loading">Loading social media links...</div>
+          </div>
+        </div>
+        
+        <!-- Knowledge Section -->
+        <div class="profile-section knowledge-section">
+          <div class="section-title">
+            Knowledge About <span th:text="${friend.name}">Friend</span>
+            <button>Add Info</button>
+          </div>
+          <div class="knowledge-table">
+            <!-- Content will be dynamically loaded by KnowledgeTable module -->
+          </div>
+        </div>
+        
+        <!-- Relationship Knowledge -->
+        <div class="profile-section relationship-section">
+          <div class="section-title">
+            Relationship Knowledge
+            <button>Add Relationship</button>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Sarah Johnson">
+            <div>
+              <div class="relationship-name">Sarah Johnson</div>
+              <div class="relationship-detail">Dating for 2 years, met at work</div>
+            </div>
+            <span class="relationship-quality quality-great">Great</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Mike Peterson">
+            <div>
+              <div class="relationship-name">Mike Peterson</div>
+              <div class="relationship-detail">Best friend since college, roommate for 1 year</div>
+            </div>
+            <span class="relationship-quality quality-good">Good</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Lisa Wang">
+            <div>
+              <div class="relationship-name">Lisa Wang</div>
+              <div class="relationship-detail">Coworker, occasional climbing partner</div>
+            </div>
+            <span class="relationship-quality quality-neutral">Neutral</span>
+          </div>
+          
+          <div class="relationship-card">
+            <img src="/api/placeholder/100/100" alt="Alex Thompson">
+            <div>
+              <div class="relationship-name">Alex Thompson</div>
+              <div class="relationship-detail">Former roommate, had a disagreement over rent</div>
+            </div>
+            <span class="relationship-quality quality-complicated">Complicated</span>
+          </div>
+          
+          <div class="note-section">
+            <div class="note-title">Important Note:</div>
+            <p>Don't mention the surprise birthday party being planned by Sarah for April. James doesn't know about it yet!</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right column -->
+      <div class="right-column">
+        <!-- Groups Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Groups
+            <button>Add Group</button>
+          </div>
+          <div class="groups-list">
+            <div class="group-tag">College Friends</div>
+            <div class="group-tag">Rock Climbing Club</div>
+            <div class="group-tag">Weekend Hikers</div>
+            <div class="group-tag">Tech Meetup</div>
+            <div class="group-tag">Book Club</div>
+            <div class="group-tag">Photography Enthusiasts</div>
+          </div>
+        </div>
+        
+        <!-- Upcoming Meetings -->
+        <div class="profile-section">
+          <div class="section-title">
+            Upcoming Meetings
+            <button>Add Meeting</button>
+          </div>
+          <div class="upcoming-meetings">
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">Mar</span>
+                <span class="meeting-day">25</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Coffee Catchup</div>
+                <div class="meeting-info">3:30 PM • Downtown Café</div>
+              </div>
+            </div>
+            
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">Apr</span>
+                <span class="meeting-day">15</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Birthday Dinner</div>
+                <div class="meeting-info">7:00 PM • Italian Restaurant</div>
+              </div>
+            </div>
+            
+            <div class="meeting-item">
+              <div class="meeting-date">
+                <span class="meeting-month">May</span>
+                <span class="meeting-day">3</span>
+              </div>
+              <div class="meeting-details">
+                <div class="meeting-title">Hiking Trip</div>
+                <div class="meeting-info">9:00 AM • Eagle Mountain</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Notes Section -->
+        <div class="profile-section">
+          <div class="section-title">
+            Recent Interactions
+            <button>Add Note</button>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #2c3e50;">March 5, 2025</div>
+            <p>Met for dinner at Sakura Japanese restaurant. Talked about his recent promotion and upcoming travel plans to Portugal. He mentioned wanting to get into cycling.</p>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #2c3e50;">February 18, 2025</div>
+            <p>Quick coffee meetup. He was stressed about a work deadline. Mentioned his parents are visiting next month and he's looking for recommendations for activities.</p>
+          </div>
+          
+          <div>
+            <div style="font-weight: 600; color: #2c3e50;">January 27, 2025</div>
+            <p>Weekend hiking trip with the group. James brought his new camera and took amazing landscape photos. He shared some photography tips and mentioned wanting to do a photography course.</p>
+          </div>
+        </div>
+        
+        <!-- Topics to Discuss -->
+        <div class="profile-section">
+          <div class="section-title">
+            Topics to Discuss
+            <button>Add Topic</button>
+          </div>
+          
+          <ul style="list-style-type: none; padding-left: 0;">
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic1" style="margin-right: 10px;">
+                <label for="topic1">Ask about Portugal trip planning</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic2" style="margin-right: 10px;">
+                <label for="topic2">Share cycling route recommendations</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid #e1e4e8;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic3" style="margin-right: 10px;">
+                <label for="topic3">Follow up on photography course interest</label>
+              </div>
+            </li>
+            <li style="padding: 8px 0;">
+              <div style="display: flex; align-items: center;">
+                <input type="checkbox" id="topic4" style="margin-right: 10px;">
+                <label for="topic4">Invite to Alex's housewarming party</label>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Media Modal -->
+  <div class="media-modal" id="mediaModal">
+    <div class="media-modal-content">
+      <div class="media-modal-header">
+        <h3 id="mediaModalTitle">Media Preview</h3>
+        <span class="media-modal-close" id="closeMediaModal">&times;</span>
+      </div>
+      <div class="media-modal-body">
+        <!-- Primary Photo Button - positioned in top left -->
+        <button class="media-btn media-btn-primary-photo" id="setPrimaryPhotoBtn" style="display: none;" onclick="setPrimaryPhoto()">
+          <i>⭐</i> Set as Primary
+        </button>
+        
+        <div class="media-preview-container" id="mediaPreviewContainer">
+        </div>
+        
+        <!-- Add media info section -->
+        <div class="media-info-detail" id="mediaInfoDetail">
+          <div class="media-info-row">
+            <span class="media-info-label">File:</span>
+            <span id="modalMediaName">-</span>
+          </div>
+          <div class="media-info-row">
+            <span class="media-info-label">Type:</span>
+            <span id="modalMediaType">-</span>
+          </div>
+          <div class="media-info-row">
+            <span class="media-info-label">Size:</span>
+            <span id="modalMediaSize">-</span>
+          </div>
+        </div>
+      </div>
+      <div class="media-modal-footer">
+        <button class="media-btn media-btn-danger" id="deleteMediaBtn">
+          <i>🗑️</i> Delete
+        </button>
+        <button class="media-btn media-btn-secondary" id="closeMediaBtn">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core utility modules -->
+  <script src="/profile/modules/utils.js"></script>
+  <script src="/profile/modules/notificationManager.js"></script>
+  
+  <!-- Social links module -->
+  <script src="/profile/modules/socialLinks.js"></script>
+  
+  <!-- Media-related modules -->
+  <script src="/profile/modules/mediaElementFactory.js"></script>
+  <script src="/profile/modules/galleryManager.js"></script>
+  <script src="/profile/modules/mediaModal.js"></script>
+  <script src="/profile/modules/primaryPhoto.js"></script>
+  <script src="/profile/modules/mediaDeletion.js"></script>
+  <script src="/profile/modules/mediaUpload.js"></script>
+  
+  <!-- Pagination module -->
+  <script src="/profile/modules/pagination.js"></script>
+  
+  <!-- Knowledge table module -->
+  <script src="/profile/modules/knowledgeTable.js"></script>
+  
+  <!-- AI Chat modules -->
+  <script src="/profile/modules/markdownParser.js"></script>
+  <script src="/profile/modules/aiChatUI.js"></script>
+  <script src="/profile/modules/aiChat.js"></script>
+  
+  <!-- Main application initialization -->
+  <script>
+    // Make friendId and friendName available globally for modules
+    window.friendId = [[${friendId}]];
+    window.friendName = '[[${friend.name}]]';
+  </script>
+  <script src="/profile/profileApp.js"></script>
+</body>
+</html>
