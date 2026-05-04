@@ -184,3 +184,6 @@ app.register_blueprint(friends_bp)
 app.register_blueprint(groups_bp)
 app.register_blueprint(connections_bp)
 app.register_blueprint(backup_bp)
+
+from backup_scheduler import start_backup_scheduler
+start_backup_scheduler()

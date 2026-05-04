@@ -5,7 +5,7 @@ services:
     image: pgvector/pgvector:pg17
     container_name: postgresDB
     ports:
-      - "5433:5432"  # Expose PostgreSQL on local port 5433
+      - "5433:5432"
     environment:
       POSTGRES_USER: myapp_user
       POSTGRES_PASSWORD: example
@@ -19,12 +19,12 @@ services:
     image: redis:7-alpine
     container_name: redisCache
     ports:
-      - "6379:6379"  # Expose Redis on default port 6379
+      - "6379:6379"
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes  # Enable persistence
+    command: redis-server --appendonly yes
     restart: unless-stopped
 
   friend:
@@ -35,111 +35,96 @@ services:
       - maven-cache-friend:/root/.m2
     container_name: friend
     expose:
-      - "8085"  # Internal exposure only, no external port mapping
+      - "8085"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
       SPRING_DATASOURCE_USERNAME: myapp_user
       SPRING_DATASOURCE_PASSWORD: example
       FILE_REPOSITORY_SERVICE_URL: http://fileRepository:5000
       TZ: ${HOST_TIMEZONE:-UTC}
     depends_on:
       - postgres
-    command: java -jar app.jar  # Match the JAR name specified in the Dockerfile
+    command: java -jar app.jar
     restart: unless-stopped
 
-  backup:
-      build: 
-        context: ./backup
-        dockerfile: Dockerfile
-      container_name: backupService
-      environment:
-        TZ: ${HOST_TIMEZONE:-UTC}
-      depends_on:
-        - postgres
-        - fileRepository
-      restart: unless-stopped
-
   group:
-      build: 
-        context: ./group
-        dockerfile: Dockerfile
-      container_name: groupService
-      expose:
-        - "8086"  # Internal exposure only, no external port mapping
-      environment:
-        SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
-        SPRING_DATASOURCE_USERNAME: myapp_user
-        SPRING_DATASOURCE_PASSWORD: example
-        TZ: ${HOST_TIMEZONE:-UTC}
-      volumes:
-        - maven-cache-group:/root/.m2
-      depends_on:
-        - postgres
-      restart: unless-stopped
+    build:
+      context: ./group
+      dockerfile: Dockerfile
+    container_name: groupService
+    expose:
+      - "8086"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
+      SPRING_DATASOURCE_USERNAME: myapp_user
+      SPRING_DATASOURCE_PASSWORD: example
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - maven-cache-group:/root/.m2
+    depends_on:
+      - postgres
+    restart: unless-stopped
 
   connections:
-      build: 
-        context: ./connections
-        dockerfile: Dockerfile
-      container_name: connectionService
-      expose:
-        - "8088"  # Internal exposure only, no external port mapping
-      environment:
-        SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database  # Use the correct hostname of the 'postgres' service
-        SPRING_DATASOURCE_USERNAME: myapp_user
-        SPRING_DATASOURCE_PASSWORD: example
-        TZ: ${HOST_TIMEZONE:-UTC}
-      volumes:
-        - maven-cache-connections:/root/.m2
-      depends_on:
-        - postgres
-      restart: unless-stopped
+    build:
+      context: ./connections
+      dockerfile: Dockerfile
+    container_name: connectionService
+    expose:
+      - "8088"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
+      SPRING_DATASOURCE_USERNAME: myapp_user
+      SPRING_DATASOURCE_PASSWORD: example
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - maven-cache-connections:/root/.m2
+    depends_on:
+      - postgres
+    restart: unless-stopped
 
   chrono:
-      build: 
-        context: .
-        dockerfile: chrono/Dockerfile
-      container_name: chronoService
-      expose:
-        - "8087"  # Internal exposure only, no external port mapping
-      environment:
-        TZ: ${HOST_TIMEZONE:-UTC}
-      volumes:
-        - maven-cache-chrono:/root/.m2
-      depends_on:
-        - friend
-        - nginx
-      restart: unless-stopped
-
+    build:
+      context: .
+      dockerfile: chrono/Dockerfile
+    container_name: chronoService
+    expose:
+      - "8087"
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - maven-cache-chrono:/root/.m2
+    depends_on:
+      - friend
+    restart: unless-stopped
 
   nginx:
     build:
-      context: ./nginx
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: nginx/Dockerfile
     container_name: nginx
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - ./nginx/static:/usr/share/nginx/html
     ports:
-      - "8090:80"  # Expose Nginx on port 80
+      - "8090:80"
     depends_on:
       - friend
       - group
       - connections
       - mcp-knowledge-server
       - ai-agent
-      - react-ui
     restart: unless-stopped
 
   fileRepository:
     build:
-      context: ./resourceRepository
-      dockerfile: Dockerfile
-    image: communicator-filerepository  # <-- This forces a lowercase name
+      context: .
+      dockerfile: resourceRepository/Dockerfile
+    image: communicator-filerepository
     container_name: fileRepository
     expose:
-      - "5000"  # Internal exposure only, no external port mapping
+      - "5000"
     volumes:
       - file-repo-photos:/app/photos
       - file-repo-videos:/app/videos
@@ -147,8 +132,15 @@ services:
       - file-repo-personal:/app/personalResources
       - file-repo-groups:/app/groups
       - file-repo-connections:/app/connections
+      - file-repo-backups:/app/backups
     environment:
+      POSTGRES_DB: my_database
+      POSTGRES_USER: myapp_user
+      POSTGRES_PASSWORD: example
+      POSTGRES_HOST: postgresDB
       TZ: ${HOST_TIMEZONE:-UTC}
+    depends_on:
+      - postgres
     restart: unless-stopped
 
   mcp-knowledge-server:
@@ -157,7 +149,7 @@ services:
       dockerfile: Dockerfile
     container_name: mcp-knowledge-server
     expose:
-      - "8000"  # Internal exposure only, no external port mapping
+      - "8000"
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       PYTHONUNBUFFERED: 1
@@ -167,23 +159,19 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     ports:
-      - "11434:11434"  # Expose Ollama API
+      - "11434:11434"
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       OLLAMA_HOST: 0.0.0.0
     volumes:
-      - ollama-data:/root/.ollama  # Persist models and cache
-      - ./ollama/startup.sh:/startup.sh  # Startup script to pull model
+      - ollama-data:/root/.ollama
+      - ./ollama/startup.sh:/startup.sh
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        # Start Ollama server in background
         /bin/ollama serve &
-        # Wait for Ollama to be ready
         sleep 5
-        # Pull the embedding model if not already present
         /bin/ollama pull koill/sentence-transformers:all-minilm-l6-v2 || true
-        # Keep container running
         wait
     restart: unless-stopped
     healthcheck:
@@ -194,40 +182,27 @@ services:
       start_period: 60s
 
   ai-agent:
-     build:
-       context: ./ai_agent
-       dockerfile: Dockerfile
-     container_name: ai-agent
-     expose:
-       - "8001"  # Internal exposure only, no external port mapping
-     env_file:
-       - ./ai_agent/.env  # Load environment variables from .env file
-     environment:
-       TZ: ${HOST_TIMEZONE:-UTC}
-       PYTHONUNBUFFERED: 1
-     depends_on:
-       - mcp-knowledge-server  # Depends on MCP server
-       - ollama  # Depends on Ollama for embeddings
-     restart: unless-stopped
-
-  react-ui:
-     build:
-       context: ./react
-       dockerfile: Dockerfile
-     container_name: react-ui
-     expose:
-       - "80"  # Internal exposure only, no external port mapping
-     environment:
-       TZ: ${HOST_TIMEZONE:-UTC}
-     volumes:
-       - npm-cache:/root/.npm
-     restart: unless-stopped
+    build:
+      context: ./ai_agent
+      dockerfile: Dockerfile
+    container_name: ai-agent
+    expose:
+      - "8001"
+    env_file:
+      - ./ai_agent/.env
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - mcp-knowledge-server
+      - ollama
+    restart: unless-stopped
 
   generatedData:
     image: mongo:6.0
     container_name: generatedData
     ports:
-      - "27020:27017"  # Map host 27018 to container 27017 to avoid conflicts
+      - "27020:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: mongo_user
       MONGO_INITDB_ROOT_PASSWORD: example
@@ -236,74 +211,6 @@ services:
     volumes:
       - generated-data:/data/db
     restart: unless-stopped
-
-  kafka:
-    image: confluentinc/cp-kafka:7.6.0
-    container_name: kafka
-    ports:
-      - "9095:9092"   # External access from host machine (changed to avoid collision)
-      - "9096:9093"   # Internal Docker network access
-    environment:
-      # KRaft mode configuration (no Zookeeper required)
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9094'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      
-      # Listener configuration - allows both internal (Docker) and external (host) connections
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:9094'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9093,PLAINTEXT_HOST://localhost:9095'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      
-      # Cluster and log configuration
-      CLUSTER_ID: 'MkU3OEVBNjg3Qk4zNEZCQg'
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      
-      # Log retention - keep events for 7 days (perfect for event sourcing)
-      KAFKA_LOG_RETENTION_HOURS: 168
-      KAFKA_LOG_RETENTION_BYTES: 1073741824  # 1GB per partition
-      KAFKA_LOG_SEGMENT_BYTES: 104857600     # 100MB segments
-      
-      # Performance tuning
-      KAFKA_NUM_PARTITIONS: 3                # Default partitions for new topics
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 1    # Single broker = replication factor 1
-      KAFKA_MIN_INSYNC_REPLICAS: 1
-      
-      # Auto-create topics when producer sends first message
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      
-      # JVM heap size (adjust based on your memory availability)
-      KAFKA_HEAP_OPTS: '-Xmx512M -Xms512M'
-      
-      TZ: ${HOST_TIMEZONE:-UTC}
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "8089:8080"  # Access Kafka UI at http://localhost:8089
-    environment:
-      KAFKA_CLUSTERS_0_NAME: communicator-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
-      DYNAMIC_CONFIG_ENABLED: 'true'
-      TZ: ${HOST_TIMEZONE:-UTC}
-    depends_on:
-      - kafka
-    restart: unless-stopped
-
 
 volumes:
   postgres-data:
@@ -322,6 +229,8 @@ volumes:
     driver: local
   file-repo-connections:
     driver: local
+  file-repo-backups:
+    driver: local
   maven-cache-friend:
     driver: local
   maven-cache-group:
@@ -330,11 +239,7 @@ volumes:
     driver: local
   maven-cache-chrono:
     driver: local
-  npm-cache:
-    driver: local
   generated-data:
-    driver: local
-  kafka-data:
     driver: local
   ollama-data:
     driver: local
