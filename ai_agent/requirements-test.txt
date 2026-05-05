@@ -1,0 +1,7 @@
+# Test dependencies for ai_agent service
+pytest>=7.4
+pytest-asyncio>=0.23
+pytest-mock>=3.12
+aioresponses>=0.7.6         # Mock aiohttp HTTP calls (Ollama, FriendApiService)
+httpx>=0.25                 # FastAPI async TestClient
+fakeredis[aioredis]>=2.20   # In-process Redis for unit/integration tests
