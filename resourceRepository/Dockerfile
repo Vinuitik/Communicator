@@ -12,9 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY resourceRepository/flask-template/ .
 
 # Copy Google Drive credentials for the backup scheduler.
-# Place service-account-key.json in backup/ before building.
+# Place service-account-key.json in resourceRepository/ before building.
 # If the file is absent the scheduler still runs but skips Drive uploads.
-COPY backup/service-account-key.json ./service-account-key.json
+COPY resourceRepository/service-account-key.json ./service-account-key.json
 
 ENV PYTHONPATH=/app
 EXPOSE 5000
