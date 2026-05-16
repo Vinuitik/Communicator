@@ -1,0 +1,41 @@
+KNOWN BUGS — found during FLOWS.md documentation pass (2026-05-16)
+=================================================================
+
+1. EMA ALPHA MISMATCH (logic bug — charts show wrong future values)
+   analytics.js and EmaProperties both use alpha=0.7 for new-data weight,
+   but ChronoProperties.getNewDataAlpha() returns 0.3.
+   The nightly Chrono job and the JS chart preview will diverge.
+   Fix in: EmaProperties, ChronoProperties.getNewDataAlpha(), analytics.js
+   — all three must agree on the same alpha value.
+
+2. FILE DELETION ALWAYS 400 (broken feature)
+   mediaDeletion.js sends a FormData body on DELETE requests,
+   but friends_files.py delete handler calls request.get_json()
+   which returns None for multipart bodies, causing a 400 every time.
+   Fix in: friends_files.py delete handler — use request.form instead of request.get_json().
+
+3. GROUP SOCIAL UI GAP (missing UI)
+   social.js and SocialAPIService target /api/friend/socials only.
+   Group social endpoints exist in the backend (GroupSocialController)
+   but there is no JS page that calls them.
+   Fix: wire up a group social UI page or redirect social.js to detect context.
+
+4. CONNECTIONS NOT IMPLEMENTED (empty stubs)
+   ConnectionService, ConnectionPermissionService, ConnectionKnowledgeService
+   are all empty stub classes. Entity model is complete (Connection,
+   ConnectionsKnowledge, ConnectionPermission) but no business logic exists.
+   Note: ConnectionPermission also lacks priority/interval/reviewDate fields
+   that FriendPermission and GroupPermission have.
+
+5. FAISS INDEX STALENESS (ai_agent)
+   SearchService builds the FAISS index in-memory at first query per friend.
+   After new chunks are added (e.g. after knowledge re-summarization),
+   the index is NOT automatically rebuilt — old chunks only until restart
+   or explicit call to SearchService.clear_index().
+   Fix: call SearchService.clear_index() after any knowledge ingestion completes.
+
+6. REDIS SUMMARY CACHE NO TTL (ai_agent)
+   knowledge_cache_service.py sets the summary cache key with no expiry.
+   Stale summaries persist indefinitely until explicitly invalidated.
+   Fix: add a TTL (e.g. 24h) in KnowledgeCacheService.set_summary() or
+   invalidate the cache key whenever knowledge is re-ingested.
