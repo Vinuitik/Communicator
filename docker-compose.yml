@@ -68,7 +68,6 @@ services:
       - "8090:80"  # Expose Nginx on port 80
     depends_on:
       - communicator-app
-      - mcp-knowledge-server
       - ai-agent
       - react-ui
     restart: unless-stopped
@@ -92,17 +91,8 @@ services:
       TZ: ${HOST_TIMEZONE:-UTC}
     restart: unless-stopped
 
-  mcp-knowledge-server:
-    build:
-      context: ./knowledgeMCP
-      dockerfile: Dockerfile
-    container_name: mcp-knowledge-server
-    expose:
-      - "8000"  # Internal exposure only, no external port mapping
-    environment:
-      TZ: ${HOST_TIMEZONE:-UTC}
-      PYTHONUNBUFFERED: 1
-    restart: unless-stopped
+  # (removed) mcp-knowledge-server — the MCP knowledge tools now run in-process
+  # inside ai-agent as a stdio subprocess (ai_agent/knowledgeMCP/knowledgeMCP.py).
 
   ollama:
     image: ollama/ollama:latest
@@ -147,7 +137,6 @@ services:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1
      depends_on:
-       - mcp-knowledge-server  # Depends on MCP server
        - ollama  # Depends on Ollama for embeddings
      restart: unless-stopped
 

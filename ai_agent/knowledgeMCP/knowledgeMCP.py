@@ -256,4 +256,6 @@ def get_friends_list(page: int = 0, size: int = 20) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000, path="/knowledgeMCP/")
+    # Runs as a stdio subprocess spawned in-process by ai_agent's MCPService
+    # (see ai_agent/services/mcp_service.py). No longer a standalone HTTP server.
+    mcp.run(transport="stdio")

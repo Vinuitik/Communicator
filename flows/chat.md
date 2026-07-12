@@ -1,6 +1,6 @@
 # Flow: Chat with the AI agent (LangGraph + MCP tools)
 
-Conversational access to your CRM: ask the agent about a friend and it uses **MCP tools** to read/write the friend service, reasoning with Gemini. **UI (WebSocket) → nginx → ai_agent → knowledgeMCP → nginx → friend**.
+Conversational access to your CRM: ask the agent about a friend and it uses **MCP tools** to read/write the friend service, reasoning with Gemini. **UI (WebSocket) → nginx → ai_agent → (in-process knowledgeMCP stdio) → nginx → friend**. (knowledgeMCP runs inside ai_agent as of 2026-07-13 — no separate container.)
 
 Protos: [ai_agent](../ai_agent/PROTO.md) · [knowledgeMCP](../knowledgeMCP/PROTO.md) · [friend](../friend/src/main/java/communicate/Friend/PROTO.md) · [nginx spine](../nginx/PROTO.md)
 
@@ -15,9 +15,9 @@ Browser opens WebSocket  ws://localhost:8090/api/ai/chat/ws
      → AgentService.process_message(text)                              [ai_agent proto §chat]
         → LangGraph create_react_agent(gemini_llm, mcp_tools).ainvoke()
              agent reasons → decides to call a tool →
-               MCP tool call ─► mcp-knowledge-server:8000/knowledgeMCP/   (streamable_http)
+               MCP tool call ─► in-process knowledgeMCP (stdio subprocess of ai_agent)
                  e.g. get_friend_knowledge(fid) ─► http://nginx/api/friend/getKnowledge/...
-                                               ─► friend:8085 → Postgres
+                                               ─► communicator-app:8080 → Postgres
                  e.g. create_friend_knowledge(fid,fact,importance) ─► POST /api/friend/addKnowledge/{fid}
                tool result → back to agent → Gemini composes answer
      → normalize content (list-or-string → string) → send {type:"ai_response", content}
@@ -49,6 +49,6 @@ From [knowledgeMCP](../knowledgeMCP/PROTO.md) — all proxy to friend via nginx:
 |---|---|
 | Agent behaviour / model | `AgentService` + `config.yaml llm.*` |
 | Available tools | `knowledgeMCP.py @mcp.tool()` functions |
-| MCP connection | `config.yaml mcp.server_url` (must hit `mcp-knowledge-server:8000/knowledgeMCP/`) |
+| MCP connection | in-process stdio — `mcp_service.py` spawns `knowledgeMCP/knowledgeMCP.py` (no `server_url`/HTTP) |
 | WebSocket routing | `nginx/nginx.conf location /api/ai/` (Upgrade headers) |
 | External MCP exposure | `nginx/nginx.conf location /api/mcp/knowledge/` |

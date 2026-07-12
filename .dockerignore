@@ -4,7 +4,6 @@
 **/node_modules
 react
 ai_agent
-knowledgeMCP
 resourceRepository
 data-extraction
 ollama

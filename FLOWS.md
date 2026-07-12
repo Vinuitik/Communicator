@@ -2,7 +2,7 @@
 
 Personal-relationship CRM. Track friends, log interactions, score relationship "health", attach media, and turn free-text notes into AI-validated facts. This index is **navigation only** — content lives in the linked flows (end-to-end pipelines) and protos (per-service deep maps).
 
-> **Topology (2026-07-12): the five JVM services are now ONE deployable.** friend, group, connections, chrono, backup were consolidated into a single Maven multi-module **modular monolith** (`communicator-app`, one JVM ~300 MB, was ~1.2 GB across 4–5 JVMs). Business boundaries are preserved as Maven modules; each still has its own `PROTO.md` at the same path. How the merge works (scanning, per-module URL prefixes, resolved bean collisions, single config) is in [**bootstrap/FLOWS.md**](bootstrap/FLOWS.md). The Python services (ai_agent, knowledgeMCP, fileRepository) remain separate.
+> **Topology (2026-07-12): the five JVM services are now ONE deployable.** friend, group, connections, chrono, backup were consolidated into a single Maven multi-module **modular monolith** (`communicator-app`, one JVM ~300 MB, was ~1.2 GB across 4–5 JVMs). Business boundaries are preserved as Maven modules; each still has its own `PROTO.md` at the same path. How the merge works (scanning, per-module URL prefixes, resolved bean collisions, single config) is in [**bootstrap/FLOWS.md**](bootstrap/FLOWS.md). **knowledgeMCP was merged INTO ai_agent** (2026-07-13): its 6 tools now run **in-process** as a stdio subprocess (`ai_agent/knowledgeMCP/knowledgeMCP.py`, spawned by `ai_agent/services/mcp_service.py`) — the separate `mcp-knowledge-server` container is gone (one fewer container, no MCP-over-HTTP). fileRepository remains its own Python service. Also: Kafka+kafka-ui replaced by **RabbitMQ** (durable task queue, mgmt UI :15672).
 
 ## How this documentation is structured
 
@@ -41,7 +41,7 @@ Read a **flow** to understand "what happens when the user does X." Drop into a *
 | **backup** | [backup/PROTO.md](backup/PROTO.md) | live |
 | **resourceRepository** (fileRepository, Flask) | [resourceRepository/…/PROTO.md](resourceRepository/flask-template/PROTO.md) | live |
 | **ai_agent** (RAG + agent) | [ai_agent/PROTO.md](ai_agent/PROTO.md) | live (crown jewel) |
-| **knowledgeMCP** (MCP tools) | [knowledgeMCP/PROTO.md](knowledgeMCP/PROTO.md) | live |
+| **knowledgeMCP** (MCP tools) | [ai_agent/knowledgeMCP/PROTO.md](ai_agent/knowledgeMCP/PROTO.md) | live (now nested under ai_agent/) |
 | **data-extraction** | [data-extraction/PROTO.md](data-extraction/PROTO.md) | `[PROTOTYPE]` — not in compose |
 | **react** (SPA) | [react/src/PROTO.md](react/src/PROTO.md) | `[SCAFFOLD]` — API stubbed; legacy MPA is the live UI |
 

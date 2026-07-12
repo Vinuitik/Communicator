@@ -36,26 +36,30 @@ class MCPService:
         
         for attempt in range(max_retries + 1):
             try:
-                logger.info(f"Attempting to connect to MCP server (attempt {attempt + 1}/{max_retries + 1})")
+                logger.info(f"Loading in-process MCP tools via stdio (attempt {attempt + 1}/{max_retries + 1})")
+                # MCP server runs in-process: the adapter spawns knowledgeMCP as a
+                # stdio subprocess of ai_agent (no separate container, no HTTP, and
+                # no self-connection ordering issue). cwd is /app (ai_agent WORKDIR).
                 self.mcp_client = MultiServerMCPClient({
                     "my_mcp": {
-                        "transport": "streamable_http",
-                        "url": settings.mcp_server_url,
+                        "transport": "stdio",
+                        "command": "python",
+                        "args": ["knowledgeMCP/knowledgeMCP.py"],
                     }
                 })
-                
+
                 self.tools = await self.mcp_client.get_tools()
-                logger.info(f"Successfully retrieved {len(self.tools)} tools from MCP server")
+                logger.info(f"Successfully retrieved {len(self.tools)} tools from in-process MCP")
                 return
-                
+
             except Exception as e:
-                logger.warning(f"MCP connection attempt {attempt + 1} failed: {str(e)}")
+                logger.warning(f"MCP tool-load attempt {attempt + 1} failed: {str(e)}")
                 if attempt < max_retries:
                     logger.info(f"Retrying in {retry_delay} seconds...")
                     await asyncio.sleep(retry_delay)
                 else:
-                    logger.error(f"Failed to connect to MCP server after {max_retries + 1} attempts")
-                    raise Exception(f"Could not connect to MCP server at {settings.mcp_server_url}: {str(e)}")
+                    logger.error(f"Failed to load in-process MCP tools after {max_retries + 1} attempts")
+                    raise Exception(f"Could not load in-process MCP tools (knowledgeMCP/knowledgeMCP.py): {str(e)}")
     
     def get_tool_by_name(self, tool_name: str) -> Optional[Any]:
         """
