@@ -1,0 +1,34 @@
+server:
+  port: 8091
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgresDB:5432/my_database}
+    username: ${SPRING_DATASOURCE_USERNAME:myapp_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:example}
+  jpa:
+    hibernate:
+      ddl-auto: update      # auto-creates the backup_settings table
+    open-in-view: false
+
+backup:
+  # ── Google Drive OAuth (copied from ObsidianOptimizer's own client) ──────────
+  oauth:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+    client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+    # MUST be registered on the OAuth client in Google Cloud Console, exactly.
+    redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8090/backup/oauth/callback}
+  # AES-256-GCM passphrase (same scheme + salt as OO ⇒ backups interop). Blank = no encryption.
+  passphrase: ${SYNC_PASSPHRASE:}
+  # Where the media zip is pulled from.
+  file-repository-url: ${FILE_REPOSITORY_URL:http://fileRepository:5000}
+  # Retention: keep this many of each kind (db / files); older are hard-deleted.
+  keep: ${BACKUP_KEEP:3}
+  # Nightly auto-backup (Spring cron: sec min hour dom mon dow). Gated on the `enabled` setting.
+  cron: ${BACKUP_CRON:0 0 3 * * *}
+  # Max Drive-write retries on transient errors (429/5xx/burst-403).
+  max-retries: ${BACKUP_MAX_RETRIES:5}
+
+logging:
+  level:
+    communicate.backup: INFO
