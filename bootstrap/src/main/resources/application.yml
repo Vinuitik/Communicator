@@ -1,0 +1,104 @@
+# ============================================================================
+# Communicator JVM monolith — single reconciled config.
+#
+# This is the ONLY application config on the classpath. The former per-service
+# application.properties/.yml files were merged here and deleted, so there is a
+# single source of truth (module jars must not ship their own application.* or
+# they would collide on the classpath).
+#
+# Sections are grouped by owning module. Env vars keep the same names the
+# separate services used, so docker-compose wiring is unchanged.
+# ============================================================================
+
+spring:
+  application:
+    name: communicator
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgresDB:5432/my_database}
+    username: ${SPRING_DATASOURCE_USERNAME:myapp_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:example}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    # open-in-view left at default (true): friend/group Thymeleaf views lazy-load
+    # associations during rendering.
+
+  thymeleaf:
+    cache: false
+
+  # Uploads (friend media)
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+  # App is stateless (see group's SecurityFilterChain); no server-side sessions.
+  session:
+    store-type: none
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.communicator.chrono: DEBUG
+    communicate.backup: INFO
+
+# ── friend ──────────────────────────────────────────────────────────────────
+app:
+  media:
+    page-size: 12
+# Base URL friend's WebClient (bean "webTemplate") uses to reach fileRepository.
+file:
+  repository:
+    service:
+      url: ${FILE_REPOSITORY_SERVICE_URL:http://fileRepository:5000}
+# EMA coefficients for real-time upward updates (new interaction data).
+ema:
+  coefficients:
+    newData:
+      excellent: 0.6    # *** rating
+      good: 0.7         # ** rating
+      poor: 0.8         # * rating
+
+# ── group ───────────────────────────────────────────────────────────────────
+# Base URL group's WebClient (bean "webClient") uses to reach fileRepository.
+resource:
+  repository:
+    url: ${RESOURCE_REPOSITORY_URL:http://fileRepository:5000}
+
+# ── chrono (nightly EMA decay + friend sync) ─────────────────────────────────
+chrono:
+  coefficients:
+    decay:
+      excellent: 0.07   # *** rating - very slow decay
+      good: 0.2         # ** rating
+      poor: 0.57        # * rating - faster decay
+  schedule: "0 0 0 * * ?"     # daily at midnight
+  friendService:
+    # In-process now, but still reached over HTTP via nginx (loopback). Could be
+    # pointed straight at the friend controllers later to drop the round-trip.
+    baseUrl: ${CHRONO_FRIEND_BASE_URL:http://nginx/api/friend}
+    timeout: 30000
+    batchSize: 200
+    friendPageSize: 500
+
+# ── backup (encrypted Drive backups) ─────────────────────────────────────────
+backup:
+  oauth:
+    client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+    client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8090/backup/oauth/callback}
+  passphrase: ${SYNC_PASSPHRASE:}
+  file-repository-url: ${FILE_REPOSITORY_URL:http://fileRepository:5000}
+  keep: ${BACKUP_KEEP:3}
+  cron: ${BACKUP_CRON:0 0 3 * * *}
+  max-retries: ${BACKUP_MAX_RETRIES:5}
