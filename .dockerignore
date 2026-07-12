@@ -1,0 +1,16 @@
+# Keep the JVM build context small — only the Maven modules are needed.
+.git
+**/target
+**/node_modules
+react
+ai_agent
+knowledgeMCP
+resourceRepository
+data-extraction
+ollama
+nginx
+flows
+**/__pycache__
+**/*.pyc
+**/.venv
+*.md
