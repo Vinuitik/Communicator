@@ -33,6 +33,9 @@
     <modules>
         <module>friend</module>
         <module>group</module>
+        <module>connections</module>
+        <module>chrono</module>
+        <module>backup</module>
         <module>bootstrap</module>
     </modules>
 

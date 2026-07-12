@@ -25,16 +25,20 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication(scanBasePackages = {
         "com.communicator.app",
-        "communicate",          // friend (+ backup once folded in)
-        "com.example.demo",     // group (+ app-wide SecurityFilterChain in .config)
+        "communicate",                  // friend + backup (backup is communicate.backup)
+        "com.example.demo",             // group (+ app-wide SecurityFilterChain in .config)
+        "coommunicator.connections",    // connections (sic: original package typo)
+        "com.communicator.chrono",      // chrono (scheduled jobs; no JPA entities)
 })
 @EntityScan(basePackages = {
-        "communicate",          // friend
-        "com.example.demo",     // group
+        "communicate",                  // friend + backup
+        "com.example.demo",             // group
+        "coommunicator.connections",    // connections
 })
 @EnableJpaRepositories(basePackages = {
-        "communicate",          // friend
-        "com.example.demo",     // group
+        "communicate",                  // friend + backup
+        "com.example.demo",             // group
+        "coommunicator.connections",    // connections
 })
 @EnableConfigurationProperties
 @EnableScheduling

@@ -27,6 +27,21 @@
             <artifactId>group</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>connections</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>chrono</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>backup</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
