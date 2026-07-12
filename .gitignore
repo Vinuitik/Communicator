@@ -58,3 +58,5 @@ resourceRepository/personalResources/**
 # Log files
 **/*.log
 **/logs/
+# Maven build output
+target/
