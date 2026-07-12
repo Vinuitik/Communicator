@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/groups")
+// Root within the group module; the monolith adds the /api/groups prefix
+// (see bootstrap PathPrefixConfig) so effective paths are /api/groups/**.
+@RequestMapping("")
 @AllArgsConstructor
 public class GroupFileController {
 
