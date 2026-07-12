@@ -47,11 +47,25 @@ services:
     restart: unless-stopped
 
   backup:
-      build: 
+      build:
         context: ./backup
         dockerfile: Dockerfile
       container_name: backupService
+      expose:
+        - "8091"  # Internal exposure only; reached via nginx /backup/
       environment:
+        SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
+        SPRING_DATASOURCE_USERNAME: myapp_user
+        SPRING_DATASOURCE_PASSWORD: example
+        FILE_REPOSITORY_URL: http://fileRepository:5000
+        # Google Drive OAuth — values come from the root .env (see .env.example)
+        GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+        GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+        GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:8090/backup/oauth/callback}
+        # AES-256-GCM passphrase (same scheme as ObsidianOptimizer)
+        SYNC_PASSPHRASE: ${SYNC_PASSPHRASE:-}
+        BACKUP_KEEP: ${BACKUP_KEEP:-3}
+        BACKUP_CRON: ${BACKUP_CRON:-0 0 3 * * *}
         TZ: ${HOST_TIMEZONE:-UTC}
       depends_on:
         - postgres
@@ -127,6 +141,7 @@ services:
       - mcp-knowledge-server
       - ai-agent
       - react-ui
+      - backup
     restart: unless-stopped
 
   fileRepository:
