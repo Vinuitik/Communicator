@@ -26,12 +26,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(scanBasePackages = {
         "com.communicator.app",
         "communicate",          // friend (+ backup once folded in)
+        "com.example.demo",     // group (+ app-wide SecurityFilterChain in .config)
 })
 @EntityScan(basePackages = {
         "communicate",          // friend
+        "com.example.demo",     // group
 })
 @EnableJpaRepositories(basePackages = {
         "communicate",          // friend
+        "com.example.demo",     // group
 })
 @EnableConfigurationProperties
 @EnableScheduling

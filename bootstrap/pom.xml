@@ -22,6 +22,11 @@
             <artifactId>friend</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>group</artifactId>
+            <version>1.0.0</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

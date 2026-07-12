@@ -12,7 +12,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
-@Configuration
+// App-wide Spring Security chain for the whole monolith: stateless, CSRF off,
+// permitAll. Explicit bean name avoids collision with friend's WebConfig.
+@Configuration("groupSecurityConfig")
 @EnableWebSecurity
 public class WebConfig {
 

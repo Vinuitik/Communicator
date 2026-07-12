@@ -5,10 +5,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
 
-@Configuration
+// Bean names are module-qualified so friend/group WebClient configs coexist in
+// the merged monolith. The WebClient bean is named "webTemplate" to match its
+// only consumer (FriendService FileWriteService.webTemplate) via name-based autowiring.
+@Configuration("friendWebClientConfig")
 public class WebClientConfig {
 
-    @Bean
+    @Bean("webTemplate")
     public WebClient webClient(@Value("${file.repository.service.url:http://localhost:8080}") String baseUrl) {
         return WebClient.builder()
             .baseUrl(baseUrl)

@@ -32,6 +32,7 @@
 
     <modules>
         <module>friend</module>
+        <module>group</module>
         <module>bootstrap</module>
     </modules>
 
