@@ -1,6 +1,8 @@
 # Communicator — Documentation Index
 
-Personal-relationship CRM built as microservices. Track friends, log interactions, score relationship "health", attach media, and turn free-text notes into AI-validated facts. This index is **navigation only** — content lives in the linked flows (end-to-end pipelines) and protos (per-service deep maps).
+Personal-relationship CRM. Track friends, log interactions, score relationship "health", attach media, and turn free-text notes into AI-validated facts. This index is **navigation only** — content lives in the linked flows (end-to-end pipelines) and protos (per-service deep maps).
+
+> **Topology (2026-07-12): the five JVM services are now ONE deployable.** friend, group, connections, chrono, backup were consolidated into a single Maven multi-module **modular monolith** (`communicator-app`, one JVM ~300 MB, was ~1.2 GB across 4–5 JVMs). Business boundaries are preserved as Maven modules; each still has its own `PROTO.md` at the same path. How the merge works (scanning, per-module URL prefixes, resolved bean collisions, single config) is in [**bootstrap/FLOWS.md**](bootstrap/FLOWS.md). The Python services (ai_agent, knowledgeMCP, fileRepository) remain separate.
 
 ## How this documentation is structured
 
@@ -50,5 +52,6 @@ Read a **flow** to understand "what happens when the user does X." Drop into a *
 ## Cross-cutting
 
 - [**Code-Reuse Consolidation Report**](CODE_REUSE_REPORT.md) — where the codebase repeats itself (4× EMA, 3× Spring knowledge stacks, 3× Flask blueprints, …) and how to consolidate.
-- **Infra** (all in `docker-compose.yml`, only nginx `8090` is host-exposed): Postgres+pgvector, Redis, MongoDB, Kafka (provisioned, **unwired**), Ollama. Details in the [nginx proto §Compose](nginx/PROTO.md).
+- [**JVM Monolith — Assembly & Routing**](bootstrap/FLOWS.md) — how friend/group/connections/chrono/backup became one process: module layout, component/entity scanning, per-module URL prefixes, resolved bean-name collisions, single config, and the single-JVM failure modes.
+- **Infra** (all in `docker-compose.yml`, only nginx `8090` is host-exposed): one `communicator-app` (the JVM monolith), Postgres+pgvector, Redis, MongoDB, Kafka (provisioned, **unwired** — candidate for removal), Ollama. Details in the [nginx proto §Compose](nginx/PROTO.md).
 - **Existing docs:** [README.md](README.md) (architecture overview), [Plan.md](Plan.md).
