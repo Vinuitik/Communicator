@@ -8,6 +8,8 @@ const AiChatUI = {
     messageHistory: [],
     unreadCount: 0,
     typingTimeout: null,
+    streamEl: null,      // DOM node of the in-progress streaming AI bubble
+    streamText: '',      // accumulated raw text of that bubble
     
     /**
      * Initialize the AI chat UI
@@ -319,6 +321,91 @@ const AiChatUI = {
         
         messagesContainer.appendChild(messageEl);
         this.scrollToBottom();
+    },
+
+    /**
+     * Add a lightweight trace line (tool call / LLM thought) to the chat.
+     * Rendered like a system message so the reasoning is visible and steerable.
+     * @param {string} text - Trace text
+     */
+    addTrace(text) {
+        const messagesContainer = document.getElementById('chatMessages');
+        if (!messagesContainer) return;
+
+        const el = document.createElement('div');
+        el.className = 'chat-message trace-message';
+        el.innerHTML = `
+            <div class="message-content">
+                <div class="message-text">${this.escapeHtml(text)}</div>
+            </div>
+        `;
+        messagesContainer.appendChild(el);
+        this.scrollToBottom();
+    },
+
+    /**
+     * Ensure a streaming AI bubble exists and return it.
+     * Lazily created on the first token so a tool-only turn doesn't leave an
+     * empty bubble behind.
+     */
+    ensureStream() {
+        if (this.streamEl) return this.streamEl;
+
+        const messagesContainer = document.getElementById('chatMessages');
+        const welcomeMsg = messagesContainer.querySelector('.chat-welcome');
+        if (welcomeMsg) welcomeMsg.remove();
+
+        const el = document.createElement('div');
+        el.className = 'chat-message ai-message message-visible';
+        el.innerHTML = `
+            <div class="message-content">
+                <div class="message-text"></div>
+                <div class="message-time">${this.formatTime(new Date())}</div>
+            </div>
+        `;
+        messagesContainer.appendChild(el);
+        this.streamEl = el;
+        this.streamText = '';
+        return el;
+    },
+
+    /**
+     * Append a streamed token delta to the current AI bubble.
+     * @param {string} delta - Token text
+     */
+    appendStream(delta) {
+        if (!delta) return;
+        const el = this.ensureStream();
+        this.streamText += delta;
+        el.querySelector('.message-text').innerHTML = this.parseMarkdown(this.streamText);
+        this.scrollToBottom();
+    },
+
+    /**
+     * Finalize the streamed bubble with the authoritative full text.
+     * If nothing streamed (no tokens), fall back to a normal message.
+     * @param {string} fullText - Complete answer text
+     */
+    finalizeStream(fullText) {
+        if (this.streamEl) {
+            const text = (fullText && fullText.trim()) ? fullText : this.streamText;
+            this.streamEl.querySelector('.message-text').innerHTML = this.parseMarkdown(text);
+            this.messageHistory.push({ text, isUser: false, timestamp: new Date() });
+            this.streamEl = null;
+            this.streamText = '';
+            this.scrollToBottom();
+        } else if (fullText && fullText.trim()) {
+            this.addMessage(fullText, false, new Date());
+        }
+    },
+
+    /** Drop a half-streamed bubble (e.g. on error) without persisting it. */
+    discardStream() {
+        if (this.streamEl) {
+            this.streamEl.remove();
+            this.streamEl = null;
+            this.streamText = '';
+        }
     },
 
     /**

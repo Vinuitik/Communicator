@@ -13,6 +13,9 @@ const AiChat = {
     maxReconnectAttempts: 5,
     reconnectDelay: 1000,
     messageQueue: [],
+    // Show LLM thought/tool traces in the chat as grey lines. Toggle at runtime:
+    // AiChat.debug = false  (traces are always console.log'd regardless).
+    debug: true,
 
     /**
      * Initialize the AI chat module
@@ -146,39 +149,91 @@ const AiChat = {
     },
 
     /**
-     * Handle incoming messages from AI agent
+     * Handle incoming messages from AI agent.
+     *
+     * The backend now streams a state machine, not one blob:
+     *   thinking     - agent started reasoning
+     *   tool_call    - agent invoked a tool {name, data:args}
+     *   tool_result  - a tool returned {name, data:result}
+     *   token        - a streamed delta of the answer
+     *   trace        - raw LLM/agent thought line (debug: "stir it")
+     *   ai_response  - final complete answer (terminal)
+     *   error        - failure {content, data}
+     * Plain strings / legacy shapes still render as a single AI message.
      * @param {Object} data - Message data
      */
     handleMessage(data) {
-        console.log('AiChat: Received message:', data);
+        if (typeof AiChatUI === 'undefined') {
+            return;
+        }
 
-        // Extract message content
-        let messageText = '';
-        let messageType = 'ai';
-
+        // Legacy / non-typed payloads → single message, as before
         if (typeof data === 'string') {
-            messageText = data;
-        } else if (data.content) {
-            // Handle the nested content structure like {"type":"ai_response","content":"Hello! Would you like to chat about Anna?"}
-            messageText = data.content;
-            messageType = data.type === 'ai_response' ? 'ai' : (data.type || 'ai');
-        } else if (data.message) {
-            messageText = data.message;
-            messageType = data.type || 'ai';
-        } else if (data.response) {
-            messageText = data.response;
-        } else {
-            // Fallback to JSON string if we can't extract content
-            messageText = JSON.stringify(data);
-        }
-
-        // Update UI
-        if (typeof AiChatUI !== 'undefined') {
-            AiChatUI.addMessage(messageText, false, new Date());
+            AiChatUI.finalizeStream(data);
             AiChatUI.hideTyping();
+            this.maybeNotify();
+            return;
         }
 
-        // Show notification if chat is minimized
+        switch (data.type) {
+            case 'thinking':
+                console.log('AiChat[thinking]:', data.content || '');
+                AiChatUI.showTyping();
+                break;
+
+            case 'tool_call':
+                console.log('AiChat[tool_call]:', data.name, data.data);
+                AiChatUI.addTrace(`🔧 ${data.name}(${this.summarize(data.data)})`);
+                break;
+
+            case 'tool_result':
+                console.log('AiChat[tool_result]:', data.name, data.data);
+                if (this.debug) {
+                    AiChatUI.addTrace(`↳ ${data.name} → ${this.summarize(data.data)}`);
+                }
+                break;
+
+            case 'trace':
+                // Raw LLM "thoughts" — always logged, shown only in debug mode
+                console.log('AiChat[trace]:', data.phase, data.name || '', data.data ?? '');
+                if (this.debug) {
+                    AiChatUI.addTrace(`💭 ${data.name || data.phase}: ${this.summarize(data.data)}`);
+                }
+                break;
+
+            case 'token':
+                AiChatUI.hideTyping();
+                AiChatUI.appendStream(data.content || '');
+                break;
+
+            case 'error':
+                console.error('AiChat[error]:', data.content, data.data);
+                AiChatUI.hideTyping();
+                AiChatUI.discardStream();
+                AiChatUI.addSystemMessage(`⚠️ ${data.content || 'Agent error'}`);
+                break;
+
+            case 'ai_response':
+            default: {
+                // Terminal: finalize the streamed bubble (or render if none streamed)
+                const text = data.content ?? data.message ?? data.response ?? '';
+                AiChatUI.finalizeStream(text);
+                AiChatUI.hideTyping();
+                this.maybeNotify();
+                break;
+            }
+        }
+    },
+
+    /** Compact a tool arg/result object for a one-line trace. */
+    summarize(value) {
+        if (value == null) return '';
+        let s = typeof value === 'string' ? value : JSON.stringify(value);
+        return s.length > 120 ? s.slice(0, 117) + '…' : s;
+    },
+
+    /** Notify when a completed answer lands while the chat is minimized. */
+    maybeNotify() {
         if (typeof AiChatUI !== 'undefined' && !AiChatUI.isExpanded) {
             AiChatUI.showNewMessageIndicator();
         }

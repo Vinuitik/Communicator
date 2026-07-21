@@ -1599,6 +1599,27 @@
     max-width: 90%;
   }
 
+  /* Trace lines: LLM thoughts / tool calls surfaced for debugging */
+  .trace-message {
+    justify-content: flex-start;
+  }
+
+  .trace-message .message-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 2px 8px;
+    max-width: 90%;
+  }
+
+  .trace-message .message-text {
+    color: #94a3b8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   .message-text {
     word-wrap: break-word;
     white-space: pre-wrap;
