@@ -44,7 +44,7 @@ The **AI brain**. FastAPI service, internal port **8001** (container `ai-agent`)
 ## Internal wiring — chat
 
 - **HTTP** `POST /api/ai/chat/` → `AgentService.process_message()` → LangGraph `.ainvoke()` → one `{response}` blob (unchanged).
-- **WebSocket** `WS /api/ai/chat/ws` → `_parse_envelope(raw)` unwraps the client's JSON `{type,message,friendId}` into the actual user text (prefixing `[Active friend_id=N]` for chat) → appended to a **per-connection `history` list** (the graph is stateless; replaying full history each turn is what gives the chat memory; `_cap_history` bounds it to `MAX_HISTORY=50`) → `AgentService.stream_message(history)` → LangGraph `.astream_events(version="v2")`. Each event becomes a WS frame: `thinking` / `token` (streamed answer deltas) / `tool_call{name,args}` / `tool_result{name,result}` / `trace` (tool-call decisions) / terminal `ai_response` / `error`. Terminal text is taken from the **last model turn's content**, falling back to assembled tokens — not `messages[-1]` (which can be a tool message). Every step logs a `TRACE …` line. `_extract_text()` collapses Gemini's list-or-string content.
+- **WebSocket** `WS /api/ai/chat/ws` → **stateless, client-authoritative**. The browser owns the transcript (sessionStorage) and replays it each turn as `{type:'chat', friendId, messages:[{role,content}...]}`. `_build_messages` normalizes it, caps to `MAX_HISTORY=50`, and stamps `[Active friend_id=N]` on the latest user turn → `AgentService.stream_message(messages)` → LangGraph `.astream_events(version="v2")`. (`{type:'context'}` = first-open greeting; raw text = single turn.) No server-side memory — reconnects lose nothing. Each event becomes a WS frame: `thinking` / `token` (streamed answer deltas) / `tool_call{name,args}` / `tool_result{name,result}` / `trace` (tool-call decisions) / terminal `ai_response` / `error`. Terminal text is taken from the **last model turn's content**, falling back to assembled tokens — not `messages[-1]` (which can be a tool message). Every step logs a `TRACE …` line. `_extract_text()` collapses Gemini's list-or-string content.
 
 `GET /api/ai/chat/tools` lists agent tools; `GET /api/ai/knowledge/tools` lists knowledge tools.
 
@@ -99,5 +99,5 @@ The **AI brain**. FastAPI service, internal port **8001** (container `ai-agent`)
 | Cache TTLs | `config.yaml cache.*` (`friend_summary_ttl`, embedding TTL) |
 | Summary prompt / fact parsing | `prompts/summary_prompt_service.py` |
 | Chat agent behaviour | `AgentService.process_message` / `create_react_agent` tools (from MCP) |
-| Chat WS streaming/states/traces | `AgentService.stream_message` (astream_events v2) + `routers/chat.py _parse_envelope` |
+| Chat WS streaming/states/traces | `AgentService.stream_message` (astream_events v2) + `routers/chat.py _build_messages` |
 | Public route (+WebSocket) | `nginx/nginx.conf location /api/ai/` |

@@ -17,20 +17,71 @@ const AiChat = {
     // AiChat.debug = false  (traces are always console.log'd regardless).
     debug: true,
 
+    // Client-side transcript. sessionStorage survives reload but is wiped by the
+    // browser on tab CLOSE — exactly the lifecycle we want. Keyed per friend so
+    // opening another friend drops the old chat. The server is stateless; we
+    // replay `messages` on every turn.
+    STORE_PREFIX: 'frm_chat:',
+    storageKey: null,
+    messages: [],
+    hasRenderedStored: false,
+
     /**
      * Initialize the AI chat module
      */
     init() {
         this.friendId = window.friendId;
         this.friendName = window.friendName || 'this friend';
-        
+
         if (!this.friendId) {
             console.error('AiChat: friendId not available');
             return;
         }
 
+        this.storageKey = this.STORE_PREFIX + this.friendId;
+        this.dropOtherFriendChats();     // "new friend opened → old chat gotta go"
+        this.messages = this.loadStored();
+
         this.connect();
         this.setupEventListeners();
+    },
+
+    /** Load this friend's stored transcript from sessionStorage. */
+    loadStored() {
+        try {
+            return JSON.parse(sessionStorage.getItem(this.storageKey)) || [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    /** Persist the current transcript. */
+    persist() {
+        try {
+            sessionStorage.setItem(this.storageKey, JSON.stringify(this.messages));
+        } catch (e) {
+            console.warn('AiChat: failed to persist transcript', e);
+        }
+    },
+
+    /** Remove any other friend's stored chat (keep only the current friend's). */
+    dropOtherFriendChats() {
+        try {
+            for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                const key = sessionStorage.key(i);
+                if (key && key.startsWith(this.STORE_PREFIX) && key !== this.storageKey) {
+                    sessionStorage.removeItem(key);
+                }
+            }
+        } catch (e) { /* sessionStorage unavailable — nothing to clean */ }
+    },
+
+    /** Render a restored transcript into the chat UI (once). */
+    renderStored() {
+        if (typeof AiChatUI === 'undefined') return;
+        this.messages.forEach((m) => {
+            AiChatUI.addMessage(m.content, m.role === 'user', new Date());
+        });
     },
 
     /**
@@ -86,13 +137,22 @@ const AiChat = {
             this.isConnected = true;
             this.isConnecting = false;
             this.reconnectAttempts = 0;
-            
-            // Send initial context
-            this.sendInitialContext();
-            
+
+            // First open only: restore a stored transcript, or greet if none.
+            // On later reconnects (network blips) do neither — the server is
+            // stateless and gets the full transcript with the next message.
+            if (!this.hasRenderedStored) {
+                this.hasRenderedStored = true;
+                if (this.messages.length > 0) {
+                    this.renderStored();
+                } else {
+                    this.sendInitialContext();
+                }
+            }
+
             // Process any queued messages
             this.processMessageQueue();
-            
+
             // Update UI
             if (typeof AiChatUI !== 'undefined') {
                 AiChatUI.updateConnectionStatus('connected');
@@ -219,6 +279,11 @@ const AiChat = {
                 const text = data.content ?? data.message ?? data.response ?? '';
                 AiChatUI.finalizeStream(text);
                 AiChatUI.hideTyping();
+                // Remember the assistant turn (incl. the opening greeting)
+                if (text && text.trim()) {
+                    this.messages.push({ role: 'assistant', content: text });
+                    this.persist();
+                }
                 this.maybeNotify();
                 break;
             }
@@ -248,29 +313,34 @@ const AiChat = {
             return;
         }
 
+        // Append to the client-owned transcript and persist, then replay the
+        // whole thing to the (stateless) server.
+        this.messages.push({ role: 'user', content: message.trim() });
+        this.persist();
+
         const messageData = {
             type: 'chat',
-            message: message.trim(),
             friendId: this.friendId,
+            messages: this.messages,
             timestamp: new Date().toISOString()
         };
 
         if (this.isConnected) {
             this.sendRawMessage(messageData);
-            
+
             // Show typing indicator
             if (typeof AiChatUI !== 'undefined') {
                 AiChatUI.showTyping();
             }
         } else {
-            // Queue message for when connection is restored
+            // Queue for when connection is restored (transcript already saved)
             this.messageQueue.push(messageData);
-            
+
             // Show connection error
             if (typeof AiChatUI !== 'undefined') {
                 AiChatUI.addSystemMessage('Message queued - reconnecting to AI agent...');
             }
-            
+
             // Attempt to reconnect
             this.reconnect();
         }

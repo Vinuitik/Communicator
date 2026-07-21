@@ -11,42 +11,61 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-def _parse_envelope(raw: str) -> tuple[str, dict]:
-    """Unwrap the client's JSON envelope into the actual user message.
-
-    The frontend sends `JSON.stringify({type, message, friendId, ...})`. The old
-    code fed that whole JSON string to the LLM. Here we extract `.message` and,
-    when a `friendId` is present, prefix a compact context tag so the agent's
-    tools reliably target the right friend. Falls back to the raw text if the
-    payload is not JSON.
-    """
-    try:
-        payload = json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        return raw, {}
-
-    if not isinstance(payload, dict):
-        return str(payload), {}
-
-    message = payload.get("message")
-    if not message:
-        return raw, payload
-
-    friend_id = payload.get("friendId")
-    if friend_id is not None and payload.get("type") == "chat":
-        message = f"[Active friend_id={friend_id}] {message}"
-    return message, payload
-
-
-# Chit-chat won't grow huge, but cap the replayed history as a cheap runaway
-# guard. Always keep the first turn (the friend-context init) + the most recent.
+# Chit-chat won't grow huge, but cap the replayed transcript as a cheap runaway
+# guard. Always keep the first turn (the friend-context greeting) + the most recent.
 MAX_HISTORY = 50
 
 
-def _cap_history(history: list[dict]) -> list[dict]:
-    if len(history) <= MAX_HISTORY:
-        return history
-    return history[:1] + history[-(MAX_HISTORY - 1):]
+def _cap_history(messages: list[dict]) -> list[dict]:
+    if len(messages) <= MAX_HISTORY:
+        return messages
+    return messages[:1] + messages[-(MAX_HISTORY - 1):]
+
+
+def _normalize_messages(raw_messages: list) -> list[dict]:
+    """Coerce a client transcript into clean {role, content} dicts.
+
+    Only user/assistant text turns are kept; the client maps 'ai' → 'assistant'.
+    Anything malformed is skipped rather than trusted.
+    """
+    out: list[dict] = []
+    for m in raw_messages:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        content = m.get("content")
+        if role not in ("user", "assistant") or not isinstance(content, str):
+            continue
+        out.append({"role": role, "content": content})
+    return out
+
+
+def _build_messages(payload: dict, raw: str) -> list[dict]:
+    """Build the message list to feed the agent from a client WS frame.
+
+    The chat is now CLIENT-AUTHORITATIVE: the browser stores the transcript in
+    sessionStorage and replays it here every turn, so this endpoint is stateless
+    (no server-side memory). Frames:
+      {type:'chat',    friendId, messages:[{role,content}...]}  ← full transcript
+      {type:'context', friendId, message}                       ← first-open greeting
+      raw text / anything else                                  ← single user turn
+    A compact `[Active friend_id=N]` tag is stamped onto the latest user turn so
+    the agent's tools target the right friend.
+    """
+    friend_id = payload.get("friendId")
+    ptype = payload.get("type")
+
+    if ptype == "chat" and isinstance(payload.get("messages"), list):
+        messages = _cap_history(_normalize_messages(payload["messages"]))
+        if friend_id is not None and messages and messages[-1]["role"] == "user":
+            messages[-1]["content"] = f"[Active friend_id={friend_id}] {messages[-1]['content']}"
+        return messages or [{"role": "user", "content": raw}]
+
+    # context / legacy single-message / raw text
+    message = payload.get("message") or raw
+    if friend_id is not None and ptype == "chat":
+        message = f"[Active friend_id={friend_id}] {message}"
+    return [{"role": "user", "content": message}]
 
 @router.post("/", response_model=ChatResponse)
 async def chat_with_agent(
@@ -83,35 +102,29 @@ async def websocket_endpoint(
     """
     await websocket.accept()
 
-    # Per-connection conversation memory. The agent graph is stateless, so we
-    # replay the whole history each turn — that IS the "remember the chat" fix.
-    # Lives only for this WebSocket; a reconnect (or restart) starts fresh.
-    history: list[dict] = []
-
+    # Stateless: the client owns the transcript (sessionStorage) and replays it
+    # each turn via `_build_messages`. No server-side memory to lose on reconnect.
     try:
         while True:
-            # Receive the client's JSON envelope and unwrap it to the real message
             raw = await websocket.receive_text()
-            user_message, payload = _parse_envelope(raw)
-            logger.info("WS recv | type=%s friendId=%s message=%r",
-                        payload.get("type"), payload.get("friendId"), user_message)
+            try:
+                payload = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                payload = {"message": raw}
+            if not isinstance(payload, dict):
+                payload = {"message": str(payload)}
 
-            history.append({"role": "user", "content": user_message})
-            history = _cap_history(history)
+            messages = _build_messages(payload, raw)
+            logger.info("WS recv | type=%s friendId=%s turns=%d last=%r",
+                        payload.get("type"), payload.get("friendId"),
+                        len(messages), messages[-1]["content"] if messages else None)
 
             try:
                 # Stream lifecycle events (thinking / tool_call / token / ...)
                 # instead of one opaque blob. Careful terminal extraction lives
-                # in AgentService.stream_message. Capture the answer to append to
-                # history so the next turn has context.
-                answer = ""
-                async for event in agent_service.stream_message(history):
-                    if event.get("type") == "ai_response":
-                        answer = event.get("content") or ""
+                # in AgentService.stream_message.
+                async for event in agent_service.stream_message(messages):
                     await websocket.send_json(WebSocketMessage(**event).dict())
-
-                if answer:
-                    history.append({"role": "assistant", "content": answer})
 
             except Exception as e:
                 logger.exception("WS processing error")
