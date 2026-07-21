@@ -43,7 +43,10 @@ The **AI brain**. FastAPI service, internal port **8001** (container `ai-agent`)
 
 ## Internal wiring — chat
 
-`POST /api/ai/chat/` or `WS /api/ai/chat/ws` → `AgentService.process_message()` → LangGraph `create_react_agent(llm, mcp_tools).ainvoke()`. Tools come from the MCP server (see MCP seam). WebSocket loop normalizes Gemini's list-or-string content into a plain string before sending `{type:"ai_response", content}`. `GET /api/ai/chat/tools` lists agent tools; `GET /api/ai/knowledge/tools` lists knowledge tools.
+- **HTTP** `POST /api/ai/chat/` → `AgentService.process_message()` → LangGraph `.ainvoke()` → one `{response}` blob (unchanged).
+- **WebSocket** `WS /api/ai/chat/ws` → `_parse_envelope(raw)` unwraps the client's JSON `{type,message,friendId}` into the actual user text (prefixing `[Active friend_id=N]` for chat) → `AgentService.stream_message()` → LangGraph `.astream_events(version="v2")`. Each event becomes a WS frame: `thinking` / `token` (streamed answer deltas) / `tool_call{name,args}` / `tool_result{name,result}` / `trace` (tool-call decisions) / terminal `ai_response` / `error`. Terminal text is taken from the **last model turn's content**, falling back to assembled tokens — not `messages[-1]` (which can be a tool message). Every step logs a `TRACE …` line. `_extract_text()` collapses Gemini's list-or-string content.
+
+`GET /api/ai/chat/tools` lists agent tools; `GET /api/ai/knowledge/tools` lists knowledge tools.
 
 ## Seams
 
@@ -96,4 +99,5 @@ The **AI brain**. FastAPI service, internal port **8001** (container `ai-agent`)
 | Cache TTLs | `config.yaml cache.*` (`friend_summary_ttl`, embedding TTL) |
 | Summary prompt / fact parsing | `prompts/summary_prompt_service.py` |
 | Chat agent behaviour | `AgentService.process_message` / `create_react_agent` tools (from MCP) |
+| Chat WS streaming/states/traces | `AgentService.stream_message` (astream_events v2) + `routers/chat.py _parse_envelope` |
 | Public route (+WebSocket) | `nginx/nginx.conf location /api/ai/` |
