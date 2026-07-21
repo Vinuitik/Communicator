@@ -105,8 +105,15 @@ class AgentService:
             return "".join(parts)
         return str(content)
 
-    async def stream_message(self, message: str) -> AsyncIterator[Dict[str, Any]]:
-        """Stream the agent's lifecycle for one user message.
+    async def stream_message(
+        self, messages: List[Dict[str, Any]]
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """Stream the agent's lifecycle for one turn of a conversation.
+
+        `messages` is the FULL conversation so far (role/content dicts), ending
+        with the new user turn. Passing the whole history each call is what gives
+        the agent memory — the graph is otherwise stateless and would start from
+        scratch every message. Fine for chit-chat volumes; the caller caps length.
 
         Yields dicts shaped for `WebSocketMessage` so the UI can render finer
         states (thinking / tool_call / tool_result / token / ai_response / error)
@@ -119,13 +126,14 @@ class AgentService:
         if not self._initialized:
             raise RuntimeError("Agent service not initialized. Call initialize() first.")
 
-        logger.info("TRACE stream_message start | message=%r", message)
+        logger.info("TRACE stream_message start | turns=%d last=%r",
+                    len(messages), messages[-1].get("content") if messages else None)
         final_text = ""          # assembled from the answer-turn token deltas
         last_ai_content = ""     # authoritative full text from the last model turn
 
         try:
             async for event in self.agent.astream_events(
-                {"messages": [{"role": "user", "content": message}]},
+                {"messages": messages},
                 version="v2",
             ):
                 kind = event.get("event")

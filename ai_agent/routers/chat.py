@@ -37,6 +37,17 @@ def _parse_envelope(raw: str) -> tuple[str, dict]:
         message = f"[Active friend_id={friend_id}] {message}"
     return message, payload
 
+
+# Chit-chat won't grow huge, but cap the replayed history as a cheap runaway
+# guard. Always keep the first turn (the friend-context init) + the most recent.
+MAX_HISTORY = 50
+
+
+def _cap_history(history: list[dict]) -> list[dict]:
+    if len(history) <= MAX_HISTORY:
+        return history
+    return history[:1] + history[-(MAX_HISTORY - 1):]
+
 @router.post("/", response_model=ChatResponse)
 async def chat_with_agent(
     user_input: QueryInput,
@@ -72,6 +83,11 @@ async def websocket_endpoint(
     """
     await websocket.accept()
 
+    # Per-connection conversation memory. The agent graph is stateless, so we
+    # replay the whole history each turn — that IS the "remember the chat" fix.
+    # Lives only for this WebSocket; a reconnect (or restart) starts fresh.
+    history: list[dict] = []
+
     try:
         while True:
             # Receive the client's JSON envelope and unwrap it to the real message
@@ -80,12 +96,22 @@ async def websocket_endpoint(
             logger.info("WS recv | type=%s friendId=%s message=%r",
                         payload.get("type"), payload.get("friendId"), user_message)
 
+            history.append({"role": "user", "content": user_message})
+            history = _cap_history(history)
+
             try:
                 # Stream lifecycle events (thinking / tool_call / token / ...)
                 # instead of one opaque blob. Careful terminal extraction lives
-                # in AgentService.stream_message.
-                async for event in agent_service.stream_message(user_message):
+                # in AgentService.stream_message. Capture the answer to append to
+                # history so the next turn has context.
+                answer = ""
+                async for event in agent_service.stream_message(history):
+                    if event.get("type") == "ai_response":
+                        answer = event.get("content") or ""
                     await websocket.send_json(WebSocketMessage(**event).dict())
+
+                if answer:
+                    history.append({"role": "assistant", "content": answer})
 
             except Exception as e:
                 logger.exception("WS processing error")
