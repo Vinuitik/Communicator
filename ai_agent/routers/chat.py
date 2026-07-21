@@ -1,9 +1,41 @@
+import json
+import logging
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from models.schemas import QueryInput, ChatResponse, ErrorResponse, WebSocketMessage
 from services.agent_service import AgentService
 from dependencies.deps import get_agent_service
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _parse_envelope(raw: str) -> tuple[str, dict]:
+    """Unwrap the client's JSON envelope into the actual user message.
+
+    The frontend sends `JSON.stringify({type, message, friendId, ...})`. The old
+    code fed that whole JSON string to the LLM. Here we extract `.message` and,
+    when a `friendId` is present, prefix a compact context tag so the agent's
+    tools reliably target the right friend. Falls back to the raw text if the
+    payload is not JSON.
+    """
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return raw, {}
+
+    if not isinstance(payload, dict):
+        return str(payload), {}
+
+    message = payload.get("message")
+    if not message:
+        return raw, payload
+
+    friend_id = payload.get("friendId")
+    if friend_id is not None and payload.get("type") == "chat":
+        message = f"[Active friend_id={friend_id}] {message}"
+    return message, payload
 
 @router.post("/", response_model=ChatResponse)
 async def chat_with_agent(
@@ -39,57 +71,35 @@ async def websocket_endpoint(
         agent_service: Injected agent service
     """
     await websocket.accept()
-    
+
     try:
         while True:
-            # Receive message from the client
-            data = await websocket.receive_text()
-            
+            # Receive the client's JSON envelope and unwrap it to the real message
+            raw = await websocket.receive_text()
+            user_message, payload = _parse_envelope(raw)
+            logger.info("WS recv | type=%s friendId=%s message=%r",
+                        payload.get("type"), payload.get("friendId"), user_message)
+
             try:
-                # Get the complete response from agent
-                result = await agent_service.process_message(data)
-                
-                # Extract AI message content - it's always the last message
-                ai_message_content = result['messages'][-1].content
-                
-                print(f"AI Response Content (raw): {ai_message_content}")
-                
-                # Normalize content to always be a string
-                # Handle complex response format (list of dicts with 'text' field)
-                if isinstance(ai_message_content, list) and len(ai_message_content) > 0:
-                    # Extract text from the first item in the list
-                    first_item = ai_message_content[0]
-                    if isinstance(first_item, dict) and 'text' in first_item:
-                        text_content = first_item['text']
-                    else:
-                        text_content = str(first_item)
-                elif isinstance(ai_message_content, str):
-                    # Already a string, use as-is
-                    text_content = ai_message_content
-                else:
-                    # Fallback for unexpected formats
-                    text_content = str(ai_message_content)
-                
-                print(f"Normalized text content: {text_content}")
-                
-                # Send the AI response to client (always as a string)
-                response = WebSocketMessage(
-                    type="ai_response",
-                    content=text_content
-                )
-                await websocket.send_json(response.dict())
-                
+                # Stream lifecycle events (thinking / tool_call / token / ...)
+                # instead of one opaque blob. Careful terminal extraction lives
+                # in AgentService.stream_message.
+                async for event in agent_service.stream_message(user_message):
+                    await websocket.send_json(WebSocketMessage(**event).dict())
+
             except Exception as e:
+                logger.exception("WS processing error")
                 error_response = WebSocketMessage(
                     type="error",
-                    content=f"Error processing message: {str(e)}"
+                    content=f"Error processing message: {str(e)}",
+                    data=repr(e),
                 )
                 await websocket.send_json(error_response.dict())
 
     except WebSocketDisconnect:
-        print("Client disconnected from WebSocket")
+        logger.info("Client disconnected from WebSocket")
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.exception("WebSocket error")
         await websocket.close(code=1011, reason=str(e))
 
 @router.get("/tools")

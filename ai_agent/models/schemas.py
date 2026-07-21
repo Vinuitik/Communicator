@@ -22,9 +22,22 @@ class ErrorResponse(BaseModel):
     details: Optional[str] = None
 
 class WebSocketMessage(BaseModel):
-    """Schema for WebSocket messages"""
+    """Schema for WebSocket messages.
+
+    `type` drives the client state machine:
+      thinking     - agent/model started reasoning (show loading)
+      token        - streamed delta of the final answer (append to bubble)
+      tool_call    - agent decided to call a tool  (name + data=args)
+      tool_result  - a tool returned              (name + data=result)
+      trace        - raw LLM/agent output line, for debugging ("stir it")
+      ai_response  - final complete answer (terminal, backward-compatible)
+      error        - failure (content=message, data=detail/traceback)
+    """
     type: str
-    content: str
+    content: Optional[str] = None
+    name: Optional[str] = None          # tool or model name
+    data: Optional[Any] = None          # structured payload (args / result / detail)
+    phase: Optional[str] = None         # optional sub-phase label
 
 class HealthResponse(BaseModel):
     """Response schema for health check"""
