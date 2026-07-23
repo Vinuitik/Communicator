@@ -61,7 +61,6 @@ class Settings:
         self.knowledge_enable_caching = self.config["knowledge"]["enable_caching"]
         
         # Environment variables (still support for sensitive data)
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
         self.huggingface_api_key = os.getenv("HUGGINGFACE_API_KEY")
         
         self.citation_chunk_size = self.config["citation"]["chunk"]["size"]
@@ -85,7 +84,8 @@ class Settings:
         self.discard_if_no_references = self.config["referencing"]["discard_if_no_references"]
         
         # Friend service settings
-        self.friend_service_url = self.config.get("friend_service", {}).get("base_url", "http://friend:8085")
+        self.friend_service_url = self.config.get("friend_service", {}).get(
+            "base_url", "http://communicator-app:8080/api/friend")
         self.friend_service_timeout = self.config.get("friend_service", {}).get("timeout", 30)
 
         # Embedding settings
@@ -97,10 +97,6 @@ class Settings:
         self.embedding_cache_enabled = self.config["embedding"]["cache_embeddings"]
         self.embedding_cache_ttl = self.config["embedding"]["embedding_cache_ttl"]
         self.embedder_url = self.config["embedding"].get("embedder_url", "http://embedder:8010")
-
-        # Validate required settings
-        if not self.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
     
     def _load_config(self, config_file: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""

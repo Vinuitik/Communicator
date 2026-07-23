@@ -129,15 +129,17 @@ async def get_fact_repository(
 
 # ==================== Core Service Dependencies ====================
 
-async def get_agent_service() -> AgentService:
+async def get_agent_service(
+    llm_settings_repo: LLMSettingsRepository = Depends(get_llm_settings_repository)
+) -> AgentService:
     """Get AgentService instance."""
     global _agent_service
     logger.debug("Getting agent service instance")
-    
+
     if _agent_service is None:
         try:
             logger.info("Initializing new agent service instance")
-            _agent_service = AgentService()
+            _agent_service = AgentService(llm_settings_repo)
             await _agent_service.initialize()
             logger.info("Agent service initialized successfully")
         except Exception as e:

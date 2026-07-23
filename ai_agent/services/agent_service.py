@@ -1,93 +1,208 @@
 from typing import Optional, List, Any, Dict, AsyncIterator
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.prebuilt import create_react_agent
+from langchain_ollama import ChatOllama
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_classic.agents import create_structured_chat_agent, AgentExecutor
 from config.settings import settings
 from services.mcp_service import MCPService
+from services.host_wrapper_chat_model import HostWrapperChatModel
 import logging
-import asyncio
-import os
 
 # Set up logger
 logger = logging.getLogger(__name__)
 
+# Classic prompt-based structured-chat agent (not LangGraph's native-tool-
+# calling agent) — deliberately, so the SAME agent works whether the LLM is
+# ChatOllama (a small local model, tool-calling reliability not guaranteed)
+# or HostWrapperChatModel (host-wrapper's /complete has no tool-calling API
+# at all — plain text in, text out). Neither needs .bind_tools() this way.
+#
+# create_structured_chat_agent specifically (not the simpler create_react_agent)
+# because MCP tools (via langchain-mcp-adapters) are StructuredTools with a
+# JSON args_schema, not single-string inputs — the plain ReAct agent's bare
+# "Action Input: <string>" format errors on those with "String tool inputs
+# are not allowed when using tools with JSON schema args_schema" (hit this
+# live before switching). The structured variant emits a JSON action blob
+# instead, so multi-arg tool calls actually work.
+_SYSTEM_PROMPT = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:
+
+{tools}
+
+Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
+
+Valid "action" values: "Final Answer" or {tool_names}
+
+Provide only ONE action per $JSON_BLOB, as shown:
+
+```
+{{
+    "action": $TOOL_NAME,
+    "action_input": $INPUT
+}}
+```
+
+Follow this format:
+
+Question: input question to answer
+Thought: consider previous and subsequent steps
+Action:
+```
+$JSON_BLOB
+```
+Observation: action result
+... (repeat Thought/Action/Observation N times)
+Thought: I know what to respond
+Action:
+```
+{{
+    "action": "Final Answer",
+    "action_input": "Final response to human"
+}}
+```
+
+Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation"""
+
+_HUMAN_PROMPT = """{input}
+
+{agent_scratchpad}
+
+(reminder to respond in a JSON blob no matter what)"""
+
+
 class AgentService:
     """Service for managing the LangChain agent and its dependencies"""
-    
-    def __init__(self):
+
+    def __init__(self, llm_settings_repo=None):
         self.agent = None
         self.mcp_service = MCPService()
         self.llm = None
+        self.llm_settings_repo = llm_settings_repo
         self._initialized = False
-    
+
     async def initialize(self) -> None:
         """Initialize the agent and all its dependencies"""
         if self._initialized:
             return
-            
-        print(f"Initializing AI Agent (GEMINI_API_KEY {'set' if settings.gemini_api_key else 'MISSING'})")
-        
+
+        print("Initializing AI Agent")
+
         try:
             # Initialize MCP service
             await self.mcp_service.initialize()
-            
+
             # Setup LLM
-            self._setup_llm()
-            
+            await self._setup_llm()
+
             # Create agent
             self._create_agent()
-            
+
             self._initialized = True
             print("AI Agent initialized successfully")
-            
+
         except Exception as e:
             print(f"Failed to initialize AI Agent: {e}")
             raise
-    
-    def _setup_llm(self) -> None:
-        """Setup the Google Gemini LLM"""
-        self.llm = ChatGoogleGenerativeAI(
-            model=settings.llm_model,
-            temperature=settings.llm_temperature,
-            google_api_key=settings.gemini_api_key,
-            transport="rest"
-        )
-        print(f"LLM initialized with model: {settings.llm_model} using GEMINI_API_KEY")
-    
+
+    async def reload_llm(self) -> None:
+        """Rebuild the LLM + agent after the mode (ollama/cloud) changes.
+
+        Called by routers/settings.py's mode-switch endpoint. Safe to call
+        anytime after initialize() — MCP tools/session are untouched, only
+        the LLM and the agent wrapping it get rebuilt.
+        """
+        await self._setup_llm()
+        self._create_agent()
+        logger.info("Agent LLM reloaded")
+
+    async def _setup_llm(self) -> None:
+        """Setup the LLM per the current mode (llm_settings.mode: ollama|cloud).
+
+        No settings repo injected -> defaults to ollama (matches the schema's
+        own default) rather than failing, since some callers construct
+        AgentService in contexts where DB access isn't relevant.
+        """
+        mode = "ollama"
+        if self.llm_settings_repo is not None:
+            try:
+                mode = await self.llm_settings_repo.get_mode()
+            except Exception as e:
+                logger.warning(f"Could not read LLM mode, defaulting to ollama: {e}")
+
+        if mode == "cloud":
+            self.llm = HostWrapperChatModel(
+                base_url=settings.host_wrapper_url,
+                timeout=settings.host_wrapper_timeout,
+            )
+            print(f"LLM initialized: cloud mode via host-wrapper ({settings.host_wrapper_url})")
+        else:
+            self.llm = ChatOllama(
+                model=settings.ollama_chat_model,
+                base_url=settings.ollama_url,
+                temperature=settings.llm_temperature,
+            )
+            print(f"LLM initialized: local mode via Ollama ({settings.ollama_chat_model})")
+
     def _create_agent(self) -> None:
-        """Create the ReAct agent with LLM and tools"""
+        """Create the classic structured-chat agent with LLM and tools."""
         tools = self.mcp_service.get_tools()
-        self.agent = create_react_agent(self.llm, tools)
-        print("ReAct agent created successfully")
-    
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", _SYSTEM_PROMPT),
+            MessagesPlaceholder("chat_history", optional=True),
+            ("human", _HUMAN_PROMPT),
+        ])
+        structured_agent = create_structured_chat_agent(self.llm, tools, prompt)
+        self.agent = AgentExecutor(
+            agent=structured_agent,
+            tools=tools,
+            handle_parsing_errors=True,
+            # Small local models (e.g. llama3.2:3b in mode=ollama) can struggle
+            # to reliably hit the strict JSON action-blob format under this
+            # prompt — capped lower than the LangChain default so a model stuck
+            # repeating the same formatting mistake fails fast instead of
+            # burning ~10 slow CPU inference rounds before giving up anyway.
+            # Cloud mode (host-wrapper, stronger models) rarely needs more
+            # than 2-3 iterations for a real tool call.
+            max_iterations=6,
+        )
+        print("Structured chat agent created successfully")
+
+    @staticmethod
+    def _format_history(messages: List[Dict[str, Any]]) -> List[Any]:
+        """All but the last message, as LangChain message objects for the
+        structured-chat prompt's MessagesPlaceholder("chat_history")."""
+        history = []
+        for m in messages[:-1]:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            if role in ("assistant", "ai"):
+                history.append(AIMessage(content=content))
+            else:
+                history.append(HumanMessage(content=content))
+        return history
+
     async def process_message(self, message: str) -> Dict[str, Any]:
         """
         Process a user message through the agent
-        
+
         Args:
             message: User's input message
-            
+
         Returns:
             Agent's response
         """
         if not self._initialized:
             raise RuntimeError("Agent service not initialized. Call initialize() first.")
-        
+
         print(f"Processing message: {message}")
-        
-        result = await self.agent.ainvoke({
-            "messages": [{"role": "user", "content": message}]
-        })
-        
+
+        result = await self.agent.ainvoke({"input": message, "chat_history": []})
+
         print(f"Agent response: {result}")
-        return result
+        return {"output": result.get("output", "")}
 
     @staticmethod
     def _extract_text(content: Any) -> str:
-        """Normalize Gemini's list-or-string message content to plain text.
-
-        Gemini can return `content` as a str, or a list of parts like
-        `[{'type':'text','text':'...'}]`. Both must collapse to a string.
-        """
+        """Normalize message content (str, or a list of parts) to plain text."""
         if content is None:
             return ""
         if isinstance(content, str):
@@ -117,20 +232,28 @@ class AgentService:
         instead of one opaque blob. Every event is also logged server-side as a
         TRACE line so we can watch what the LLM actually does and steer it.
 
-        Uses LangGraph `astream_events` v2 — the fine-grained event stream over
-        the compiled ReAct graph (model + tool nodes).
+        Uses AgentExecutor's `astream_events` v2 — same LangChain Core callback
+        event taxonomy LangGraph used (on_chat_model_*, on_tool_*), so this
+        event-handling logic is agent-implementation-agnostic.
         """
         if not self._initialized:
             raise RuntimeError("Agent service not initialized. Call initialize() first.")
 
+        if not messages:
+            yield {"type": "error", "content": "No message provided"}
+            return
+
+        user_input = messages[-1].get("content", "")
+        chat_history = self._format_history(messages)
+
         logger.info("TRACE stream_message start | turns=%d last=%r",
-                    len(messages), messages[-1].get("content") if messages else None)
+                    len(messages), user_input)
         final_text = ""          # assembled from the answer-turn token deltas
         last_ai_content = ""     # authoritative full text from the last model turn
 
         try:
             async for event in self.agent.astream_events(
-                {"messages": messages},
+                {"input": user_input, "chat_history": chat_history},
                 version="v2",
             ):
                 kind = event.get("event")
@@ -143,12 +266,6 @@ class AgentService:
                 elif kind == "on_chat_model_stream":
                     chunk = event.get("data", {}).get("chunk")
                     text = self._extract_text(getattr(chunk, "content", None))
-                    # Surface any tool-call decision as a trace (Gemini's "thoughts")
-                    tool_calls = getattr(chunk, "tool_calls", None) or []
-                    for tc in tool_calls:
-                        logger.info("TRACE model_tool_decision | %s", tc)
-                        yield {"type": "trace", "phase": "tool_decision",
-                               "name": tc.get("name"), "data": tc.get("args")}
                     if text:
                         final_text += text
                         logger.debug("TRACE token | %r", text)
@@ -174,8 +291,12 @@ class AgentService:
                            "data": result[:2000]}
 
             # Terminal answer: prefer the last model turn's full content,
-            # fall back to the tokens we assembled. Careful extraction — never
-            # trust `messages[-1]` blindly (it can be a tool message).
+            # fall back to the tokens we assembled. The classic ReAct agent's
+            # "Final Answer: ..." parsing happens inside AgentExecutor itself
+            # (via its output parser) before astream_events yields the final
+            # on_chat_model_end, so last_ai_content is already the raw model
+            # text — AgentExecutor strips the "Final Answer:" prefix for us
+            # via the chain's own output, not something we re-parse here.
             answer = last_ai_content.strip() or final_text.strip()
             logger.info("TRACE stream_message done | answer_len=%d", len(answer))
             yield {"type": "ai_response", "content": answer}
@@ -187,67 +308,67 @@ class AgentService:
                    "data": repr(e)}
 
     async def generate_response(
-        self, 
-        system_message: str, 
+        self,
+        system_message: str,
         user_message: str
     ) -> str:
         """
         Generate a direct LLM response without using the agent/tools.
-        
+
         This is useful for simple text generation tasks like validation,
         summarization, etc. where we don't need tool access.
-        
+
         Args:
             system_message: System prompt/instructions
             user_message: User's input message
-            
+
         Returns:
             LLM's text response
         """
         if not self._initialized:
             raise RuntimeError("Agent service not initialized. Call initialize() first.")
-        
+
         logger.debug(f"Generating LLM response with system: {system_message[:100]}...")
-        
+
         # Create messages in LangChain format
         from langchain_core.messages import SystemMessage, HumanMessage
-        
+
         messages = [
             SystemMessage(content=system_message),
             HumanMessage(content=user_message)
         ]
-        
+
         # Get LLM response
         result = await self.llm.ainvoke(messages)
-        
+
         # Extract text content from the response
         response_text = result.content
-        
+
         logger.debug(f"LLM response: {response_text[:200]}...")
-        
+
         return response_text
-    
+
     def get_tool_by_name(self, tool_name: str) -> Optional[Any]:
         """
         Get a specific tool by name
-        
+
         Args:
             tool_name: Name of the tool to retrieve
-            
+
         Returns:
             Tool instance if found, None otherwise
         """
         return self.mcp_service.get_tool_by_name(tool_name)
-    
+
     def list_available_tools(self) -> List[str]:
         """
         Get list of available tool names
-        
+
         Returns:
             List of tool names
         """
         return self.mcp_service.list_available_tools()
-    
+
     @property
     def is_initialized(self) -> bool:
         """Check if the service is initialized"""

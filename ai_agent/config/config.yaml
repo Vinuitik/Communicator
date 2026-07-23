@@ -49,7 +49,22 @@ mcp:
 
 # Friend Service Configuration
 friend_service:
-  base_url: "http://friend:8085"
+  # Was http://friend:8085 — stale since the 2026-07-12 JVM consolidation
+  # (friend/group/connections/chrono/backup merged into one communicator-app
+  # container, port 8080). Never updated here, so every FriendApiService call
+  # has been silently failing DNS resolution since then (FriendApiService
+  # swallows errors -> returns []/None, so nothing crashed, it just always
+  # returned empty). Found while testing the new chat tool-calling —
+  # get_friends_list came back with a DNS-resolution-failure message baked
+  # into its response text.
+  #
+  # /api/friend prefix required too, not just the hostname: PathPrefixConfig
+  # (communicator-app/src/main/java/com/communicator/app/PathPrefixConfig.java)
+  # namespaces friend's controllers under /api/friend since the consolidation
+  # made bare paths like /updateKnowledge collide across modules in one
+  # dispatcher. FriendApiService appends bare paths like /getKnowledge/... to
+  # this base_url, so the prefix has to live here.
+  base_url: "http://communicator-app:8080/api/friend"
   timeout: 30
 
 # Database Configurations

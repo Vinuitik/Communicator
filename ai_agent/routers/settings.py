@@ -14,7 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from config.settings import settings
 from models.schemas import LLMModeUpdate, LLMProviderKeyUpdate
 from repositories.llm_settings_repository import LLMSettingsRepository, KNOWN_PROVIDERS
-from dependencies.deps import get_llm_settings_repository
+from services.agent_service import AgentService
+from dependencies.deps import get_llm_settings_repository, get_agent_service
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +54,12 @@ async def get_llm_settings(
 @router.put("/mode")
 async def set_llm_mode(
     body: LLMModeUpdate,
-    repo: LLMSettingsRepository = Depends(get_llm_settings_repository)
+    repo: LLMSettingsRepository = Depends(get_llm_settings_repository),
+    agent_service: AgentService = Depends(get_agent_service)
 ):
     await repo.set_mode(body.mode)
     logger.info(f"LLM mode set to '{body.mode}'")
+    await agent_service.reload_llm()
     return {"mode": body.mode}
 
 

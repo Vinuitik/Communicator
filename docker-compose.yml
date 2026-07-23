@@ -151,8 +151,10 @@ services:
         /bin/ollama serve &
         # Wait for Ollama to be ready
         sleep 5
-        # Pull the embedding model if not already present
-        /bin/ollama pull koill/sentence-transformers:all-minilm-l6-v2 || true
+        # Pull the local chat model (mode=ollama in llm_settings routes here).
+        # NOT the embedding model anymore — that moved to the standalone
+        # embedder service (2026-07-23), this pull would otherwise sit unused.
+        /bin/ollama pull llama3.2:3b || true
         # Keep container running
         wait
     restart: unless-stopped

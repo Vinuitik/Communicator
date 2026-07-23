@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import chat, knowledge, settings as settings_router
 from models.schemas import HealthResponse
-from dependencies.deps import get_agent_service
+from dependencies.deps import get_agent_service, get_llm_settings_repository, get_postgres_repository
 from config.settings import settings
 import logging
 import sys
@@ -52,10 +52,14 @@ async def startup_event():
     """Initialize services on application startup"""
     logger.info("Starting AI Agent Service...")
     
-    # Initialize the agent service (this will trigger all dependencies)
+    # Initialize the agent service (this will trigger all dependencies).
+    # Called directly here (not via a request), so FastAPI's Depends() chain
+    # isn't auto-resolved — build it by hand in the same order.
     try:
         logger.info("Initializing agent service and dependencies...")
-        agent_service = await get_agent_service()
+        postgres_repo = await get_postgres_repository()
+        llm_settings_repo = await get_llm_settings_repository(postgres_repo)
+        agent_service = await get_agent_service(llm_settings_repo)
         logger.info("AI Agent Service started successfully")
         logger.info(f"Agent service instance: {agent_service}")
     except Exception as e:
