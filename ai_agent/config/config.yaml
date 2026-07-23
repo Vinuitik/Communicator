@@ -45,15 +45,6 @@ friend_service:
 
 # Database Configurations
 databases:
-  # MongoDB Configuration (from docker-compose: generatedData service)
-  mongodb:
-    url: "mongodb://mongo_user:example@generatedData:27017"
-    database: "generated_db"
-    connection_timeout: 5000
-    server_selection_timeout: 5000
-    max_pool_size: 100
-    min_pool_size: 10
-  
   # Redis Configuration (from docker-compose: redis service)
   redis:
     url: "redis://redisCache:6379"

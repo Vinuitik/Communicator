@@ -1,7 +1,7 @@
 """Repositories package."""
 
 from .redis_repository import RedisRepository
-from .mongo_repository import MongoRepository
+from .postgres_repository import PostgresRepository
 from .fact_repository import FactRepository
 
-__all__ = ["RedisRepository", "MongoRepository", "FactRepository"]
+__all__ = ["RedisRepository", "PostgresRepository", "FactRepository"]

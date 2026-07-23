@@ -38,13 +38,6 @@ class Settings:
         self.mcp_connection_retry_delay = self.config["mcp"].get("connection_retry_delay", 2)
         
         # Database settings
-        self.mongodb_url = self.config["databases"]["mongodb"]["url"]
-        self.mongodb_database = self.config["databases"]["mongodb"]["database"]
-        self.mongodb_connection_timeout = self.config["databases"]["mongodb"]["connection_timeout"]
-        self.mongodb_server_selection_timeout = self.config["databases"]["mongodb"]["server_selection_timeout"]
-        self.mongodb_max_pool_size = self.config["databases"]["mongodb"]["max_pool_size"]
-        self.mongodb_min_pool_size = self.config["databases"]["mongodb"]["min_pool_size"]
-        
         self.redis_url = self.config["databases"]["redis"]["url"]
         self.redis_database = self.config["databases"]["redis"]["database"]
         self.redis_connection_timeout = self.config["databases"]["redis"]["connection_timeout"]
@@ -130,17 +123,6 @@ class Settings:
                 self._deep_update(base_dict[key], value)
             else:
                 base_dict[key] = value
-    
-    def get_mongodb_connection_params(self) -> Dict[str, Any]:
-        """Get MongoDB connection parameters"""
-        return {
-            "url": self.mongodb_url,
-            "db_name": self.mongodb_database,
-            "connection_timeout": self.mongodb_connection_timeout,
-            "server_selection_timeout": self.mongodb_server_selection_timeout,
-            "max_pool_size": self.mongodb_max_pool_size,
-            "min_pool_size": self.mongodb_min_pool_size
-        }
     
     def get_redis_connection_params(self) -> Dict[str, Any]:
         """Get Redis connection parameters"""

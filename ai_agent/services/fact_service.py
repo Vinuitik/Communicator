@@ -7,7 +7,7 @@ FriendApiService for HTTP calls.
 from typing import List, Dict, Optional
 import logging
 from datetime import datetime, timezone
-from bson import ObjectId
+import uuid
 
 from config.settings import settings
 from models.schemas import FactDocument, FactReferenceDocument
@@ -27,16 +27,15 @@ class FactService:
     - Creates fact-to-chunk references with relevance scores
     - Filters low-quality facts (no references = discard)
     - Manages fact lifecycle (create, validate, update, delete)
-    - Persists facts and references in MongoDB
+    - Persists facts and references in PostgreSQL
     """
 
     def __init__(
-        self, 
+        self,
         search_service: SearchService,
         validation_service: FactValidationService,
         friend_api_service: FriendApiService,
         fact_repository: FactRepository,
-        mongo_repo=None,
         postgres_repo=None
     ):
         """Initialize the fact service.
@@ -46,14 +45,12 @@ class FactService:
             validation_service: Service for AI validation
             friend_api_service: Service for Friend API calls
             fact_repository: Repository for fact operations
-            mongo_repo: MongoDB repository (fact_references)
-            postgres_repo: PostgreSQL repository (knowledge_chunks)
+            postgres_repo: PostgreSQL repository (knowledge_chunks, fact_references)
         """
         self.search_service = search_service
         self.validation_service = validation_service
         self.friend_api_service = friend_api_service
         self.fact_repository = fact_repository
-        self.mongo_repo = mongo_repo
         self.postgres_repo = postgres_repo
         
         # Load configuration
@@ -95,8 +92,8 @@ class FactService:
         logger.info(f"Fact Key: '{fact_key}'")
         logger.info(f"Fact Value: '{fact_value}'")
         
-        if not self.mongo_repo or not self.postgres_repo:
-            logger.error("MongoDB and PostgreSQL repositories required")
+        if not self.postgres_repo:
+            logger.error("PostgreSQL repository required")
             return None
 
         # Step 1: Search for relevant chunks
@@ -190,7 +187,7 @@ class FactService:
         logger.info("✓ Fact passed validation threshold, proceeding to create fact document")
         
         # Step 6: Create fact document
-        fact_id = str(ObjectId())
+        fact_id = str(uuid.uuid4())
         
         fact_doc = FactDocument(
             fact_id=fact_id,
@@ -231,7 +228,7 @@ class FactService:
             reference_docs.append(reference)
         
         if reference_docs:
-            await self.mongo_repo.insert_many(
+            await self.postgres_repo.insert_many(
                 "fact_references",
                 [ref.dict() for ref in reference_docs]
             )
@@ -253,10 +250,10 @@ class FactService:
         Returns:
             List of reference documents
         """
-        if not self.mongo_repo:
+        if not self.postgres_repo:
             return []
         
-        references = await self.mongo_repo.find_many(
+        references = await self.postgres_repo.find_many(
             "fact_references",
             {"fact_id": fact_id}
         )
@@ -276,7 +273,7 @@ class FactService:
         Returns:
             True if deleted successfully
         """
-        if not self.mongo_repo:
+        if not self.postgres_repo:
             return False
         
         logger.info(f"Deleting fact {fact_id} for friend {friend_id}")
@@ -285,7 +282,7 @@ class FactService:
         await self.fact_repository.delete_fact(friend_id, fact_id)
         
         # Delete all references
-        result = await self.mongo_repo.delete_many(
+        result = await self.postgres_repo.delete_many(
             "fact_references",
             {"fact_id": fact_id}
         )
@@ -308,7 +305,7 @@ class FactService:
         """
         logger.info(f"Re-evaluating fact {fact_id}")
         
-        if not self.mongo_repo:
+        if not self.postgres_repo:
             return False
         
         # Get fact from fact repository
@@ -320,7 +317,7 @@ class FactService:
             return False
         
         # Delete old references
-        await self.mongo_repo.delete_many(
+        await self.postgres_repo.delete_many(
             "fact_references",
             {"fact_id": fact_id}
         )

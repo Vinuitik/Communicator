@@ -8,7 +8,9 @@ this is not a general-purpose Mongo-to-SQL translator. search_service.py
 uses `pool` directly for the hybrid vector+BM25 query, which doesn't fit
 this dict-filter shape.
 """
+import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -27,11 +29,31 @@ _TABLES = {
     "chunk_embeddings": [
         "chunk_id", "embedding", "model_name", "dimension", "created_at",
     ],
+    "fact_references": [
+        "fact_id", "chunk_id", "knowledge_id", "friend_id", "relevance_score",
+        "validated", "validation_confidence", "created_at", "rank",
+    ],
 }
+
+
+def _json_default(o):
+    if isinstance(o, datetime):
+        return o.isoformat()
+    raise TypeError(f"Not JSON serializable: {o!r}")
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
     await register_vector(conn)
+    # Transparent jsonb <-> python dict/list codec, used by FactRepository's
+    # direct SQL against friend_summaries (array push/pull/positional-update
+    # need real SQL, not the generic dict-filter adapter below).
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=lambda v: json.dumps(v, default=_json_default),
+        decoder=json.loads,
+        schema="pg_catalog",
+        format="text",
+    )
 
 
 class PostgresRepository:
@@ -100,23 +122,31 @@ class PostgresRepository:
             rows = await conn.fetch(sql, *params)
         return [dict(r) for r in rows]
 
-    async def insert_many(self, collection: str, documents: List[dict]) -> List[str]:
+    async def insert_many(self, collection: str, documents: List[dict]) -> int:
+        """Insert documents, skipping any that violate the table's primary key.
+
+        Returns the number of documents submitted (matches how every current
+        caller uses this — none destructure a list of inserted IDs).
+        """
         self._check_table(collection)
         if not documents:
-            return []
+            return 0
         cols = _TABLES[collection]
         col_list = ", ".join(cols)
         placeholders = ", ".join(f"${i + 1}" for i in range(len(cols)))
+        # Bare ON CONFLICT DO NOTHING (no column list) so this works for both
+        # single-column PKs (chunk_id) and composite ones (fact_references'
+        # fact_id+chunk_id) without per-table special-casing.
         sql = (
             f"INSERT INTO {collection} ({col_list}) VALUES ({placeholders}) "
-            f"ON CONFLICT (chunk_id) DO NOTHING"
+            f"ON CONFLICT DO NOTHING"
         )
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 for doc in documents:
                     values = [doc.get(col) for col in cols]
                     await conn.execute(sql, *values)
-        return [doc.get("chunk_id") for doc in documents]
+        return len(documents)
 
     async def delete_many(self, collection: str, filter: Dict[str, Any]) -> int:
         self._check_table(collection)

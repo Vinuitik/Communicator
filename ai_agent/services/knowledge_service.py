@@ -42,7 +42,6 @@ class KnowledgeService:
         cache_service: KnowledgeCacheService,
         prompt_service: SummaryPromptService,
         fact_repository: FactRepository,
-        mongo_repo=None,
         postgres_repo=None
     ):
         """Initialize the knowledge service.
@@ -55,8 +54,7 @@ class KnowledgeService:
             cache_service: Service for Redis caching
             prompt_service: Service for prompt management
             fact_repository: Repository for fact operations
-            mongo_repo: MongoDB repository (friend_summaries/fact_references)
-            postgres_repo: PostgreSQL repository (knowledge_chunks/chunk_embeddings)
+            postgres_repo: PostgreSQL repository (knowledge_chunks, via fact_repository/fact_service too)
         """
         self.agent_service = agent_service
         self.fact_service = fact_service
@@ -65,25 +63,24 @@ class KnowledgeService:
         self.cache_service = cache_service
         self.prompt_service = prompt_service
         self.fact_repository = fact_repository
-        self.mongo_repo = mongo_repo
         self.postgres_repo = postgres_repo
         
         logger.info("Initialized KnowledgeService with all dependencies")
     
     async def summarize_friend_knowledge(self, friend_id: int) -> Dict[str, Any]:
-        """Create a knowledge summary for a friend with Redis/MongoDB caching.
+        """Create a knowledge summary for a friend with Redis/PostgreSQL caching.
         
         Uses fact-based storage with validation and references.
         
         Workflow:
         1. Check Redis for friendID key
-        2. If exists, fetch facts from MongoDB
+        2. If exists, fetch facts from PostgreSQL
         3. If not exists:
            - Fetch knowledge from Friend API
            - Generate LLM summary
            - Parse into key-value facts
            - Validate each fact with FactService
-           - Store validated facts in MongoDB
+           - Store validated facts in PostgreSQL
            - Cache friendID in Redis
         
         Args:
@@ -98,7 +95,7 @@ class KnowledgeService:
             # Step 1: Check cache
             logger.info("Step 1: Checking cache...")
             if await self.cache_service.is_summary_cached(friend_id):
-                logger.info(f"Cache hit for friend_id: {friend_id}, fetching facts from MongoDB")
+                logger.info(f"Cache hit for friend_id: {friend_id}, fetching facts from PostgreSQL")
                 return await self.get_friend_facts_with_references(friend_id)
             
             logger.info(f"No cache found for friend_id: {friend_id}, generating new summary")
@@ -249,8 +246,8 @@ class KnowledgeService:
         logger.info("LAZY CHUNKING: Ensuring all knowledge items are chunked")
         logger.info("=" * 80)
         
-        if not self.mongo_repo:
-            logger.error("MongoDB repository required for lazy chunking")
+        if not self.postgres_repo:
+            logger.error("PostgreSQL repository required for lazy chunking")
             return {}, {}
         
         if not self.chunking_service:
@@ -355,9 +352,9 @@ class KnowledgeService:
         """
         logger.info(f"Fetching facts with references for friend {friend_id}")
         
-        if not self.mongo_repo:
-            raise RuntimeError("MongoDB repository required")
-        
+        if not self.postgres_repo:
+            raise RuntimeError("PostgreSQL repository required")
+
         # Fetch friend summary using FactRepository
         summary_doc = await self.fact_repository.get_friend_summary(friend_id)
         

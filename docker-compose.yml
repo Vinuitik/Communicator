@@ -171,19 +171,10 @@ services:
        - npm-cache:/root/.npm
      restart: unless-stopped
 
-  generatedData:
-    image: mongo:6.0
-    container_name: generatedData
-    ports:
-      - "27020:27017"  # Map host 27018 to container 27017 to avoid conflicts
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo_user
-      MONGO_INITDB_ROOT_PASSWORD: example
-      MONGO_INITDB_DATABASE: generated_db
-      TZ: ${HOST_TIMEZONE:-UTC}
-    volumes:
-      - generated-data:/data/db
-    restart: unless-stopped
+  # generatedData (Mongo) retired 2026-07-23 — friend_summaries, fact_references,
+  # knowledge_chunks, chunk_embeddings all moved to Postgres/ParadeDB. The
+  # `generated-data` volume is left un-mounted (not deleted) below in case it's
+  # ever needed again; the container itself is gone from this file.
 
   # Durable task queue for async/background work (backups, indexing, decay
   # triggers). Right-sized for a single-user app: real retry + dead-letter
