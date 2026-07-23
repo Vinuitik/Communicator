@@ -69,3 +69,28 @@ CREATE TABLE IF NOT EXISTS fact_references (
 
 CREATE INDEX IF NOT EXISTS idx_fact_references_friend_id
     ON fact_references (friend_id);
+
+-- LLM provider settings (2026-07-23). Singleton mode toggle (ollama = local,
+-- private, no data leaves the box; cloud = routed through host-wrapper's
+-- multi-provider fanout with failover). Read/written by both ai_agent
+-- (settings UI backend) AND host-wrapper (to know which providers are
+-- configured) — same Postgres instance, reachable from host-wrapper via
+-- localhost:5433 since it's containerized on the same compose network now.
+CREATE TABLE IF NOT EXISTS llm_settings (
+    id         INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- singleton row
+    mode       TEXT NOT NULL DEFAULT 'ollama' CHECK (mode IN ('ollama', 'cloud')),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO llm_settings (id, mode) VALUES (1, 'ollama')
+    ON CONFLICT (id) DO NOTHING;
+
+-- One row per cloud provider host-wrapper's llm_router.py knows about.
+-- encrypted_key is AES-256-GCM ciphertext (see EncryptionService in both
+-- ai_agent and host-wrapper) — NULL/absent row = provider not configured,
+-- llm_router already skips unconfigured providers on its own.
+CREATE TABLE IF NOT EXISTS llm_provider_keys (
+    provider      TEXT PRIMARY KEY,
+    encrypted_key BYTEA NOT NULL,
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);

@@ -21,6 +21,7 @@ from services.knowledge_service import KnowledgeService
 from repositories.redis_repository import RedisRepository
 from repositories.postgres_repository import PostgresRepository
 from repositories.fact_repository import FactRepository
+from repositories.llm_settings_repository import LLMSettingsRepository
 
 # Prompt service import
 from prompts.summary_prompt_service import SummaryPromptService
@@ -44,6 +45,7 @@ _prompt_service = None
 _redis_repo: RedisRepository | None = None
 _postgres_repo: PostgresRepository | None = None
 _fact_repo: FactRepository | None = None
+_llm_settings_repo: LLMSettingsRepository | None = None
 
 
 # ==================== Repository Dependencies ====================
@@ -86,6 +88,22 @@ async def get_postgres_repository() -> PostgresRepository:
         logger.debug("Returning existing PostgreSQL repository instance")
 
     return _postgres_repo
+
+
+async def get_llm_settings_repository(
+    postgres_repo: PostgresRepository = Depends(get_postgres_repository)
+) -> LLMSettingsRepository:
+    """Get shared LLMSettingsRepository instance."""
+    global _llm_settings_repo
+    logger.debug("Getting LLM settings repository instance")
+
+    if _llm_settings_repo is None:
+        logger.info("Initializing new LLM settings repository instance")
+        _llm_settings_repo = LLMSettingsRepository(postgres_repo)
+    else:
+        logger.debug("Returning existing LLM settings repository instance")
+
+    return _llm_settings_repo
 
 
 async def get_fact_repository(

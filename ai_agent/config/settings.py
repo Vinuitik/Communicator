@@ -30,6 +30,10 @@ class Settings:
         self.llm_temperature = self.config["llm"]["temperature"]
         self.llm_max_tokens = self.config["llm"]["max_tokens"]
         self.llm_timeout = self.config["llm"]["timeout"]
+        self.ollama_url = self.config["llm"].get("ollama_url", "http://ollama:11434")
+        self.ollama_chat_model = self.config["llm"].get("ollama_chat_model", "llama3.2:3b")
+        self.host_wrapper_url = self.config["llm"].get("host_wrapper_url", "http://host-wrapper:5011")
+        self.host_wrapper_timeout = self.config["llm"].get("host_wrapper_timeout", 120)
         
         # MCP settings
         self.mcp_server_url = self.config["mcp"]["server_url"]

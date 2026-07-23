@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Literal, Optional, Dict, Any, List
 from datetime import datetime
 from dataclasses import dataclass
 import numpy as np
@@ -11,6 +11,14 @@ class QueryInput(BaseModel):
 class SummarizeKnowledgeInput(BaseModel):
     """Input schema for knowledge summarization"""
     friend_id: int
+
+class LLMModeUpdate(BaseModel):
+    """Input schema for switching the LLM mode (local vs. cloud)"""
+    mode: Literal["ollama", "cloud"]
+
+class LLMProviderKeyUpdate(BaseModel):
+    """Input schema for setting a cloud provider's API key"""
+    api_key: str
 
 class ChatResponse(BaseModel):
     """Response schema for chat endpoints"""

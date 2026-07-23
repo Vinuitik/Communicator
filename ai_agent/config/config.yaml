@@ -16,6 +16,15 @@ llm:
   temperature: 0.7
   max_tokens: 2048
   timeout: 30
+  # Runtime-switchable local/cloud mode — see llm_settings table (mode toggle,
+  # default 'ollama') and llm_provider_keys (encrypted cloud provider keys).
+  # Ollama chat model pulled at container start (see docker-compose.yml).
+  ollama_url: "http://ollama:11434"
+  ollama_chat_model: "llama3.2:3b"
+  # host-wrapper: multi-provider cloud fanout with failover (gemini/github/
+  # mistral/groq/deepseek/anthropic). Used when mode='cloud'.
+  host_wrapper_url: "http://host-wrapper:5011"
+  host_wrapper_timeout: 120
 
 # Embedding Configuration
 embedding:
