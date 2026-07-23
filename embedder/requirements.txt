@@ -1,0 +1,13 @@
+# Core serving
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# ONNX inference — CPU only (see model_runtime.py: no GPU-contention story here,
+# unlike ObsidianOptimizer which shares a card with whisper/CLIP ingest models).
+onnxruntime>=1.19.0
+
+# Tokenizer + model config lookup (no torch: the model ships pre-exported ONNX).
+transformers>=4.44.0
+huggingface_hub>=0.24.0   # hf_hub_download for the pre-exported onnx/ weights
+
+numpy>=1.26.0

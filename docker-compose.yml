@@ -95,6 +95,22 @@ services:
   # (removed) mcp-knowledge-server — the MCP knowledge tools now run in-process
   # inside ai-agent as a stdio subprocess (ai_agent/knowledgeMCP/knowledgeMCP.py).
 
+  # Standalone ONNX EmbeddingGemma service (ported from ObsidianOptimizer,
+  # 2026-07-23). Replaces Ollama for embeddings once wired into ai_agent —
+  # NOT wired in yet, this stage only proves the service works in isolation.
+  embedder:
+    build:
+      context: ./embedder
+      dockerfile: Dockerfile
+    container_name: embedder
+    ports:
+      - "8010:8010"  # Exposed on host for standalone verification (curl /health, /embed)
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+    volumes:
+      - embedder-models:/models
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
@@ -217,4 +233,6 @@ volumes:
   rabbitmq-data:
     driver: local
   ollama-data:
+    driver: local
+  embedder-models:
     driver: local
