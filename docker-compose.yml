@@ -96,8 +96,8 @@ services:
   # inside ai-agent as a stdio subprocess (ai_agent/knowledgeMCP/knowledgeMCP.py).
 
   # Standalone ONNX EmbeddingGemma service (ported from ObsidianOptimizer,
-  # 2026-07-23). Replaces Ollama for embeddings once wired into ai_agent —
-  # NOT wired in yet, this stage only proves the service works in isolation.
+  # 2026-07-23). Replaces Ollama for embeddings — wired into ai_agent since
+  # the same day (ai_agent/services/embedding_service.py calls this).
   embedder:
     build:
       context: ./embedder
@@ -109,6 +109,28 @@ services:
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - embedder-models:/models
+    restart: unless-stopped
+
+  # Multi-provider LLM gateway (gemini/github/mistral/groq/deepseek/anthropic,
+  # priority-ordered failover — see host-wrapper/llm_router.py). Ported from
+  # ObsidianOptimizer 2026-07-23, containerized + wired into ai_agent the same
+  # day (was host-only at first — dropped the claude-cli provider, which
+  # needed host `claude` CLI auth, to make containerizing worth it). Keys come
+  # from Postgres (llm_provider_keys, encrypted, set via the settings UI) with
+  # this service's own .env as fallback.
+  host-wrapper:
+    build:
+      context: ./host-wrapper
+      dockerfile: Dockerfile
+    container_name: host-wrapper
+    ports:
+      - "5011:5011"  # Exposed on host for standalone verification (curl /health, /providers)
+    env_file:
+      - ./host-wrapper/.env
+    environment:
+      TZ: ${HOST_TIMEZONE:-UTC}
+    depends_on:
+      - postgres
     restart: unless-stopped
 
   ollama:
@@ -154,8 +176,9 @@ services:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1
      depends_on:
-       - postgres  # knowledge_chunks / chunk_embeddings hybrid search
-       - embedder  # ONNX EmbeddingGemma (replaces Ollama for embeddings)
+       - postgres      # knowledge_chunks / chunk_embeddings hybrid search + llm_settings
+       - embedder      # ONNX EmbeddingGemma (replaces Ollama for embeddings)
+       - host-wrapper  # cloud LLM mode (start-order only — chat still works if this is down and mode=ollama)
      restart: unless-stopped
 
   react-ui:

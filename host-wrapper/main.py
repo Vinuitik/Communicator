@@ -7,11 +7,20 @@ caller today, so only the generic LLM-routing surface was ported:
 GET /health, GET /providers, POST /complete. The full `Router` (incl. vision)
 still lives in llm_router.py if a vision use case shows up later.
 
-NOT wired into ai_agent yet — ai_agent still calls Gemini directly. This
-service exists standalone pending the chat-LLM privacy decision (self-hosted
-vs. cloud fanout for confidential friend data). See host-wrapper/PROTO.md.
+Containerized 2026-07-23 (was host-only before — see PROTO.md history) so
+ai_agent can reach it over the normal docker network. That also meant
+dropping the claude-cli provider (needed the host's `claude` CLI auth
+context, which a container doesn't have) — see llm_router.py.
+
+Provider keys come from Postgres (llm_provider_keys, encrypted — same table
+the ai_agent settings UI writes to) with host-wrapper/.env as a fallback for
+any provider not configured via the UI. Loaded once at startup; a settings
+save calls POST /admin/reload here to pick up the change without waiting for
+a restart (loses in-flight cooldown/rate-limit state on reload — acceptable,
+key changes are rare).
 """
 
+import logging
 import os
 from pathlib import Path
 
@@ -22,9 +31,15 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 from flask import Flask, request, jsonify  # noqa: E402
 
 import llm_router  # noqa: E402  (reads env at import — keep after load_dotenv)
+from encryption_service import EncryptionService  # noqa: E402
+from pg_keys import load_db_keys  # noqa: E402
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("host-wrapper")
 
 app = Flask(__name__)
-router = llm_router.Router()
+_encryption = EncryptionService()
+router = llm_router.Router(db_keys=load_db_keys(_encryption))
 
 
 @app.route("/health")
@@ -40,11 +55,10 @@ def providers():
 
 @app.route("/complete", methods=["POST"])
 def complete():
-    """Text completion through the router (free providers first, Claude CLI last).
+    """Text completion through the router (free providers first, most-limited last).
 
-    Request:  {"prompt": str, "system"?: str, "model"?: str, "priority"?: str}
+    Request:  {"prompt": str, "system"?: str, "priority"?: str}
     Response: {"text": str, "provider": str} or {"error": str}
-    The "model" field only applies when the claude-cli provider is reached.
     """
     data = request.json or {}
     prompt = data.get("prompt", "")
@@ -53,12 +67,22 @@ def complete():
 
     try:
         text, provider = router.complete_text(
-            prompt, system=data.get("system"), cli_model=data.get("model"),
+            prompt, system=data.get("system"),
             priority=data.get("priority", "medium"))
     except llm_router.RouterError as e:
         return jsonify({"error": str(e)}), 503
 
     return jsonify({"text": text, "provider": provider})
+
+
+@app.route("/admin/reload", methods=["POST"])
+def admin_reload():
+    """Rebuild the router from Postgres + env. Called by ai_agent's settings
+    endpoints after a provider key changes; safe to call anytime otherwise."""
+    global router
+    router = llm_router.Router(db_keys=load_db_keys(_encryption))
+    log.info("Router reloaded")
+    return jsonify({"status": "reloaded", "providers": router.status()})
 
 
 if __name__ == "__main__":

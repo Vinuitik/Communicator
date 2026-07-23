@@ -1,12 +1,14 @@
 """LLM router — one gateway for every model provider the app talks to.
 
-Ported verbatim from ObsidianOptimizer's host-wrapper (2026-07-23) — this file
-is domain-agnostic (no Obsidian/vault coupling), so no changes were needed.
+Ported from ObsidianOptimizer's host-wrapper (2026-07-23), then adapted:
+dropped the claude-cli provider (2026-07-23) so this service could be
+containerized — it needed the host's `claude` CLI auth context, which a
+container doesn't have. Six real API-key providers (gemini/github/mistral/
+groq/deepseek/anthropic) with the same failover chain more than cover it.
 
-Free-tier providers are tried in priority order; Claude (API key or CLI
-subscription credits) is the LAST resort so coding/subscription quota is
-never burned on bulk text/vision work while a free provider still has
-quota left.
+Free-tier providers are tried in priority order; Claude (API key) is a
+LATE resort so coding/subscription quota elsewhere isn't the concern here —
+it's just rate-limited like everything else, ordered by free-tier generosity.
 
 Concurrency model — queue sharding, not racing: each in-flight request
 leases a different provider (in_flight cap of 1), so concurrent requests
@@ -14,15 +16,14 @@ fan out across free quotas. A provider is also rate-spaced (min_interval
 between request starts, derived from its free-tier RPM) and benched on
 429/5xx with an escalating cooldown that honors Retry-After.
 
-All keys come from host-wrapper/.env — see .env.example. A provider with
-no key is simply skipped.
+Keys come from Postgres (llm_provider_keys, encrypted) with host-wrapper/.env
+as a fallback for any provider not configured via the settings UI — see
+.env.example. A provider with no key from either source is simply skipped.
 """
 
 import base64
 import json
 import os
-import shutil
-import subprocess
 import threading
 import time
 
@@ -32,7 +33,6 @@ REQUEST_TIMEOUT_S = int(os.environ.get("LLM_REQUEST_TIMEOUT_S", "120"))
 ACQUIRE_DEADLINE_S = int(os.environ.get("LLM_ACQUIRE_DEADLINE_S", "150"))
 TEXT_MAX_TOKENS = int(os.environ.get("LLM_TEXT_MAX_TOKENS", "4096"))
 VISION_MAX_TOKENS = int(os.environ.get("LLM_VISION_MAX_TOKENS", "1024"))
-CLI_TIMEOUT_S = int(os.environ.get("CLI_TIMEOUT_S", "180"))
 
 
 def _parse_batch_limits():
@@ -93,7 +93,7 @@ class Provider:
 
     @property
     def configured(self):
-        return self.kind == "cli" or bool(self.key)
+        return bool(self.key)
 
     def supports(self, capability):
         model = self.vision_model if capability == "vision" else self.text_model
@@ -120,26 +120,36 @@ def _env(name, default=""):
     return os.environ.get(name, default).strip()
 
 
-def _build_providers():
-    """Free tiers first. min_interval ≈ 60 / free-tier RPM."""
+def _build_providers(db_keys=None):
+    """Free tiers first. min_interval ≈ 60 / free-tier RPM.
+
+    db_keys (from Postgres, via pg_keys.load_db_keys — set through the ai_agent
+    settings UI) takes precedence over the matching .env var per provider; a
+    provider with neither is simply unconfigured and gets skipped.
+    """
+    db_keys = db_keys or {}
+
+    def key(provider, env_name):
+        return db_keys.get(provider) or _env(env_name)
+
     return {p.name: p for p in [
-        Provider("gemini", "openai", _env("GEMINI_API_KEY"),
+        Provider("gemini", "openai", key("gemini", "GEMINI_API_KEY"),
                  url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
                  text_model=_env("GEMINI_MODEL", "gemini-2.5-flash"),
                  vision_model=_env("GEMINI_MODEL", "gemini-2.5-flash"),
                  min_interval=4.0),    # 15 RPM free tier
         Provider("github", "openai",
-                 _env("GITHUB_MODELS_TOKEN") or _env("GITHUB_TOKEN"),
+                 key("github", "GITHUB_MODELS_TOKEN") or _env("GITHUB_TOKEN"),
                  url="https://models.github.ai/inference/chat/completions",
                  text_model=_env("GITHUB_MODELS_MODEL", "openai/gpt-4o-mini"),
                  vision_model=_env("GITHUB_MODELS_MODEL", "openai/gpt-4o-mini"),
                  min_interval=4.0),    # ~15 RPM free tier
-        Provider("mistral", "openai", _env("MISTRAL_API_KEY"),
+        Provider("mistral", "openai", key("mistral", "MISTRAL_API_KEY"),
                  url="https://api.mistral.ai/v1/chat/completions",
                  text_model=_env("MISTRAL_MODEL", "mistral-small-latest"),
                  vision_model=_env("MISTRAL_MODEL", "mistral-small-latest"),
                  min_interval=1.5),    # 1 RPS free tier
-        Provider("groq", "openai", _env("GROQ_API_KEY"),
+        Provider("groq", "openai", key("groq", "GROQ_API_KEY"),
                  url="https://api.groq.com/openai/v1/chat/completions",
                  text_model=_env("GROQ_TEXT_MODEL", "llama-3.3-70b-versatile"),
                  # Groq retired every vision-capable Llama model — no default here
@@ -147,19 +157,15 @@ def _build_providers():
                  # GROQ_VISION_MODEL in .env if Groq ships a vision model again.
                  vision_model=_env("GROQ_VISION_MODEL") or None,
                  min_interval=2.0),    # 30 RPM free tier
-        Provider("deepseek", "openai", _env("DEEPSEEK_API_KEY"),
+        Provider("deepseek", "openai", key("deepseek", "DEEPSEEK_API_KEY"),
                  url="https://api.deepseek.com/chat/completions",
                  text_model=_env("DEEPSEEK_MODEL", "deepseek-chat"),
                  vision_model=None,    # no vision endpoint
                  min_interval=1.0),    # paid (cheap) — no hard free limit
-        Provider("anthropic", "anthropic", _env("ANTHROPIC_API_KEY"),
+        Provider("anthropic", "anthropic", key("anthropic", "ANTHROPIC_API_KEY"),
                  text_model=_env("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
                  vision_model=_env("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001"),
                  min_interval=1.5),
-        Provider("claude-cli", "cli", None,
-                 text_model=_env("SYNTH_MODEL", "haiku"),
-                 vision_model=None,
-                 min_interval=1.0),
     ]}
 
 
@@ -173,14 +179,14 @@ def _priority(env_name, default):
 VISION_PRIORITY = _priority("LLM_VISION_PRIORITY",
                             "gemini,github,mistral,anthropic")
 # Text: Gemini deliberately LATE — its daily quota is reserved for image/bulk
-# work elsewhere. Claude CLI (subscription credits) dead last.
+# work elsewhere.
 TEXT_PRIORITY = _priority("LLM_TEXT_PRIORITY",
-                          "groq,github,mistral,deepseek,gemini,claude-cli")
+                          "groq,github,mistral,deepseek,gemini")
 
 
 class Router:
-    def __init__(self):
-        self.providers = _build_providers()
+    def __init__(self, db_keys=None):
+        self.providers = _build_providers(db_keys)
         self._lock = threading.Lock()
         self._cv = threading.Condition(self._lock)
         # Priority levels of requests currently BLOCKED in _acquire (a multiset).
@@ -257,9 +263,9 @@ class Router:
 
     # ── public API ───────────────────────────────────────────────────────
 
-    def complete_text(self, prompt, system=None, cli_model=None, priority=DEFAULT_PRIORITY):
+    def complete_text(self, prompt, system=None, priority=DEFAULT_PRIORITY):
         """Returns (text, provider_name). Raises RouterError when exhausted."""
-        return self._run("text", lambda p: self._call_text(p, prompt, system, cli_model),
+        return self._run("text", lambda p: self._call_text(p, prompt, system),
                          priority=priority)
 
     def complete_vision(self, prompt, image_bytes, media_type, priority=DEFAULT_PRIORITY):
@@ -309,9 +315,7 @@ class Router:
 
     # ── per-kind calls ───────────────────────────────────────────────────
 
-    def _call_text(self, p, prompt, system, cli_model):
-        if p.kind == "cli":
-            return _claude_cli(prompt, system, cli_model or p.text_model)
+    def _call_text(self, p, prompt, system):
         if p.kind == "anthropic":
             return _anthropic_messages(p, [{"role": "user", "content": prompt}],
                                        system=system, max_tokens=TEXT_MAX_TOKENS)
@@ -431,18 +435,3 @@ def _anthropic_messages(p, messages, system=None, max_tokens=1024):
     except anthropic.RateLimitError:
         raise _RateLimited(None)
     return message.content[0].text
-
-
-def _claude_cli(prompt, system, model):
-    claude_bin = shutil.which("claude") or "claude"
-    cmd = [claude_bin, "-p", "--output-format", "json", "--model", model]
-    if system:
-        cmd += ["--append-system-prompt", system]
-    result = subprocess.run(cmd, input=prompt, capture_output=True, text=True,
-                            encoding="utf-8", timeout=CLI_TIMEOUT_S)
-    if result.returncode != 0:
-        raise RuntimeError(f"claude CLI exit {result.returncode}: {result.stderr[:500]}")
-    try:
-        return json.loads(result.stdout).get("result", "")
-    except json.JSONDecodeError:
-        return result.stdout.strip()
