@@ -6,7 +6,7 @@ Files: nginx/nginx.conf, nginx/Dockerfile, docker-compose.yml, .env (`HOST_TIMEZ
 
 ## Role
 
-Single ingress. **The only host-exposed app port is `8090:80`** (nginx). Everything else is `expose`d on the internal docker network only — no other service is reachable from the host except infra debug ports (Postgres 5433, Redis 6379, Mongo 27020, Kafka 9095, Kafka-UI 8089, Ollama 11434). nginx does two jobs at once:
+Single ingress. **The only host-exposed app port is `8090:80`** (nginx). Everything else is `expose`d on the internal docker network only — no other service is reachable from the host except infra debug ports (Postgres 5433, Redis 6379, Embedder 8010, Kafka 9095, Kafka-UI 8089, Ollama 11434 — unused since 2026-07-23). nginx does two jobs at once:
 
 1. **Reverse proxy** `/api/*` → backend services (prefix stripped).
 2. **Static web server** for the **legacy multi-page UI** baked into the image (`static/` → `/usr/share/nginx/html`), *and* a proxy to the **React SPA** at `/app/`. Two frontends coexist (see Gotchas).
@@ -65,23 +65,25 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 
 ## Compose orchestration map
 
-**App services:** friend, group, connections, chrono, backup (all Spring/Java 21) · fileRepository (Flask) · ai-agent + mcp-knowledge-server (Python) · react-ui (React build → nginx) · nginx (ingress).
+**App services:** friend, group, connections, chrono, backup (all Spring/Java 21) · fileRepository (Flask) · ai-agent + mcp-knowledge-server + embedder (Python) · react-ui (React build → nginx) · nginx (ingress).
 
 **Infra:**
 | Service | Image | Purpose | Host port |
 |---|---|---|---|
-| postgres | `pgvector/pgvector:pg17` | primary DB `my_database` (+pgvector ext) | 5433→5432 |
+| postgres | `paradedb/paradedb:0.24.3-pg17` | primary DB `my_database` (+pgvector, +pg_search BM25 exts) — shared by the JVM apps AND ai_agent's RAG data (chunks/embeddings/facts/references) since 2026-07-23 | 5433→5432 |
 | redis | `redis:7-alpine` | cache (appendonly persist) | 6379 |
-| generatedData | `mongo:6.0` | AI-generated knowledge store (`generated_db`) | 27020→27017 |
+| embedder | built from `embedder/Dockerfile` | ONNX EmbeddingGemma embeddings (768-dim), replaces Ollama for this — see [embedder/PROTO.md](../embedder/PROTO.md) | 8010 |
 | kafka | `cp-kafka:7.6.0` (KRaft, no ZK) | event bus, 7-day retention, auto-create topics | 9095/9096 |
 | kafka-ui | provectuslabs | topic inspection | 8089→8080 |
-| ollama | `ollama/ollama` | self-hosted embeddings, pulls `all-minilm-l6-v2` on boot | 11434 |
+| ollama | `ollama/ollama` | still runs, **unused** since the embedder swap (2026-07-23) — a privacy-motivated decision about using it for chat/summarize is a separate, not-yet-had conversation | 11434 |
 
-**depends_on chains:** nginx depends on friend/group/connections/mcp/ai-agent/react-ui · chrono depends on **friend + nginx** (it calls them) · ai-agent depends on **mcp-knowledge-server + ollama** · backup depends on postgres + fileRepository.
+**generatedData (Mongo) retired 2026-07-23** — removed from compose entirely (all 4 collections it held moved to Postgres, confirmed empty before the migration ran). Its `generated-data` volume is declared-but-unmounted in `docker-compose.yml`, not deleted.
 
-**Shared DB:** friend, group, connections all use the SAME `SPRING_DATASOURCE_URL=jdbc:postgresql://postgresDB:5432/my_database`, user `myapp_user` / pass `example`. Hibernate `ddl-auto` auto-generates tables into one schema (see Gotchas).
+**depends_on chains:** nginx depends on friend/group/connections/mcp/ai-agent/react-ui · chrono depends on **friend + nginx** (it calls them) · ai-agent depends on **mcp-knowledge-server + postgres + embedder** · backup depends on postgres + fileRepository.
 
-**Named volumes:** `postgres-data`, `redis-data`, `kafka-data`, `generated-data`, `ollama-data`, per-media `file-repo-*` (photos/videos/voice/personal/groups/connections), per-service maven caches, `npm-cache`.
+**Shared DB:** friend, group, connections all use the SAME `SPRING_DATASOURCE_URL=jdbc:postgresql://postgresDB:5432/my_database`, user `myapp_user` / pass `example`. Hibernate `ddl-auto` auto-generates tables into one schema (see Gotchas). ai_agent shares this same database/instance too now (`databases.postgres.dsn` in its own `config.yaml`) — its tables are applied idempotently at its own startup via `ai_agent/db/schema.sql`, not through Hibernate.
+
+**Named volumes:** `postgres-data`, `redis-data`, `kafka-data`, `generated-data` (unmounted), `ollama-data`, `embedder-models`, per-media `file-repo-*` (photos/videos/voice/personal/groups/connections), per-service maven caches, `npm-cache`.
 
 ---
 
@@ -121,5 +123,5 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 | DB credentials/URL (all Spring services) | `docker-compose.yml` `SPRING_DATASOURCE_*` |
 | AI agent secrets/model | `ai_agent/.env` |
 | Kafka retention / partitions | `docker-compose.yml` kafka `KAFKA_LOG_RETENTION_HOURS`, `KAFKA_NUM_PARTITIONS` |
-| Embedding model pulled on boot | `docker-compose.yml` ollama `command` (`all-minilm-l6-v2`) |
+| Embedding model | `embedder` service env vars (`EMBED_MODEL` etc.) — see [embedder/PROTO.md](../embedder/PROTO.md) |
 | Which services block nginx start | `docker-compose.yml` nginx `depends_on` |

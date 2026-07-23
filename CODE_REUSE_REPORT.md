@@ -70,11 +70,9 @@ The friend API is consumed by three hand-rolled clients with **no shared contrac
 
 ---
 
-## 6. Three overlapping vector/embedding systems  `[low–medium, architectural]`
+## 6. ~~Three overlapping vector/embedding systems~~ RESOLVED (2026-07-23)  `[low–medium, architectural]`
 
-The stack runs **pgvector** (Postgres image, for the Spring side), **FAISS** (ai_agent `SearchService`), and **Ollama embeddings + Mongo chunk storage** (ai_agent) — three ways to do similarity search. Evidence: [ai_agent proto §Gotchas](ai_agent/PROTO.md).
-
-**Consolidation:** decide the system of record for vectors. Since Postgres already has **pgvector**, the ai_agent could store chunk embeddings there instead of FAISS+Mongo, collapsing two stores into one and giving the Spring services access to the same index. Bigger project — flag, don't rush.
+Used to run **pgvector** (Postgres image, provisioned but unused by the Spring side), **FAISS** (ai_agent `SearchService`, in-RAM), and **Ollama embeddings + Mongo chunk storage** (ai_agent) — three ways to do similarity search, none of them actually shared. Consolidated: Postgres image swapped to **ParadeDB** (adds `pg_search` BM25 alongside pgvector), ai_agent's chunks/embeddings moved into that same instance, FAISS removed entirely, embeddings now come from a standalone ONNX EmbeddingGemma service instead of Ollama, search is hybrid pgvector + BM25 fused via RRF. One store, one index, Spring services *could* now query the same vectors if a use case for that ever appears. Evidence: [ai_agent proto §Gotchas](ai_agent/PROTO.md), [embedder proto](embedder/PROTO.md), [knowledge-rag flow](flows/knowledge-rag.md).
 
 ---
 
