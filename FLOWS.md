@@ -44,6 +44,7 @@ Read a **flow** to understand "what happens when the user does X." Drop into a *
 | **knowledgeMCP** (MCP tools) | [ai_agent/knowledgeMCP/PROTO.md](ai_agent/knowledgeMCP/PROTO.md) | live (now nested under ai_agent/) |
 | **data-extraction** | [data-extraction/PROTO.md](data-extraction/PROTO.md) | `[PROTOTYPE]` — not in compose |
 | **react** (SPA) | [react/src/PROTO.md](react/src/PROTO.md) | `[SCAFFOLD]` — API stubbed; legacy MPA is the live UI |
+| **host-wrapper** (multi-provider LLM gateway) | [host-wrapper/PROTO.md](host-wrapper/PROTO.md) | ported, verified working, `[NOT INTEGRATED]` — nothing calls it yet, pending chat-LLM privacy decision |
 
 **Two frontends:** the live UI today is the **legacy vanilla-JS MPA** baked into `nginx/static/` (served directly); the React SPA at `/app/` is an unfinished replacement. See the [nginx proto §Two frontends](nginx/PROTO.md).
 

@@ -36,6 +36,7 @@ ai_agent/service-account-key.json
 # Cache directories
 .cache/
 **/__pycache__/
+**/.venv/
 **/*.pyc
 **/*.pyo
 **/*.pyd
