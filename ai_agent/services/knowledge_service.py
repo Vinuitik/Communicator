@@ -42,10 +42,11 @@ class KnowledgeService:
         cache_service: KnowledgeCacheService,
         prompt_service: SummaryPromptService,
         fact_repository: FactRepository,
-        mongo_repo=None
+        mongo_repo=None,
+        postgres_repo=None
     ):
         """Initialize the knowledge service.
-        
+
         Args:
             agent_service: Service for LLM interactions
             fact_service: Service for fact validation and references
@@ -54,7 +55,8 @@ class KnowledgeService:
             cache_service: Service for Redis caching
             prompt_service: Service for prompt management
             fact_repository: Repository for fact operations
-            mongo_repo: MongoDB repository
+            mongo_repo: MongoDB repository (friend_summaries/fact_references)
+            postgres_repo: PostgreSQL repository (knowledge_chunks/chunk_embeddings)
         """
         self.agent_service = agent_service
         self.fact_service = fact_service
@@ -64,6 +66,7 @@ class KnowledgeService:
         self.prompt_service = prompt_service
         self.fact_repository = fact_repository
         self.mongo_repo = mongo_repo
+        self.postgres_repo = postgres_repo
         
         logger.info("Initialized KnowledgeService with all dependencies")
     
@@ -134,7 +137,7 @@ class KnowledgeService:
                     logger.info("Step 2.6: Ensuring embeddings exist for all chunks...")
                     all_chunk_ids = []
                     for knowledge_id in chunk_stats.keys():
-                        chunks = await self.mongo_repo.find_many(
+                        chunks = await self.postgres_repo.find_many(
                             "knowledge_chunks",
                             {"knowledge_id": knowledge_id}
                         )
@@ -279,7 +282,7 @@ class KnowledgeService:
                 logger.warning(f"  ❌ Failed to fetch text for knowledge {knowledge_id}")
             
             # Check if chunks exist for this knowledge item
-            existing_chunks = await self.mongo_repo.find_many(
+            existing_chunks = await self.postgres_repo.find_many(
                 "knowledge_chunks",
                 {"knowledge_id": knowledge_id}
             )
@@ -381,32 +384,20 @@ class KnowledgeService:
             for ref in references:
                 chunk_id = ref.get("chunk_id")
                 knowledge_id = ref.get("knowledge_id")
-                
-                # Fetch chunk metadata
-                chunk_doc = await self.mongo_repo.find_one(
+
+                # Fetch chunk metadata — chunk_text lives directly on the row now
+                # (persisted for BM25 indexing), no need to re-fetch the full
+                # knowledge text from the JVM and reconstruct via char offsets.
+                chunk_doc = await self.postgres_repo.find_one(
                     "knowledge_chunks",
                     {"chunk_id": chunk_id}
                 )
-                
+
                 if not chunk_doc:
                     logger.warning(f"Chunk {chunk_id} not found")
                     continue
-                
-                # Fetch full knowledge text using FriendApiService
-                full_text = await self.friend_api_service.fetch_knowledge_text(knowledge_id)
-                
-                if full_text and self.chunking_service:
-                    # Reconstruct chunk text from positions
-                    try:
-                        chunk_text = await self.chunking_service.get_chunk_text(
-                            chunk_id, 
-                            full_text
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to reconstruct chunk text: {e}")
-                        chunk_text = "[Text unavailable]"
-                else:
-                    chunk_text = "[Full knowledge text not available]"
+
+                chunk_text = chunk_doc["chunk_text"]
                 
                 enriched_references.append({
                     "chunk_id": chunk_id,

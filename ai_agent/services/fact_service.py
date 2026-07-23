@@ -36,22 +36,25 @@ class FactService:
         validation_service: FactValidationService,
         friend_api_service: FriendApiService,
         fact_repository: FactRepository,
-        mongo_repo=None
+        mongo_repo=None,
+        postgres_repo=None
     ):
         """Initialize the fact service.
-        
+
         Args:
             search_service: Service for finding relevant chunks
             validation_service: Service for AI validation
             friend_api_service: Service for Friend API calls
             fact_repository: Repository for fact operations
-            mongo_repo: MongoDB repository for reference operations
+            mongo_repo: MongoDB repository (fact_references)
+            postgres_repo: PostgreSQL repository (knowledge_chunks)
         """
         self.search_service = search_service
         self.validation_service = validation_service
         self.friend_api_service = friend_api_service
         self.fact_repository = fact_repository
         self.mongo_repo = mongo_repo
+        self.postgres_repo = postgres_repo
         
         # Load configuration
         self.max_references_per_fact = settings.max_references_per_fact
@@ -92,10 +95,10 @@ class FactService:
         logger.info(f"Fact Key: '{fact_key}'")
         logger.info(f"Fact Value: '{fact_value}'")
         
-        if not self.mongo_repo:
-            logger.error("MongoDB repository required")
+        if not self.mongo_repo or not self.postgres_repo:
+            logger.error("MongoDB and PostgreSQL repositories required")
             return None
-        
+
         # Step 1: Search for relevant chunks
         query = f"{fact_key} is {fact_value}"
         logger.info(f"Step 1: Searching for chunks with query: '{query}'")
@@ -120,9 +123,9 @@ class FactService:
         logger.info(f"Found {len(search_results)} relevant chunks")
         
         # Step 2: Get chunk metadata to extract knowledge IDs
-        logger.info(f"Step 2: Fetching chunk metadata from MongoDB...")
+        logger.info(f"Step 2: Fetching chunk metadata from PostgreSQL...")
         chunk_ids = [chunk_id for chunk_id, _ in search_results]
-        chunks = await self.mongo_repo.find_many(
+        chunks = await self.postgres_repo.find_many(
             "knowledge_chunks",
             {"chunk_id": {"$in": chunk_ids}}
         )

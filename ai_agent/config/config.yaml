@@ -19,13 +19,12 @@ llm:
 
 # Embedding Configuration
 embedding:
-  # Using Ollama for local self-hosted embeddings (no API keys, no rate limits)
-  provider: "ollama"
-  model: "koill/sentence-transformers:all-minilm-l6-v2"  # Ollama-optimized MiniLM L6 v2, 384 dimensions, ~91 MB
-  # Alternative models (if you want to try others in Ollama):
-  # "sentence-transformers/all-mpnet-base-v2"  # Better quality, 768 dimensions, slower
-  # "BAAI/bge-small-en-v1.5"  # Good balance, 384 dimensions
-  ollama_url: "http://ollama:11434"  # Ollama service URL (from docker-compose)
+  # Standalone ONNX EmbeddingGemma service (ai_agent/../embedder), replaces Ollama.
+  # 768 dimensions, prompt-asymmetric (embedder handles the doc/query prefix split
+  # internally based on the `kind` param EmbeddingService sends).
+  provider: "local_onnx"
+  model: "onnx-community/embeddinggemma-300m-ONNX"
+  embedder_url: "http://embedder:8010"  # Embedder service URL (from docker-compose)
   timeout: 30
   max_retries: 3
   batch_size: 32  # Process up to 32 texts in one batch
@@ -62,6 +61,12 @@ databases:
     connection_timeout: 5
     retry_on_timeout: true
     max_connections: 20
+
+  # PostgreSQL/ParadeDB Configuration (from docker-compose: postgres service).
+  # Backs knowledge_chunks + chunk_embeddings (hybrid vector+BM25 search) —
+  # separate from the JVM app's own datasource, same database/instance.
+  postgres:
+    dsn: "postgresql://myapp_user:example@postgresDB:5432/my_database"
 
 # Cache Configuration
 cache:
@@ -118,11 +123,15 @@ chunking:
   min_chunk_size_words: 60  # Don't chunk if text is smaller than this
   chunking_mode: "eager"  # "eager" = process on create/update, "lazy" = process on first use
 
-# Search Configuration (for new SearchService)
+# Search Configuration (hybrid pgvector + pg_search BM25, fused via RRF)
 search:
-  top_k_chunks: 5  # Number of top similar chunks to return per query
-  faiss_index_type: "IndexFlatL2"  # Exact search for small-medium datasets
-  min_relevance_threshold: 0.0  # Minimum cosine similarity score to consider relevant
+  top_k_chunks: 5  # Number of top fused results to return per query
+  candidates_per_side: 20  # Top-N pulled from each of vector/BM25 before fusion
+  rrf_k: 60  # RRF constant: score = sum(1 / (rrf_k + rank)) across both rankings
+  # NOTE: with RRF fusion this is on a ~0-0.033 scale, not cosine similarity
+  # (two rankings, each contributing at most 1/(rrf_k+1) ≈ 0.0164). Was a
+  # no-op at 0.0 under the old FAISS/cosine scoring too; stays a no-op here.
+  min_relevance_threshold: 0.0
 
 # Referencing/Validation Configuration (for new ReferencingService)
 referencing:

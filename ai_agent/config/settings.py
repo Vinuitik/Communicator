@@ -50,6 +50,8 @@ class Settings:
         self.redis_connection_timeout = self.config["databases"]["redis"]["connection_timeout"]
         self.redis_retry_on_timeout = self.config["databases"]["redis"]["retry_on_timeout"]
         self.redis_max_connections = self.config["databases"]["redis"]["max_connections"]
+
+        self.postgres_dsn = self.config["databases"]["postgres"]["dsn"]
         
         # Cache settings
         self.cache_default_ttl = self.config["cache"]["default_ttl"]
@@ -74,9 +76,10 @@ class Settings:
         self.min_chunk_size_words = self.config["chunking"]["min_chunk_size_words"]
         self.chunking_mode = self.config["chunking"]["chunking_mode"]
         
-        # Search settings
+        # Search settings (hybrid pgvector + pg_search BM25, fused via RRF)
         self.top_k_chunks = self.config["search"]["top_k_chunks"]
-        self.faiss_index_type = self.config["search"]["faiss_index_type"]
+        self.search_candidates_per_side = self.config["search"]["candidates_per_side"]
+        self.search_rrf_k = self.config["search"]["rrf_k"]
         self.min_relevance_threshold = self.config["search"]["min_relevance_threshold"]
         
         # Referencing/validation settings
@@ -96,7 +99,7 @@ class Settings:
         self.embedding_batch_size = self.config["embedding"]["batch_size"]
         self.embedding_cache_enabled = self.config["embedding"]["cache_embeddings"]
         self.embedding_cache_ttl = self.config["embedding"]["embedding_cache_ttl"]
-        self.embedding_ollama_url = self.config["embedding"].get("ollama_url", "http://ollama:11434")
+        self.embedder_url = self.config["embedding"].get("embedder_url", "http://embedder:8010")
 
         # Validate required settings
         if not self.gemini_api_key:
@@ -159,7 +162,7 @@ class Settings:
             "batch_size": self.embedding_batch_size,
             "cache_embeddings": self.embedding_cache_enabled,
             "embedding_cache_ttl": self.embedding_cache_ttl,
-            "ollama_url": self.embedding_ollama_url
+            "embedder_url": self.embedder_url
         }
 
 # Create global settings instance

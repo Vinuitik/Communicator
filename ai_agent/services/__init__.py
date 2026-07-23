@@ -2,10 +2,10 @@
 
 This module provides various services for the AI Agent application:
 - AgentService: LLM operations and response generation
-- EmbeddingService: Text embedding using HuggingFace API
+- EmbeddingService: Text embedding via the local ONNX EmbeddingGemma service
 - KnowledgeService: Knowledge summarization and management
 - ChunkingService: Knowledge text chunking and embedding
-- SearchService: Vector similarity search using FAISS
+- SearchService: Hybrid vector (pgvector) + BM25 (pg_search) search, RRF-fused
 - FactService: Fact validation and reference management (replaces ReferencingService)
 - FriendApiService: HTTP client for Friend service API
 - KnowledgeCacheService: Redis caching for knowledge summaries

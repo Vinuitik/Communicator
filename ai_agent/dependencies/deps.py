@@ -20,6 +20,7 @@ from services.knowledge_service import KnowledgeService
 # Repository imports
 from repositories.redis_repository import RedisRepository
 from repositories.mongo_repository import MongoRepository
+from repositories.postgres_repository import PostgresRepository
 from repositories.fact_repository import FactRepository
 
 # Prompt service import
@@ -43,6 +44,7 @@ _prompt_service = None
 # Repository instances
 _redis_repo: RedisRepository | None = None
 _mongo_repo: MongoRepository | None = None
+_postgres_repo: PostgresRepository | None = None
 _fact_repo: FactRepository | None = None
 
 
@@ -86,6 +88,26 @@ async def get_mongo_repository() -> MongoRepository:
         logger.debug("Returning existing MongoDB repository instance")
     
     return _mongo_repo
+
+
+async def get_postgres_repository() -> PostgresRepository:
+    """Get shared PostgresRepository instance (backs knowledge_chunks/chunk_embeddings)."""
+    global _postgres_repo
+    logger.debug("Getting PostgreSQL repository instance")
+
+    if _postgres_repo is None:
+        try:
+            logger.info("Initializing new PostgreSQL repository instance")
+            _postgres_repo = PostgresRepository()
+            await _postgres_repo.initialize()
+            logger.info("PostgreSQL repository initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize PostgreSQL repository: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("Returning existing PostgreSQL repository instance")
+
+    return _postgres_repo
 
 
 async def get_fact_repository(
@@ -234,16 +256,16 @@ async def get_fact_validation_service(
 
 async def get_chunking_service(
     embedding_service: EmbeddingService = Depends(get_embedding_service),
-    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+    postgres_repo: PostgresRepository = Depends(get_postgres_repository)
 ) -> ChunkingService:
     """Get ChunkingService instance."""
     global _chunking_service
     logger.debug("Getting chunking service instance")
-    
+
     if _chunking_service is None:
         try:
             logger.info("Initializing new chunking service instance")
-            _chunking_service = ChunkingService(embedding_service, mongo_repo)
+            _chunking_service = ChunkingService(embedding_service, postgres_repo)
             logger.info("Chunking service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize chunking service: {e}", exc_info=True)
@@ -257,16 +279,16 @@ async def get_chunking_service(
 async def get_search_service(
     embedding_service: EmbeddingService = Depends(get_embedding_service),
     friend_api_service: FriendApiService = Depends(get_friend_api_service),
-    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+    postgres_repo: PostgresRepository = Depends(get_postgres_repository)
 ) -> SearchService:
     """Get SearchService instance."""
     global _search_service
     logger.debug("Getting search service instance")
-    
+
     if _search_service is None:
         try:
             logger.info("Initializing new search service instance")
-            _search_service = SearchService(embedding_service, friend_api_service, mongo_repo)
+            _search_service = SearchService(embedding_service, friend_api_service, postgres_repo)
             logger.info("Search service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize search service: {e}", exc_info=True)
@@ -284,12 +306,13 @@ async def get_fact_service(
     validation_service: FactValidationService = Depends(get_fact_validation_service),
     friend_api_service: FriendApiService = Depends(get_friend_api_service),
     fact_repository: FactRepository = Depends(get_fact_repository),
-    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+    mongo_repo: MongoRepository = Depends(get_mongo_repository),
+    postgres_repo: PostgresRepository = Depends(get_postgres_repository)
 ) -> FactService:
     """Get FactService instance."""
     global _fact_service
     logger.debug("Getting fact service instance")
-    
+
     if _fact_service is None:
         try:
             logger.info("Initializing new fact service instance")
@@ -298,7 +321,8 @@ async def get_fact_service(
                 validation_service,
                 friend_api_service,
                 fact_repository,
-                mongo_repo
+                mongo_repo,
+                postgres_repo
             )
             logger.info("Fact service initialized successfully")
         except Exception as e:
@@ -318,7 +342,8 @@ async def get_knowledge_service(
     cache_service: KnowledgeCacheService = Depends(get_knowledge_cache_service),
     prompt_service: SummaryPromptService = Depends(get_prompt_service),
     fact_repository: FactRepository = Depends(get_fact_repository),
-    mongo_repo: MongoRepository = Depends(get_mongo_repository)
+    mongo_repo: MongoRepository = Depends(get_mongo_repository),
+    postgres_repo: PostgresRepository = Depends(get_postgres_repository)
 ) -> KnowledgeService:
     """Get KnowledgeService instance with all dependencies."""
     global _knowledge_service
@@ -327,7 +352,7 @@ async def get_knowledge_service(
         f"Dependencies - agent: {agent_service}, fact: {fact_service}, "
         f"chunking: {chunking_service}, cache: {cache_service}"
     )
-    
+
     if _knowledge_service is None:
         try:
             logger.info("Initializing new knowledge service instance")
@@ -339,7 +364,8 @@ async def get_knowledge_service(
                 cache_service=cache_service,
                 prompt_service=prompt_service,
                 fact_repository=fact_repository,
-                mongo_repo=mongo_repo
+                mongo_repo=mongo_repo,
+                postgres_repo=postgres_repo
             )
             logger.info("Knowledge service initialized successfully")
         except Exception as e:

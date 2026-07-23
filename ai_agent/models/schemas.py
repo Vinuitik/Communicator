@@ -50,10 +50,17 @@ class MCPKnowledgeDTO(BaseModel):
     importance: int
 
 class ChunkDocument(BaseModel):
-    """Schema for chunk document stored in MongoDB - contains only metadata, no text"""
+    """Schema for chunk document stored in Postgres (knowledge_chunks table).
+
+    chunk_text is persisted here (unlike the old Mongo-only version, which
+    reconstructed it on demand from char_start/char_end against the JVM's
+    full knowledge text) because pg_search's BM25 index needs real text in
+    a real column.
+    """
     chunk_id: str
     knowledge_id: int  # Single FK - 1:1 relationship with knowledge
     chunk_index: int  # Position in original text (0, 1, 2...)
+    chunk_text: str  # The chunk's actual text, for BM25 indexing
     word_count: int
     char_start: int  # Start position in original knowledge text
     char_end: int  # End position in original knowledge text

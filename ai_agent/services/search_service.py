@@ -1,13 +1,17 @@
-"""Search service for vector similarity search using FAISS.
+"""Search service for hybrid vector + full-text search over chunk embeddings.
 
-This service manages in-memory FAISS indexes for fast vector search over chunk embeddings.
-It loads embeddings from MongoDB, builds FAISS indexes, and performs similarity searches
-to find relevant chunks for fact queries.
+Replaces the old FAISS-in-RAM implementation. Chunks and their embeddings now
+live directly in Postgres/ParadeDB (knowledge_chunks + chunk_embeddings), so
+there's no in-memory index to build or manage — every search runs two ranked
+queries against Postgres (pgvector cosine distance, pg_search BM25 relevance)
+scoped to a friend's knowledge_ids, and fuses them with Reciprocal Rank Fusion
+(RRF): score = sum(1 / (rrf_k + rank)) across whichever ranking(s) a chunk
+appears in. RRF needs no score normalization between the two very different
+scales (cosine distance vs. BM25 relevance), which is why it's used instead of
+a weighted blend of raw scores.
 """
-from typing import List, Dict, Tuple, Optional
+from typing import List, Tuple, Optional
 import logging
-import numpy as np
-import faiss
 
 from config.settings import settings
 from .embedding_service import EmbeddingService
@@ -17,283 +21,127 @@ logger = logging.getLogger(__name__)
 
 
 class SearchService:
-    """Service for vector similarity search using FAISS.
-    
+    """Service for hybrid vector + BM25 similarity search over chunks.
+
     Features:
-    - Builds FAISS indexes from persisted chunk embeddings
-    - Supports per-friend index isolation
-    - Uses IndexFlatL2 for exact search (100% accuracy)
-    - Converts L2 distances to cosine similarity scores
-    - Thread-safe index operations
+    - pgvector `<=>` cosine distance for semantic similarity
+    - pg_search `@@@` BM25 for lexical relevance
+    - Reciprocal Rank Fusion to combine both rankings
+    - Scoped per-friend via knowledge_id membership (no per-friend index to
+      build/clear/rebuild — that was a FAISS-in-RAM artifact, gone now)
     """
 
     def __init__(
-        self, 
-        embedding_service: EmbeddingService, 
+        self,
+        embedding_service: EmbeddingService,
         friend_api_service: FriendApiService,
-        mongo_repo=None
+        postgres_repo=None
     ):
         """Initialize the search service.
-        
+
         Args:
             embedding_service: Service for embedding queries
             friend_api_service: Service for Friend API calls
-            mongo_repo: MongoDB repository for loading embeddings
+            postgres_repo: PostgresRepository instance (uses its .pool)
         """
         self.embedding_service = embedding_service
         self.friend_api_service = friend_api_service
-        self.mongo_repo = mongo_repo
-        
+        self.postgres_repo = postgres_repo
+
         # Load configuration
         self.top_k = settings.top_k_chunks
-        self.index_type = settings.faiss_index_type
+        self.candidates_per_side = settings.search_candidates_per_side
+        self.rrf_k = settings.search_rrf_k
         self.min_relevance_threshold = settings.min_relevance_threshold
-        
-        # In-memory index cache: {friend_id: (index, chunk_id_mapping)}
-        self.indexes: Dict[int, Tuple[faiss.Index, List[str]]] = {}
-        
+
         logger.info(
             f"Initialized SearchService - "
-            f"top_k={self.top_k}, "
-            f"index_type={self.index_type}, "
-            f"threshold={self.min_relevance_threshold}"
+            f"top_k={self.top_k}, candidates_per_side={self.candidates_per_side}, "
+            f"rrf_k={self.rrf_k}, threshold={self.min_relevance_threshold}"
         )
-
-    async def build_index_for_friend(self, friend_id: int) -> bool:
-        """Build FAISS index for all chunks belonging to a friend's knowledge.
-        
-        Args:
-            friend_id: ID of the friend
-            
-        Returns:
-            True if index built successfully, False otherwise
-        """
-        logger.info("=" * 80)
-        logger.info(f"BUILDING FAISS INDEX FOR FRIEND {friend_id}")
-        logger.info("=" * 80)
-        
-        if not self.mongo_repo:
-            logger.error("MongoDB repository required to build index")
-            return False
-        
-        # Fetch all knowledge IDs for this friend using FriendApiService
-        logger.info(f"Step 1: Fetching knowledge IDs from Friend service...")
-        knowledge_ids = await self.friend_api_service.fetch_knowledge_ids_for_friend(friend_id)
-        logger.info(f"Retrieved {len(knowledge_ids) if knowledge_ids else 0} knowledge IDs")
-        
-        if not knowledge_ids:
-            logger.warning(f"No knowledge items found for friend {friend_id}")
-            return False
-        
-        logger.debug(f"Found {len(knowledge_ids)} knowledge items for friend {friend_id}")
-        
-        # Fetch all chunks for these knowledge items
-        logger.info(f"Step 2: Fetching chunks from MongoDB for {len(knowledge_ids)} knowledge items...")
-        chunks = await self.mongo_repo.find_many(
-            "knowledge_chunks",
-            {"knowledge_id": {"$in": knowledge_ids}}
-        )
-        
-        if not chunks:
-            logger.warning(f"❌ No chunks found in MongoDB for friend {friend_id}")
-            logger.warning(f"This means knowledge items haven't been chunked yet!")
-            return False
-        
-        chunk_ids = [chunk["chunk_id"] for chunk in chunks]
-        logger.info(f"✓ Found {len(chunk_ids)} chunks for friend {friend_id}")
-        
-        # Fetch embeddings for these chunks
-        logger.info(f"Step 3: Fetching embeddings from MongoDB...")
-        embeddings_docs = await self.mongo_repo.find_many(
-            "chunk_embeddings",
-            {"chunk_id": {"$in": chunk_ids}}
-        )
-        logger.info(f"Found {len(embeddings_docs) if embeddings_docs else 0} embedding documents")
-        
-        if not embeddings_docs:
-            logger.error(f"No embeddings found for friend {friend_id}")
-            return False
-        
-        # Build numpy array from embeddings
-        embeddings_list = []
-        chunk_id_mapping = []
-        
-        for embedding_doc in embeddings_docs:
-            embedding = np.array(embedding_doc["embedding"], dtype=np.float32)
-            embeddings_list.append(embedding)
-            chunk_id_mapping.append(embedding_doc["chunk_id"])
-        
-        embeddings_matrix = np.vstack(embeddings_list)
-        
-        logger.debug(f"Built embeddings matrix: shape={embeddings_matrix.shape}")
-        
-        # Create FAISS index
-        dimension = embeddings_matrix.shape[1]
-        
-        if self.index_type == "IndexFlatL2":
-            index = faiss.IndexFlatL2(dimension)
-        else:
-            # Fallback to flat index for other types (can be extended)
-            logger.warning(f"Index type {self.index_type} not fully supported, using IndexFlatL2")
-            index = faiss.IndexFlatL2(dimension)
-        
-        # Add embeddings to index
-        index.add(embeddings_matrix)
-        
-        # Store index and mapping
-        self.indexes[friend_id] = (index, chunk_id_mapping)
-        
-        logger.info(
-            f"Successfully built FAISS index for friend {friend_id}: "
-            f"{len(chunk_id_mapping)} chunks, dimension {dimension}"
-        )
-        
-        return True
 
     async def search(
-        self, 
-        friend_id: int, 
-        query: str, 
+        self,
+        friend_id: int,
+        query: str,
         top_k: Optional[int] = None
     ) -> List[Tuple[str, float]]:
-        """Search for similar chunks using vector similarity.
-        
+        """Search for similar chunks using hybrid vector + BM25 search.
+
         Args:
             friend_id: ID of the friend
             query: Query text (e.g., concatenated fact key-value)
             top_k: Number of results to return (defaults to config value)
-            
+
         Returns:
-            List of tuples (chunk_id, relevance_score) sorted by relevance descending
+            List of tuples (chunk_id, rrf_score) sorted by relevance descending
         """
         if top_k is None:
             top_k = self.top_k
-        
+
         logger.info("=" * 80)
-        logger.info(f"SEARCH SERVICE: Starting search")
-        logger.info("=" * 80)
-        logger.info(f"Friend ID: {friend_id}")
-        logger.info(f"Query: '{query}'")
-        logger.info(f"Top K: {top_k}")
-        logger.info(f"Min relevance threshold: {self.min_relevance_threshold}")
-        
-        # Check if index exists for this friend
-        if friend_id not in self.indexes:
-            logger.info(f"❌ Index not found for friend {friend_id}")
-            logger.info(f"🔨 Building new FAISS index...")
-            success = await self.build_index_for_friend(friend_id)
-            if not success:
-                logger.error(f"❌ FAILED to build index for friend {friend_id}")
-                return []
-            logger.info(f"✓ Index built successfully for friend {friend_id}")
-        else:
-            logger.info(f"✓ Using existing index for friend {friend_id}")
-        
-        index, chunk_id_mapping = self.indexes[friend_id]
-        logger.info(f"Index has {len(chunk_id_mapping)} chunks loaded")
-        
-        # Embed the query
-        logger.info(f"Embedding query...")
+        logger.info(f"SEARCH SERVICE: Starting hybrid search")
+        logger.info(f"Friend ID: {friend_id}, Query: '{query}', Top K: {top_k}")
+
+        if not self.postgres_repo or not self.postgres_repo.pool:
+            logger.error("PostgreSQL repository not initialized")
+            return []
+
+        knowledge_ids = await self.friend_api_service.fetch_knowledge_ids_for_friend(friend_id)
+        if not knowledge_ids:
+            logger.warning(f"No knowledge items found for friend {friend_id}")
+            return []
+
         query_embedding = await self.embedding_service.embed_query(query)
-        query_vector = np.array([query_embedding], dtype=np.float32)
-        logger.info(f"Query embedding dimension: {len(query_embedding)}")
-        
-        # Search in FAISS index
-        logger.info(f"Searching FAISS index...")
-        distances, indices = index.search(query_vector, top_k)
-        logger.info(f"FAISS returned {len(indices[0])} results")
-        
-        # Convert results to (chunk_id, score) format
-        results = []
-        logger.info(f"Converting distances to similarity scores...")
-        
-        for result_idx, (distance, idx) in enumerate(zip(distances[0], indices[0])):
-            if idx < len(chunk_id_mapping):
-                chunk_id = chunk_id_mapping[idx]
-                
-                # Convert L2 distance to similarity score (0-1 range)
-                # Using inverse distance formula
-                similarity_score = 1.0 / (1.0 + float(distance))
-                
-                logger.debug(f"  Result {result_idx + 1}: distance={distance:.4f}, score={similarity_score:.4f}, chunk={chunk_id}")
-                
-                # Filter by threshold
-                if similarity_score >= self.min_relevance_threshold:
-                    results.append((chunk_id, similarity_score))
-                else:
-                    logger.debug(f"    ✗ Filtered out (below threshold {self.min_relevance_threshold})")
-        
-        logger.info(f"Found {len(results)} relevant chunks passing threshold (threshold={self.min_relevance_threshold})")
-        if results:
-            logger.info("Top results:")
-            for idx, (chunk_id, score) in enumerate(results[:5], 1):
-                logger.info(f"  {idx}. {chunk_id}: {score:.4f}")
-        
+
+        async with self.postgres_repo.pool.acquire() as conn:
+            vector_rows = await conn.fetch(
+                """
+                SELECT kc.chunk_id
+                FROM chunk_embeddings ce
+                JOIN knowledge_chunks kc ON kc.chunk_id = ce.chunk_id
+                WHERE kc.knowledge_id = ANY($1)
+                ORDER BY ce.embedding <=> $2
+                LIMIT $3
+                """,
+                knowledge_ids, query_embedding, self.candidates_per_side
+            )
+            # paradedb.match() rather than raw `chunk_text @@@ $2`: the raw string
+            # form runs through ParadeDB's query mini-language, which errors out
+            # on ordinary punctuation in natural-language queries (apostrophes,
+            # question marks). match() treats the whole param as literal text.
+            bm25_rows = await conn.fetch(
+                """
+                SELECT chunk_id
+                FROM knowledge_chunks
+                WHERE knowledge_id = ANY($1)
+                  AND chunk_id @@@ paradedb.match('chunk_text', $2)
+                ORDER BY paradedb.score(chunk_id) DESC
+                LIMIT $3
+                """,
+                knowledge_ids, query, self.candidates_per_side
+            )
+
+        vector_ranks = {row["chunk_id"]: rank for rank, row in enumerate(vector_rows, start=1)}
+        bm25_ranks = {row["chunk_id"]: rank for rank, row in enumerate(bm25_rows, start=1)}
+        logger.info(f"Vector candidates: {len(vector_ranks)}, BM25 candidates: {len(bm25_ranks)}")
+
+        fused_scores = {}
+        for chunk_id, rank in vector_ranks.items():
+            fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + 1.0 / (self.rrf_k + rank)
+        for chunk_id, rank in bm25_ranks.items():
+            fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + 1.0 / (self.rrf_k + rank)
+
+        results = [
+            (chunk_id, score) for chunk_id, score in fused_scores.items()
+            if score >= self.min_relevance_threshold
+        ]
+        results.sort(key=lambda x: x[1], reverse=True)
+        results = results[:top_k]
+
+        logger.info(f"Found {len(results)} fused results passing threshold")
+        for idx, (chunk_id, score) in enumerate(results[:5], 1):
+            logger.info(f"  {idx}. {chunk_id}: {score:.4f}")
+        logger.info("=" * 80)
+
         return results
-
-    def clear_index(self, friend_id: int) -> None:
-        """Clear the FAISS index for a friend.
-        
-        Called when chunks have been updated and index needs rebuilding.
-        
-        Args:
-            friend_id: ID of the friend
-        """
-        if friend_id in self.indexes:
-            del self.indexes[friend_id]
-            logger.info(f"Cleared FAISS index for friend {friend_id}")
-        else:
-            logger.debug(f"No index to clear for friend {friend_id}")
-
-    def clear_all_indexes(self) -> None:
-        """Clear all FAISS indexes to free memory."""
-        count = len(self.indexes)
-        self.indexes.clear()
-        logger.info(f"Cleared {count} FAISS indexes")
-
-    async def rebuild_index(self, friend_id: int) -> bool:
-        """Rebuild FAISS index for a friend.
-        
-        Args:
-            friend_id: ID of the friend
-            
-        Returns:
-            True if rebuild successful
-        """
-        logger.info(f"Rebuilding FAISS index for friend {friend_id}")
-        self.clear_index(friend_id)
-        return await self.build_index_for_friend(friend_id)
-
-    def get_index_stats(self, friend_id: int) -> Optional[Dict[str, any]]:
-        """Get statistics about a friend's FAISS index.
-        
-        Args:
-            friend_id: ID of the friend
-            
-        Returns:
-            Dictionary with index statistics or None if index doesn't exist
-        """
-        if friend_id not in self.indexes:
-            return None
-        
-        index, chunk_id_mapping = self.indexes[friend_id]
-        
-        return {
-            "friend_id": friend_id,
-            "chunk_count": len(chunk_id_mapping),
-            "dimension": index.d,
-            "index_type": self.index_type,
-            "top_k": self.top_k,
-            "min_relevance_threshold": self.min_relevance_threshold
-        }
-
-    def get_all_index_stats(self) -> Dict[int, Dict[str, any]]:
-        """Get statistics for all loaded indexes.
-        
-        Returns:
-            Dictionary mapping friend_id to index statistics
-        """
-        return {
-            friend_id: self.get_index_stats(friend_id)
-            for friend_id in self.indexes.keys()
-        }

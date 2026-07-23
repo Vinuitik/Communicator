@@ -154,7 +154,8 @@ services:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1
      depends_on:
-       - ollama  # Depends on Ollama for embeddings
+       - postgres  # knowledge_chunks / chunk_embeddings hybrid search
+       - embedder  # ONNX EmbeddingGemma (replaces Ollama for embeddings)
      restart: unless-stopped
 
   react-ui:
