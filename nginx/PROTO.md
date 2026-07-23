@@ -65,21 +65,22 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 
 ## Compose orchestration map
 
-**App services:** friend, group, connections, chrono, backup (all Spring/Java 21) · fileRepository (Flask) · ai-agent + mcp-knowledge-server + embedder (Python) · react-ui (React build → nginx) · nginx (ingress).
+**App services:** friend, group, connections, chrono, backup (all Spring/Java 21, one JVM) · fileRepository (Flask) · ai-agent + embedder + host-wrapper (Python) · react-ui (React build → nginx) · nginx (ingress). (No `mcp-knowledge-server` — knowledgeMCP runs in-process inside ai-agent as a stdio subprocess, not a container, since 2026-07-13.)
 
 **Infra:**
 | Service | Image | Purpose | Host port |
 |---|---|---|---|
-| postgres | `paradedb/paradedb:0.24.3-pg17` | primary DB `my_database` (+pgvector, +pg_search BM25 exts) — shared by the JVM apps AND ai_agent's RAG data (chunks/embeddings/facts/references) since 2026-07-23 | 5433→5432 |
+| postgres | `paradedb/paradedb:0.24.3-pg17` | primary DB `my_database` (+pgvector, +pg_search BM25 exts) — shared by the JVM apps AND ai_agent's RAG + LLM-settings data since 2026-07-23 | 5433→5432 |
 | redis | `redis:7-alpine` | cache (appendonly persist) | 6379 |
 | embedder | built from `embedder/Dockerfile` | ONNX EmbeddingGemma embeddings (768-dim), replaces Ollama for this — see [embedder/PROTO.md](../embedder/PROTO.md) | 8010 |
+| ollama | `ollama/ollama` | local chat LLM (`llama3.2:3b`) — active again as of 2026-07-23, used when `llm_settings.mode='ollama'` (default) | 11434 |
+| host-wrapper | built from `host-wrapper/Dockerfile` | cloud LLM gateway (gemini/github/mistral/groq/deepseek/anthropic, failover) — containerized + wired into ai_agent 2026-07-23, used when `mode='cloud'` — see [host-wrapper/PROTO.md](../host-wrapper/PROTO.md) | 5011 |
 | kafka | `cp-kafka:7.6.0` (KRaft, no ZK) | event bus, 7-day retention, auto-create topics | 9095/9096 |
 | kafka-ui | provectuslabs | topic inspection | 8089→8080 |
-| ollama | `ollama/ollama` | still runs, **unused** since the embedder swap (2026-07-23) — a privacy-motivated decision about using it for chat/summarize is a separate, not-yet-had conversation | 11434 |
 
 **generatedData (Mongo) retired 2026-07-23** — removed from compose entirely (all 4 collections it held moved to Postgres, confirmed empty before the migration ran). Its `generated-data` volume is declared-but-unmounted in `docker-compose.yml`, not deleted.
 
-**depends_on chains:** nginx depends on friend/group/connections/mcp/ai-agent/react-ui · chrono depends on **friend + nginx** (it calls them) · ai-agent depends on **mcp-knowledge-server + postgres + embedder** · backup depends on postgres + fileRepository.
+**depends_on chains:** nginx depends on **communicator-app + ai-agent + react-ui** · chrono depends on **friend + nginx** (it calls them) · ai-agent depends on **postgres + embedder + host-wrapper** (host-wrapper is start-order only — ai-agent still works if it's down and mode=ollama) · backup depends on postgres + fileRepository.
 
 **Shared DB:** friend, group, connections all use the SAME `SPRING_DATASOURCE_URL=jdbc:postgresql://postgresDB:5432/my_database`, user `myapp_user` / pass `example`. Hibernate `ddl-auto` auto-generates tables into one schema (see Gotchas). ai_agent shares this same database/instance too now (`databases.postgres.dsn` in its own `config.yaml`) — its tables are applied idempotently at its own startup via `ai_agent/db/schema.sql`, not through Hibernate.
 
