@@ -41,6 +41,7 @@ ai_agent/service-account-key.json
 **/*.pyo
 **/*.pyd
 .Python
+.claude/
 
 # Build directories
 **/build/
