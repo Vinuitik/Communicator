@@ -10,8 +10,6 @@ import os
 # Set up logger
 logger = logging.getLogger(__name__)
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/app/service-account-key.json"
-
 class AgentService:
     """Service for managing the LangChain agent and its dependencies"""
     
@@ -26,7 +24,7 @@ class AgentService:
         if self._initialized:
             return
             
-        print(f"Initializing AI Agent with API key: {settings.gemini_api_key}")
+        print(f"Initializing AI Agent (GEMINI_API_KEY {'set' if settings.gemini_api_key else 'MISSING'})")
         
         try:
             # Initialize MCP service
@@ -47,14 +45,13 @@ class AgentService:
     
     def _setup_llm(self) -> None:
         """Setup the Google Gemini LLM"""
-        # Use service account credentials instead of API key
         self.llm = ChatGoogleGenerativeAI(
             model=settings.llm_model,
             temperature=settings.llm_temperature,
-            google_api_key=None,  # Explicitly set to None to use service account
+            google_api_key=settings.gemini_api_key,
             transport="rest"
         )
-        print(f"LLM initialized with model: {settings.llm_model} using service account credentials")
+        print(f"LLM initialized with model: {settings.llm_model} using GEMINI_API_KEY")
     
     def _create_agent(self) -> None:
         """Create the ReAct agent with LLM and tools"""
