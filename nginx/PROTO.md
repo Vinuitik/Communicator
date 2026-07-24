@@ -6,10 +6,14 @@ Files: nginx/nginx.conf, nginx/Dockerfile, docker-compose.yml, .env (`HOST_TIMEZ
 
 ## Role
 
-Single ingress. **The only host-exposed app port is `8090:80`** (nginx). Everything else is `expose`d on the internal docker network only — no other service is reachable from the host except infra debug ports (Postgres 5433, Redis 6379, Embedder 8010, Kafka 9095, Kafka-UI 8089, Ollama 11434 — unused since 2026-07-23). nginx does two jobs at once:
+Single ingress. **The only host-exposed app port is `8090:80`** (nginx). Everything else is `expose`d on the internal docker network only — no other service is reachable from the host except infra debug ports (Postgres 5433, Redis 6379, Embedder 8010, Kafka 9095, Kafka-UI 8089, Ollama 11434 — unused since 2026-07-23). nginx does two jobs:
 
-1. **Reverse proxy** `/api/*` → backend services (prefix stripped).
-2. **Static web server** for the **legacy multi-page UI** baked into the image (`static/` → `/usr/share/nginx/html`), *and* a proxy to the **React SPA** at `/app/`. Two frontends coexist (see Gotchas).
+1. **Reverse proxy** `/api/*` → backend services (prefix preserved — see `PathPrefixConfig` in the friend/group/connections monolith).
+2. **Proxy to the React SPA** at `/app/` — the *only* frontend now (see below).
+
+**The legacy multi-page UI is gone (removed 2026-07-24).** `static/` used to be baked into this image and served directly at `/` (plus a scattering of Thymeleaf-rendered pages proxied through to the backend); once all 13 of its pages had a real React equivalent (see [react/PROTO.md](../react/PROTO.md)), the static tree, the Thymeleaf templates, and the two view-returning controllers that rendered them (`friend`'s `WebController`, `group`'s `GroupWebController`) were all deleted in one pass — fully recoverable from git history (`git log --diff-filter=D -- nginx/static friend/.../templates group/.../templates`), not a soft-delete. `nginx/static/` is kept as an empty directory (`.gitkeep`) purely because `Dockerfile`'s `COPY static/ /usr/share/nginx/html/` needs the source path to exist.
+
+**Root `/` now redirects (302) to `/app/`** — this is an interim cutover, not the final state. React is still mounted under the `/app/` prefix (CRA's `homepage` field, react-router's `basename="/app"`), so the redirect just bounces traffic there rather than serving the SPA natively at `/`. A follow-up pass should drop the `/app/` prefix end-to-end (CRA `homepage`, router `basename`, this redirect) so React really is the root, not one bounce away from it.
 
 ---
 
@@ -45,19 +49,15 @@ Note the upstream names use the **compose `container_name`** (e.g. `groupService
 | `/api/ai/` | `ai-agent:8001/` | **WebSocket upgrade headers** + CORS |
 | `/app/` | `react-ui:80/` | SPA, pure proxy_pass, no-cache, security headers. SPA fallback for client-side routes lives in `react-ui`'s *own* nginx (`react/nginx.conf`), not here — see Gotchas. |
 
-**Static pages served directly by nginx** (legacy MPA, `root /usr/share/nginx/html`, all no-cache):
+**Everything else** (no static MPA left as of 2026-07-24 — see Role):
 
-| Browser path | Serves | Backing static dir |
-|---|---|---|
-| `/index` , `/` (fallback) | `index.html` | `static/mainPage` |
-| `/stats` | `analytics/analytics.html` | analytics dashboard |
-| `/social?friendId=N` | `social/social.html` | social links page |
-| `/fileUpload/{id}` | `fileUpload/fileUpload.html` | calendar/media upload (numeric-id regex) |
-| `/api/groups/createGroup` | `createGroup/createGroup.html` | **static page under an `/api/` path** (footgun) |
-| `/groupsView/`,`/groupDetails/`,`/groupKnowledge/`,`/createGroup/` | CSS/JS assets | group MPA assets |
-| `/api-test/` | `Test/` (alias) | manual API test harness |
-| `= /validation` → 302 `/app/validation` ; `= /react` → 302 `/app/` | redirects into SPA | |
-| `= /fileUpload/fileUpload.html` → **404** | deliberately blocked (force the id-based route) | |
+| Browser path | Behavior |
+|---|---|
+| `= /validation` | 302 → `/app/validation` |
+| `= /react` | 302 → `/app/` |
+| `/` (catch-all — anything not matched above) | 302 → `/app/` |
+
+All the old exact-match static routes (`/index`, `/stats`, `/social`, `/fileUpload/{id}`, `/api/groups/createGroup`, `/groupsView/`, `/groupDetails/`, `/groupKnowledge/`, `/createGroup/`, `/api-test/`) are gone along with the files they served — hitting any of them now just falls through to the catch-all redirect above, same as any other unmatched path.
 
 To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (config is **COPY-baked**, not mounted — see Gotchas).
 
@@ -99,7 +99,7 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 
 ## Gotchas / Technology Notes
 
-- **Two frontends, one origin.** The legacy vanilla-JS MPA is served *directly by nginx* from baked `static/`; the React SPA is *proxied* at `/app/`. They share `localhost:8090`. Which one you get depends purely on the path. New work is React; the MPA (`mainPage`, `addFriendForm`, `facts`, `analytics`, `social`, `profile`, `groupsView`) is `[LEGACY]` but still live and still the default at `/`. Pages are being ported to the SPA one at a time — see [react/PROTO.md](../react/PROTO.md) for which ones are real vs still legacy-only, and `NavigationBar`/`AddFriendForm`'s own comments for the "external `<a>` vs internal `<Link>`" convention used to link between the two during migration.
+- **One frontend now (was two).** Until 2026-07-24 the legacy vanilla-JS MPA was served *directly by nginx* from baked `static/` at `/`, alongside the React SPA *proxied* at `/app/` — which one you got depended purely on the path. All 13 legacy pages now have a real React equivalent (see [react/PROTO.md](../react/PROTO.md)), so the static tree, the Thymeleaf templates, and their view-controllers (`WebController`, `GroupWebController`) were deleted and `/` now just redirects to `/app/`. Fully recoverable from git history if something was missed.
 - **`/app/` was silently broken until 2026-07-24.** The location mixed `proxy_pass` with `try_files $uri $uri/ /index.html;`. `try_files` needs a `root` to check against, which this location never had, so it always missed and fell through to nginx's catch-all `location /`, serving the *legacy* `index.html` — proxy_pass was never reached. curl looked fine (200 OK) because the wrong response was still a valid page. Fixed by making `/app/` pure `proxy_pass` and moving SPA-fallback (`try_files $uri /index.html`) into react-ui's own nginx config (`react/nginx.conf`) instead.
 - **Config is COPY-baked, not mounted.** `Dockerfile` does `COPY nginx.conf …` and `COPY static/`. Editing `nginx.conf` or any static file requires **rebuilding the nginx image** (`docker compose build nginx`) — a plain restart runs the old baked copy. This is the #1 "my change didn't take" trap.
 - **CORS is per-location and inconsistent.** groups/mcp/ai add `Access-Control-Allow-Origin *`; friend/connections/fileRepository do not. Meanwhile the Spring controllers pin `@CrossOrigin(origins="http://nginx")`. Since everything is same-origin through nginx in normal use, this rarely bites — but a direct cross-origin call behaves differently per service.
@@ -107,7 +107,6 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 - **Shared Postgres schema across 3 services.** friend/group/connections generate tables into one DB via Hibernate. No migration tool (Flyway/Liquibase). An entity change in one service can conflict with another's tables; startup order + `ddl-auto` decide who wins. Backups are the only safety net (see [backup proto](../backup/PROTO.md)).
 - **Kafka auto-creates topics** (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=true`) — a typo in a producer topic name silently creates a new topic instead of erroring. 3 default partitions, replication 1 (single broker), 7-day retention.
 - **`/api/chrono/` is exposed but shouldn't be used** — it's labeled "manual testing only". chrono runs itself on a schedule; hitting this endpoint fires jobs out of band.
-- **`/api/groups/createGroup` serves a static HTML page** even though it lives under the `/api/groups/` proxy prefix — an exact-match `location =` intercepts it before the proxy block. Renaming group endpoints near this path can shadow/unshadow it.
 
 ---
 

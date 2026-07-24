@@ -1,15 +1,21 @@
 # React UI — Proto `[REAL — 13/13 pages ported]`
 
-> **Proto, not a flow.** Pages are being ported from the legacy MPA
-> (`nginx/static/`) one at a time, preserving existing behavior/styling —
-> the visual redesign is a deliberately separate later pass. See the "Two
-> frontends" gotcha in [nginx/PROTO.md](../../nginx/PROTO.md).
+> **Proto, not a flow.** All 13 pages of the legacy MPA (`nginx/static/` +
+> a handful of Thymeleaf templates) have been ported here, preserving
+> existing behavior/styling — the visual redesign is a deliberately separate
+> later pass, next up. **The legacy MPA itself was deleted 2026-07-24**
+> (`nginx/static/`, the Thymeleaf templates, and their view-controllers) —
+> recoverable from git history, not soft-deleted. `nginx/`'s root now
+> redirects into `/app/`; see [nginx/PROTO.md](../../nginx/PROTO.md). Every
+> "reimplements nginx/static/..." note below still refers to real source
+> material — check it out of git history (`git log --diff-filter=D --
+> nginx/static`) if you need to see the original.
 
 Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,connectionService,settingsService}.ts, hooks/useApi.ts, utils/{constants,friendMetrics}.ts, components/{atoms,molecules,organisms,templates,pages}/*
 
 ## Role
 
-The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
+The modern SPA that has replaced the legacy MPA — the only frontend now. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters). Main nginx's root `/` redirects here — `/app/` is still a real URL prefix in the browser, not yet dropped (see nginx/PROTO.md's cutover note).
 
 Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel, MediaGallery, AiChatWidget, KnowledgeSummaryTable) → `templates` (PageLayout) → `pages` (all 13 legacy pages, listed below).
 
@@ -61,7 +67,7 @@ utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL remov
 
 `components/pages/HomePage` reimplements `nginx/static/mainPage/index.js`: paginated "All Friends" / non-paginated "This Week" toggle, colored days-until-due and intensity-score cells (`utils/friendMetrics.ts`), per-row actions dropdown (`molecules/DropdownMenu`, generic — not friends-specific), delete with `confirm()` + refresh. The scaffold had a separate `/friends` route (`FriendsPage`) that didn't correspond to anything in the legacy app — "All Friends" and "This Week" are the *same* legacy page, toggled client-side, not two pages — so that route was deleted rather than left as a second, competing implementation.
 
-`Groups`/`Connections` per-row links still point at the legacy MPA (`services/api/config.ts` `API_BASE` prefixes) — neither destination page is ported yet. `Talked`/`Knowledge`/`Profile` navigate internally (`FriendsTable.tsx`).
+`Talked`/`Profile`/`Knowledge`/`Groups` all navigate internally now (`FriendsTable.tsx`). `Connections` still links to the bare API endpoint (`services/api/config.ts` `API_BASE.CONNECTIONS`) — that module never had an HTML page to begin with, only a REST stub (`connectionService.ts` is still a placeholder), so there's nothing to port it *to* yet.
 
 ## AddFriendPage — what "ported" means here
 
@@ -77,7 +83,7 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 
 `components/pages/GroupsPage` reimplements `allGroups.html` + `groupsView.js`: fetches the group list, `GroupsTable` organism renders name/contacts(placeholder, unimplemented in legacy too — always "0 Coming Soon")/knowledge-count/permission-count/actions-dropdown, row click navigates to group details, delete with confirm + refresh + `FlashMessage`.
 
-**This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which renders the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already makes, at a distinct path so it doesn't collide with the existing HTML route. **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages (anything under `group/.../templates/`) may not have a JSON counterpart at all — check for one before assuming the port is frontend-only. `Knowledge`/`Social` dropdown links still point at the legacy MPA; `Social`'s target (`/group/social/{id}`) was already a dead link in the legacy template (no matching nginx route) — copied as-is, not a regression from this port. Row-click and `Profile` now navigate internally to `GroupDetailsPage` (`groupDetailsPath()`) — see that page's note for why they didn't originally.
+**This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which rendered the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already made, at a distinct path so it didn't collide with the HTML route at the time. (`GroupWebController` and its Thymeleaf templates were deleted entirely once GroupsPage/GroupDetailsPage made them redundant — see nginx/PROTO.md's cutover note — so `/api/groups/list` no longer shares its path space with anything.) **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages may not have a JSON counterpart at all — check for one before assuming a port is frontend-only. `Knowledge`/`Social` dropdown links still point at the legacy MPA path shape (now dead, unreached — same as `Social`'s target (`/group/social/{id}`), which was already a dead link in the legacy template even before the MPA was removed); neither has a ported destination yet. Row-click and `Profile` now navigate internally to `GroupDetailsPage` (`groupDetailsPath()`) — see that page's note for why they didn't originally.
 
 ## CalendarPage — what "ported" means here
 

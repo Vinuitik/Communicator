@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DropdownMenu from '../../molecules/DropdownMenu';
 import { Friend } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
-import { talkedPath, friendKnowledgePath, profilePath } from '../../../utils/constants';
+import { talkedPath, friendKnowledgePath, profilePath, ROUTES } from '../../../utils/constants';
 import {
   getDaysDiff, getGradientColor, formatDaysDiff,
   calculateIntensityScore, getIntensityGradientColor,
@@ -16,9 +16,12 @@ interface FriendsTableProps {
   onDelete: (friend: Friend) => void;
 }
 
-// Ported from the <table> in nginx/static/mainPage/index.html + the row
-// rendering in index.js. Groups/Connections still point at the legacy MPA —
-// neither is ported yet. Talked/Knowledge/Profile now navigate internally.
+// Ported from the <table> in nginx/static/mainPage/index.html (since removed —
+// see nginx/PROTO.md) + the row rendering in index.js. Talked/Profile/Knowledge/
+// Groups all navigate internally now. Connections has no page to link to —
+// the connections module never had a Thymeleaf/HTML view, only a REST stub
+// (services/api/connectionService.ts is still a placeholder) — so that link
+// still points at the bare API endpoint, same as it always did.
 const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, onDelete }) => {
   const navigate = useNavigate();
   return (
@@ -59,7 +62,7 @@ const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, on
                       { label: 'Talked', onClick: () => navigate(talkedPath(friend.id)) },
                       { label: 'Profile', onClick: () => navigate(profilePath(friend.id)) },
                       { label: 'Knowledge', onClick: () => navigate(friendKnowledgePath(friend.id)) },
-                      { label: 'Groups', href: API_BASE.GROUPS },
+                      { label: 'Groups', onClick: () => navigate(ROUTES.GROUPS) },
                       { label: 'Connections', href: `${API_BASE.CONNECTIONS}/${friend.id}` },
                       {
                         label: 'Delete', danger: true,

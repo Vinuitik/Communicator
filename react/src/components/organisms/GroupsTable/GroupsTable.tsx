@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import DropdownMenu from '../../molecules/DropdownMenu';
 import { Group } from '../../../types/api';
-import { API_BASE } from '../../../services/api/config';
 import { groupDetailsPath } from '../../../utils/constants';
 
 interface GroupsTableProps {
@@ -14,17 +13,21 @@ interface GroupsTableProps {
   onDelete: (group: Group) => void;
 }
 
-// Ported from group/.../templates/groups/allGroups.html + groupsView.js.
-// Clicking a row (outside the actions cell) navigates to group details.
-// Legacy actually navigated both the row-click and "Profile" link straight
-// to the JSON API endpoint (GROUPS_BASE + '/' + id — a raw fetch URL, not a
-// page) — groupDetails.html was dead code with no route ever rendering it,
-// so there was no real page to link to. Now that GroupDetailsPage is real
-// (see PROTO.md), both flip to it via groupDetailsPath(). Knowledge/Social
-// still point at the legacy MPA — those pages aren't ported yet. The
-// "Social" link target (/group/social/{id}) is copied as-is from the legacy
-// template; nginx has no /group/ route today, so it's a pre-existing dead
-// link there too, not something introduced by this port.
+// Ported from group/.../templates/groups/allGroups.html + groupsView.js
+// (both since deleted — see nginx/PROTO.md's cutover note; this component
+// is the only place their behavior still lives). Clicking a row (outside the
+// actions cell) navigates to group details. Legacy actually navigated both
+// the row-click and "Profile" link straight to the JSON API endpoint
+// (GROUPS_BASE + '/' + id — a raw fetch URL, not a page) — groupDetails.html
+// was dead code with no route ever rendering it, so there was no real page
+// to link to. Now that GroupDetailsPage is real, both flip to it via
+// groupDetailsPath() — "Knowledge" does too, since groupKnowledge.html's
+// functionality was deliberately folded into GroupDetailsPage's "Notes"
+// panel rather than given its own page (see GroupDetailsPage/FactsPage
+// notes in PROTO.md). "Social" still points at a dead link
+// (`/group/social/{id}`) — that was already broken in the legacy template
+// (no matching nginx route ever existed, even before the MPA was removed)
+// and there's no group-social feature anywhere to link it to instead.
 const GroupsTable: React.FC<GroupsTableProps> = ({
   groups, knowledgeCounts, permissionCounts, loading, error, onDelete,
 }) => {
@@ -71,7 +74,7 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
                 <DropdownMenu
                   items={[
                     { label: 'Profile', onClick: () => navigate(groupDetailsPath(group.id)) },
-                    { label: 'Knowledge', href: `${API_BASE.GROUPS}/${group.id}/knowledge` },
+                    { label: 'Knowledge', onClick: () => navigate(groupDetailsPath(group.id)) },
                     { label: 'Social', href: `/group/social/${group.id}` },
                     {
                       label: 'Delete', danger: true,
