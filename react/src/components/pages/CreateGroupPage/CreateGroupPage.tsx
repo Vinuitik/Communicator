@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CreateGroupForm, { CreateGroupFormValues } from '../../organisms/CreateGroupForm';
 import FlashMessage from '../../molecules/FlashMessage';
 import { createGroup } from '../../../services/api/groupService';
-
-const GROUPS_LIST_HREF = '/api/groups'; // legacy MPA — groups list isn't ported yet
+import { ROUTES } from '../../../utils/constants';
 
 // Ported from nginx/static/createGroup/createGroup.html + createGroup.js.
 const CreateGroupPage: React.FC = () => {
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [flash, setFlash] = useState<{ variant: 'success' | 'error'; message: string } | null>(null);
 
@@ -17,7 +18,7 @@ const CreateGroupPage: React.FC = () => {
       const result = await createGroup({ name: values.name });
       setFlash({ variant: 'success', message: result.message });
       setTimeout(() => {
-        window.location.href = GROUPS_LIST_HREF;
+        navigate(ROUTES.GROUPS);
       }, 1500);
     } catch (err) {
       setFlash({
@@ -34,7 +35,7 @@ const CreateGroupPage: React.FC = () => {
       {flash && (
         <FlashMessage message={flash.message} variant={flash.variant} onDismiss={() => setFlash(null)} />
       )}
-      <CreateGroupForm onSubmit={handleSubmit} submitting={submitting} cancelHref={GROUPS_LIST_HREF} />
+      <CreateGroupForm onSubmit={handleSubmit} submitting={submitting} cancelTo={ROUTES.GROUPS} />
       <div className="bg-white rounded-xl shadow-sm p-8">
         <h2 className="text-2xl font-medium text-gray-800 mb-4">About Relationship Groups</h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -71,6 +71,22 @@ export interface CreateGroupResponse {
     group?: Group;
 }
 
+// Response shape from GroupApiController.listGroups (GET /api/groups/list).
+// Count maps are keyed by group id (JSON gives string keys even though the
+// Java side is Map<Integer, Long>).
+export interface GroupListResponse {
+    success: boolean;
+    groups: Group[];
+    knowledgeCounts: Record<string, number>;
+    permissionCounts: Record<string, number>;
+}
+
+// Response shape from GroupApiController.deleteGroup.
+export interface DeleteGroupResponse {
+    success: boolean;
+    message: string;
+}
+
 export interface Connection {
     id: string;
     userId: string;

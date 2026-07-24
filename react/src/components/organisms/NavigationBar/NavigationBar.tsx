@@ -13,7 +13,7 @@ const NavigationBar: React.FC = () => {
             <ul className="flex flex-col md:flex-row gap-2 md:gap-4 list-none mt-4 md:mt-0">
                 <li><Link to={ROUTES.HOME} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Home</Link></li>
                 <li><Link to={ROUTES.ADD_FRIEND} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Add Friend</Link></li>
-                <li><a href="/api/groups" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Groups</a></li>
+                <li><Link to={ROUTES.GROUPS} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Groups</Link></li>
                 <li><Link to={ROUTES.CREATE_GROUP} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Create Group</Link></li>
                 <li><a href="/stats" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Stats</a></li>
                 <li><a href="/settings/settings.html" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Settings</a></li>

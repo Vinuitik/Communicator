@@ -4,3 +4,4 @@ export * from './KnowledgeEditor';
 export * from './AddFriendForm';
 export * from './FriendsTable';
 export * from './CreateGroupForm';
+export * from './GroupsTable';

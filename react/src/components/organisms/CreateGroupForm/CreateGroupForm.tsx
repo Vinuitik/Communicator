@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button, { buttonClasses } from '../../atoms/Button';
 
 const MIN_LENGTH = 2;
@@ -21,13 +22,12 @@ export interface CreateGroupFormValues {
 interface CreateGroupFormProps {
   onSubmit: (values: CreateGroupFormValues) => void;
   submitting?: boolean;
-  // Plain href — groups list isn't ported yet, so cancel leaves the SPA.
-  cancelHref: string;
+  cancelTo: string;
 }
 
 // Ported from nginx/static/createGroup/createGroup.html's #createGroupForm
 // (validateName, addCharacterCounter in createGroup.js).
-const CreateGroupForm: React.FC<CreateGroupFormProps> = ({ onSubmit, submitting, cancelHref }) => {
+const CreateGroupForm: React.FC<CreateGroupFormProps> = ({ onSubmit, submitting, cancelTo }) => {
   const [name, setName] = useState('');
   const [touched, setTouched] = useState(false);
 
@@ -65,7 +65,7 @@ const CreateGroupForm: React.FC<CreateGroupFormProps> = ({ onSubmit, submitting,
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Creating Group...' : 'Create Group'}
           </Button>
-          <a href={cancelHref} className={buttonClasses}>Cancel</a>
+          <Link to={cancelTo} className={buttonClasses}>Cancel</Link>
         </div>
       </form>
     </div>
