@@ -11,7 +11,7 @@ const NavigationBar: React.FC = () => {
         <nav className="bg-brand px-8 py-4 flex flex-col md:flex-row md:justify-between md:items-center shadow-sm">
             <div className="text-white text-2xl font-medium">Friends Tracker</div>
             <ul className="flex flex-col md:flex-row gap-2 md:gap-4 list-none mt-4 md:mt-0">
-                <li><a href="/" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Home</a></li>
+                <li><Link to={ROUTES.HOME} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Home</Link></li>
                 <li><Link to={ROUTES.ADD_FRIEND} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Add Friend</Link></li>
                 <li><a href="/stats" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Stats</a></li>
                 <li><a href="/settings/settings.html" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Settings</a></li>

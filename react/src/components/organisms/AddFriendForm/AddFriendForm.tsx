@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import FormField from '../../molecules/FormField';
 import Button, { buttonClasses } from '../../atoms/Button';
 
@@ -28,13 +29,10 @@ const INITIAL_VALUES: AddFriendFormValues = {
 interface AddFriendFormProps {
   onSubmit: (values: AddFriendFormValues) => void;
   submitting?: boolean;
-  // Plain href, not a react-router <Link> — cancel currently leaves the SPA
-  // for the legacy MPA's home page, which isn't ported yet. Switch this to
-  // <Link> once HomePage is real (see NavigationBar for the same policy).
-  cancelHref: string;
+  cancelTo: string;
 }
 
-const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, cancelHref }) => {
+const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, cancelTo }) => {
   const [values, setValues] = useState<AddFriendFormValues>(INITIAL_VALUES);
 
   const handleChange = (field: keyof AddFriendFormValues) =>
@@ -75,7 +73,7 @@ const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, can
           <Button type="submit" disabled={submitting}>
             {submitting ? 'Adding Friend...' : 'Submit'}
           </Button>
-          <a href={cancelHref} className={buttonClasses}>Cancel</a>
+          <Link to={cancelTo} className={buttonClasses}>Cancel</Link>
         </div>
       </form>
     </div>

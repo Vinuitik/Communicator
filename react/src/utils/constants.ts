@@ -1,6 +1,5 @@
 export const ROUTES = {
   HOME: '/',
-  FRIENDS: '/friends',
   ADD_FRIEND: '/friends/add',
   GROUPS: '/groups',
   VALIDATION: '/validation',

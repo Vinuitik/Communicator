@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AddFriendForm, { AddFriendFormValues } from '../../organisms/AddFriendForm';
 import KnowledgeEditor from '../../organisms/KnowledgeEditor';
 import { addFriend } from '../../../services/api/friendService';
@@ -7,6 +8,7 @@ import { ROUTES } from '../../../utils/constants';
 
 // Ported from nginx/static/addFriendForm/addForm.html + addForm.js.
 const AddFriendPage: React.FC = () => {
+  const navigate = useNavigate();
   const [knowledge, setKnowledge] = useState<FriendKnowledge[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +36,7 @@ const AddFriendPage: React.FC = () => {
         knowledge,
       };
       await addFriend(payload);
-      // Friends list isn't ported yet — real one still lives in the legacy MPA.
-      window.location.href = ROUTES.HOME;
+      navigate(ROUTES.HOME);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add friend.');
       setSubmitting(false);
@@ -47,7 +48,7 @@ const AddFriendPage: React.FC = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">{error}</div>
       )}
-      <AddFriendForm onSubmit={handleSubmit} submitting={submitting} cancelHref={ROUTES.HOME} />
+      <AddFriendForm onSubmit={handleSubmit} submitting={submitting} cancelTo={ROUTES.HOME} />
       <KnowledgeEditor items={knowledge} onAdd={handleAddKnowledge} onRemove={handleRemoveKnowledge} />
     </div>
   );
