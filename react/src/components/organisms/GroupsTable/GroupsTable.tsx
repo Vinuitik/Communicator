@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import DropdownMenu from '../../molecules/DropdownMenu';
 import { Group } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
+import { groupDetailsPath } from '../../../utils/constants';
 
 interface GroupsTableProps {
   groups: Group[];
@@ -13,17 +15,22 @@ interface GroupsTableProps {
 }
 
 // Ported from group/.../templates/groups/allGroups.html + groupsView.js.
-// Clicking a row (outside the actions cell) navigates to group details,
-// same as legacy. Profile/Knowledge/Social still point at the legacy MPA —
-// none of those destination pages are ported yet. The "Social" link target
-// (/group/social/{id}) is copied as-is from the legacy template; nginx has
-// no /group/ route today, so it's a pre-existing dead link there too, not
-// something introduced by this port.
+// Clicking a row (outside the actions cell) navigates to group details.
+// Legacy actually navigated both the row-click and "Profile" link straight
+// to the JSON API endpoint (GROUPS_BASE + '/' + id — a raw fetch URL, not a
+// page) — groupDetails.html was dead code with no route ever rendering it,
+// so there was no real page to link to. Now that GroupDetailsPage is real
+// (see PROTO.md), both flip to it via groupDetailsPath(). Knowledge/Social
+// still point at the legacy MPA — those pages aren't ported yet. The
+// "Social" link target (/group/social/{id}) is copied as-is from the legacy
+// template; nginx has no /group/ route today, so it's a pre-existing dead
+// link there too, not something introduced by this port.
 const GroupsTable: React.FC<GroupsTableProps> = ({
   groups, knowledgeCounts, permissionCounts, loading, error, onDelete,
 }) => {
+  const navigate = useNavigate();
   const goToDetails = (groupId: number) => {
-    window.location.href = `${API_BASE.GROUPS}/${groupId}`;
+    navigate(groupDetailsPath(groupId));
   };
 
   return (
@@ -63,7 +70,7 @@ const GroupsTable: React.FC<GroupsTableProps> = ({
               <td className="p-4 relative actions-cell">
                 <DropdownMenu
                   items={[
-                    { label: 'Profile', href: `${API_BASE.GROUPS}/${group.id}` },
+                    { label: 'Profile', onClick: () => navigate(groupDetailsPath(group.id)) },
                     { label: 'Knowledge', href: `${API_BASE.GROUPS}/${group.id}/knowledge` },
                     { label: 'Social', href: `/group/social/${group.id}` },
                     {

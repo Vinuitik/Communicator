@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 6 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 7 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,7 +11,7 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked, GroupDetails).
 
 ## Internal wiring
 
@@ -23,6 +23,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /friends/:id/talked → TalkedPage [REAL — edit friend after talking]
   /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
+  /groups/:id    → GroupDetailsPage [REAL — single group, notes, settings]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
@@ -37,7 +38,7 @@ reproduced; Calendar got its own nav item instead.
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend
-services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup
+services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
 services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
@@ -64,7 +65,7 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 
 `components/pages/GroupsPage` reimplements `allGroups.html` + `groupsView.js`: fetches the group list, `GroupsTable` organism renders name/contacts(placeholder, unimplemented in legacy too — always "0 Coming Soon")/knowledge-count/permission-count/actions-dropdown, row click navigates to group details, delete with confirm + refresh + `FlashMessage`.
 
-**This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which renders the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already makes, at a distinct path so it doesn't collide with the existing HTML route. **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages (anything under `group/.../templates/`) may not have a JSON counterpart at all — check for one before assuming the port is frontend-only. `Profile`/`Knowledge`/`Social` dropdown links still point at the legacy MPA; `Social`'s target (`/group/social/{id}`) was already a dead link in the legacy template (no matching nginx route) — copied as-is, not a regression from this port.
+**This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which renders the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already makes, at a distinct path so it doesn't collide with the existing HTML route. **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages (anything under `group/.../templates/`) may not have a JSON counterpart at all — check for one before assuming the port is frontend-only. `Knowledge`/`Social` dropdown links still point at the legacy MPA; `Social`'s target (`/group/social/{id}`) was already a dead link in the legacy template (no matching nginx route) — copied as-is, not a regression from this port. Row-click and `Profile` now navigate internally to `GroupDetailsPage` (`groupDetailsPath()`) — see that page's note for why they didn't originally.
 
 ## CalendarPage — what "ported" means here
 
@@ -124,6 +125,55 @@ Verified against the live API through real nginx during the port: created a
 throwaway friend, fetched it via the new endpoint, updated it via
 `talkedToFriend`, confirmed the changes round-tripped, then deleted it.
 
+## GroupDetailsPage — what "ported" means here — read this before touching groupDetails again
+
+`components/pages/GroupDetailsPage` is nominally ported from
+`group/.../templates/groups/groupDetails.html`, but that template was
+**dead code**: no controller (`GroupWebController` only has `GET /`,
+`GET /create`, `GET /{id}/knowledge`) ever rendered it, and it referenced
+`${group.knowledge}` — a property `SocialGroup` doesn't have (only
+`permissions` and `socials`). Its own JS also called `deleteGroup()`,
+`addPermission()`, `editPermission()`, `deletePermission()` — none defined
+anywhere. Escalated to the user rather than silently deciding; the call was
+**build it for real**, i.e. this page is new feature work using
+already-existing, already-working backend endpoints that just never had a UI:
+
+- `GroupApiController.getGroupDetails` (`GET /api/groups/{id}`) and
+  `.deleteGroup` (`DELETE /api/groups/{id}`) — `deleteGroup` was already
+  exercised by `GroupsTable`; this page's "Delete Group" button reuses the
+  exact same `groupService.deleteGroup` call the legacy button's undefined
+  `deleteGroup()` onclick never could.
+- `GroupApiController`'s knowledge endpoints (`addKnowledge`/`getKnowledge`/
+  `deleteKnowledge`) — the "Notes" section. `updateKnowledge` exists too but
+  isn't wired: the legacy `editKnowledge()` was already a no-op stub, and no
+  other ported page has row-level edit yet either, so Add + List + Delete is
+  the consistent scope, not a gap.
+- `GroupPermissionController` (mounted at `/api/groups/permission/...`,
+  package-prefixed like everything else in `com.example.demo` — see
+  `PathPrefixConfig`) — the "Settings" section. Same shape as
+  `GroupKnowledge` (`GroupPermission.java` is fact/importance under the hood
+  too, `@JsonProperty`-renamed from `text`/`priority`) despite the legacy
+  template's `permissionType`/`description` field names, which don't exist
+  on the entity — presented honestly as Setting/Priority instead of
+  reproducing names that were never real.
+
+**No backend changes were needed** — everything above already existed and
+worked, it just had no route/link pointing at it. `KnowledgeCrudPanel` (new
+organism) drives both the Notes and Settings sections — same
+add-form/list/delete pattern, parameterized by API calls and labels, the way
+the legacy `KnowledgeManager` class configured itself per entity type. It's
+the generic, API-backed sibling to `KnowledgeEditor` (which stays
+local-only, for pages with no entity id yet) — expect to reuse it again for
+`facts.html` and `groupKnowledge.html` when those get ported, since both are
+the exact same shape.
+
+"Contacts" stays a static "Coming Soon" placeholder, copied as-is — there's
+no contacts feature anywhere in the backend to port.
+
+Verified against the live API through real nginx during the port: created a
+throwaway group, fetched it via the new page's calls, added and deleted both
+a note and a setting, confirmed each round-tripped, then deleted the group.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -154,6 +204,7 @@ throwaway friend, fetched it via the new endpoint, updated it via
 | Group list JSON shape | `GroupApiController.listGroups` (`GET /api/groups/list`) + `types/api.ts` `GroupListResponse` |
 | Calendar week bucketing / friend-box coloring | `components/organisms/CalendarBoard/CalendarBoard.tsx` |
 | Single-friend fetch / talked-to update | `FriendController.getFriend` (`GET /api/friend/{id}`) + `.updateFriend` (`PUT /api/friend/talkedToFriend/{id}`), `services/api/friendService.ts` |
+| Group notes / settings CRUD | `GroupApiController` knowledge endpoints + `GroupPermissionController`, `services/api/groupService.ts`, `components/organisms/KnowledgeCrudPanel` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

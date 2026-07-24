@@ -90,6 +90,39 @@ export interface DeleteGroupResponse {
     message: string;
 }
 
+// Response shape from GroupApiController.getGroupDetails (GET /api/groups/{id}).
+export interface GetGroupResponse {
+    success: boolean;
+    group?: Group;
+    message?: string;
+}
+
+// Shared shape for both GroupKnowledge.java ("Notes") and GroupPermission.java
+// ("Settings") — same entity fields (text/priority, @JsonProperty-renamed to
+// fact/importance on the wire), same controller pattern, just two different
+// tables/endpoints. See GroupDetailsPage's two KnowledgeCrudPanel instances.
+export interface GroupCrudItem {
+    id: number;
+    fact: string;
+    importance: number;
+}
+
+// Response shape from GroupApiController.getAllGroupKnowledge
+// (GET /api/groups/getKnowledge/{groupId}).
+export interface GetGroupKnowledgeResponse {
+    success: boolean;
+    knowledge: GroupCrudItem[];
+    message?: string;
+}
+
+// Response shape from GroupPermissionController.getAllGroupPermission
+// (GET /api/groups/permission/getPermission/{groupId}).
+export interface GetGroupPermissionResponse {
+    success: boolean;
+    permission: GroupCrudItem[];
+    message?: string;
+}
+
 export interface Connection {
     id: string;
     userId: string;

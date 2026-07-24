@@ -5,6 +5,7 @@ export const ROUTES = {
   TALKED: '/friends/:id/talked',
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
+  GROUP_DETAILS: '/groups/:id',
   VALIDATION: '/validation',
   // Not yet ported to the SPA — still served by the legacy MPA.
   SOCIAL: '/social',
@@ -15,6 +16,9 @@ export const ROUTES = {
 // building an actual link/navigate target, the first internal per-entity
 // route in the SPA.
 export const talkedPath = (friendId: number) => `/friends/${friendId}/talked`;
+
+// Same pattern as talkedPath — fills in ROUTES.GROUP_DETAILS' :id.
+export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;
 
 export const TIMEOUTS = {
   API_REQUEST: 5000, // 5 seconds
