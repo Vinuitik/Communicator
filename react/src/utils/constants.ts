@@ -1,14 +1,14 @@
-export const API_BASE_URL = 'http://localhost:8090/api'; // Base URL for API calls
-
 export const ROUTES = {
   HOME: '/',
   FRIENDS: '/friends',
+  ADD_FRIEND: '/friends/add',
   GROUPS: '/groups',
   VALIDATION: '/validation',
+  // Not yet ported to the SPA — still served by the legacy MPA.
   SOCIAL: '/social',
   CREATE_GROUP: '/api/groups/createGroup',
   FILE_UPLOAD: '/fileUpload',
-}; 
+};
 
 export const TIMEOUTS = {
   API_REQUEST: 5000, // 5 seconds

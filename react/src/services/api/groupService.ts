@@ -1,7 +1,7 @@
-// filepath: c:\Users\ACER\Desktop\Java\Communicator\react\src\services\api\groupService.ts
 import { Group } from '../../types/api';
+import { API_BASE } from './config';
 
-const API_URL = '/api/groups';
+const API_URL = API_BASE.GROUPS;
 
 export const getGroups = async (): Promise<Group[]> => {
     // Placeholder implementation - replace with actual API call later

@@ -1,7 +1,7 @@
-// filepath: c:\Users\ACER\Desktop\Java\Communicator\react\src\services\api\friendService.ts
 import { Friend } from '../../types/api';
+import { API_BASE } from './config';
 
-const API_URL = '/api/friend';
+const API_URL = API_BASE.FRIEND;
 
 export const getFriends = async (): Promise<Friend[]> => {
     // Placeholder implementation - replace with actual API call later
