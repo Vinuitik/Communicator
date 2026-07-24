@@ -2,23 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom global styles can be added below */
+/* Matches the legacy MPA base styles (nginx/static/*/​*.css body rule) so
+   ported pages don't visibly shift until the redesign changes these. */
 body {
-    @apply bg-gray-100 text-gray-900;
+    @apply bg-surface text-gray-800 font-sans;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    @apply font-bold;
+    @apply font-medium;
 }
 
 a {
-    @apply text-blue-600 hover:text-blue-800;
-}
-
-button {
-    @apply bg-blue-500 text-white font-semibold py-2 px-4 rounded;
-}
-
-input, textarea {
-    @apply border border-gray-300 rounded-md p-2;
+    @apply text-brand hover:text-brand-dark;
 }
