@@ -4,12 +4,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.RestController;
 
 import communicate.Friend.DTOs.FriendDTO;
+import communicate.Friend.DTOs.FriendProfileDTO;
 import communicate.Friend.DTOs.MCP_Friend_DTO;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
+import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendService.AnalyticsService;
+import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
 import jakarta.persistence.EntityNotFoundException;
@@ -47,6 +50,7 @@ public class FriendController {
     private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;
     private final AnalyticsService analyticsService;
+    private final FileMetaDataReadService fileMetaDataReadService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -78,6 +82,36 @@ public class FriendController {
         FriendDTO dto = new FriendDTO(friend.getId(), friend.getName(), friend.getExperience(), friend.getDateOfBirth(),
                 friend.getPlannedSpeakingTime(), friend.getAverageFrequency(), friend.getAverageDuration(),
                 friend.getAverageExcitement(), false);
+        return ResponseEntity.ok(dto);
+    }
+
+    // Added for the profile.html SPA port — WebController.profile's Thymeleaf
+    // model assembled friend.name/relationshipType/dateMet plus a
+    // server-resolved primary photo *name* (fileMetaDataReadService.getPhotoById);
+    // none of that was ever exposed as JSON (getFriend/FriendDTO doesn't carry
+    // relationshipType or dateMet, and there's no client-callable id->name
+    // lookup for photos). This is the JSON twin of that assembly, not a new
+    // capability. Distinct path from WebController's own `profile/{id}`
+    // (which still serves the Thymeleaf HTML) so the two don't collide.
+    @GetMapping("/profile/{id}/data")
+    public ResponseEntity<FriendProfileDTO> getProfileData(@PathVariable Integer id) {
+        Friend friend = friendService.findById(id);
+        if (friend.getId() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String mainPhotoName = null;
+        if (friend.getPrimaryPhotoId() != null) {
+            try {
+                Photos mainPhoto = fileMetaDataReadService.getPhotoById(friend.getPrimaryPhotoId());
+                mainPhotoName = mainPhoto.getPhotoName();
+            } catch (RuntimeException e) {
+                // Stale primaryPhotoId (photo since deleted) — fall back to no photo,
+                // same as WebController.profile would silently do via a null lookup.
+                mainPhotoName = null;
+            }
+        }
+        FriendProfileDTO dto = new FriendProfileDTO(friend.getId(), friend.getName(), friend.getRelationshipType(),
+                friend.getDateMet(), mainPhotoName);
         return ResponseEntity.ok(dto);
     }
 
