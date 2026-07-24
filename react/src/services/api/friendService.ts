@@ -1,4 +1,4 @@
-import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord } from '../../types/api';
+import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord, Social, SocialPayload } from '../../types/api';
 import { API_BASE } from './config';
 
 const API_URL = API_BASE.FRIEND;
@@ -123,4 +123,55 @@ export const getFriendAnalytics = async (friendId: number, left: string, right: 
         throw new Error(`Error: ${response.statusText}`);
     }
     return response.json();
+};
+
+// Added for the social.html SPA port. SocialController's full CRUD already
+// existed. IMPORTANT: despite the Java field being named `URL`
+// (Social.java/SocialDTO.java) and the legacy JS sending an "URL" key,
+// verified live that Jackson actually (de)serializes it as lowercase "url"
+// — a POST with "URL" 400s (validateSocialDTO sees a null url and rejects
+// it as empty). The legacy socialMediaManager.js's `{...formData, URL:
+// formatURL(...)}` spread therefore silently loses to the raw `formData.url`
+// already in the spread — the platform-specific formatting (auto mailto:
+// prefix for Email, https:// prefix otherwise) never actually applied in
+// production. This port sends the raw value as-is rather than "fixing" that
+// — see utils/socialFormat.ts for why applying the never-run formatting now
+// would actually be riskier than matching real production behavior.
+export const getFriendSocials = async (friendId: number): Promise<Social[]> => {
+    const response = await fetch(`${API_URL}/socials/${friendId}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const createFriendSocial = async (friendId: number, payload: SocialPayload): Promise<Social> => {
+    const response = await fetch(`${API_URL}/socials/${friendId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const updateFriendSocial = async (socialId: number, payload: SocialPayload): Promise<Social> => {
+    const response = await fetch(`${API_URL}/socials/update/${socialId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const deleteFriendSocial = async (socialId: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/socials/delete/${socialId}`, { method: 'DELETE' });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
 };

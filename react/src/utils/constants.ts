@@ -4,6 +4,7 @@ export const ROUTES = {
   ADD_FRIEND: '/friends/add',
   TALKED: '/friends/:id/talked',
   FRIEND_KNOWLEDGE: '/friends/:id/knowledge',
+  FRIEND_SOCIAL: '/friends/:id/social',
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
   GROUP_DETAILS: '/groups/:id',
@@ -11,7 +12,6 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   VALIDATION: '/validation',
   // Not yet ported to the SPA — still served by the legacy MPA.
-  SOCIAL: '/social',
   FILE_UPLOAD: '/fileUpload',
 };
 
@@ -22,6 +22,13 @@ export const talkedPath = (friendId: number) => `/friends/${friendId}/talked`;
 
 // Same pattern as talkedPath — fills in ROUTES.FRIEND_KNOWLEDGE's :id.
 export const friendKnowledgePath = (friendId: number) => `/friends/${friendId}/knowledge`;
+
+// Same pattern as talkedPath — fills in ROUTES.FRIEND_SOCIAL's :id. Legacy
+// reached this page via `/social?friendId=X` (a query param, not a path
+// segment) — repointed to a path param for consistency with every other
+// per-entity route in this SPA (talkedPath, friendKnowledgePath,
+// groupDetailsPath all use one).
+export const friendSocialPath = (friendId: number) => `/friends/${friendId}/social`;
 
 // Same pattern as talkedPath — fills in ROUTES.GROUP_DETAILS' :id.
 export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;

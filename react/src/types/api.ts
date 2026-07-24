@@ -58,6 +58,24 @@ export interface ShortFriend {
     averageExcitement?: number;
 }
 
+// A friend's social/contact link. Mirrors SocialController's responses —
+// note the wire property is lowercase "url" despite the Java field being
+// named `URL` (Social.java/SocialDTO.java) and the legacy frontend sending
+// "URL"; see friendService.ts's social functions for why that distinction
+// matters.
+export interface Social {
+    id: number;
+    url: string;
+    platform: string;
+    displayName?: string;
+}
+
+export interface SocialPayload {
+    url: string;
+    platform: string;
+    displayName?: string;
+}
+
 // Body for POST /api/friend/addFriend. The endpoint returns plain text
 // ("Friend added successfully!"), not the created Friend — see
 // FriendController.addFriend.

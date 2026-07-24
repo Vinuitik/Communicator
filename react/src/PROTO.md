@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 10 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 11 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -27,6 +27,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /groups/:id    → GroupDetailsPage [REAL — single group, notes, settings]
   /settings      → SettingsPage     [REAL — AI mode/keys, Drive backup/restore]
   /analytics     → AnalyticsPage    [REAL — per-friend EMA-smoothed charts]
+  /friends/:id/social → SocialPage  [REAL — per-friend social/contact links]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
@@ -43,9 +44,10 @@ services/api/config.ts        — single source of API base paths (mirrors nginx
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend, getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
 services/api/settingsService.ts — REAL: getLlmSettings, setLlmMode, saveProviderKey, removeProviderKey, checkHostWrapperStatus, getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup
-services/api/friendService.ts — also now REAL: getShortFriendList, getFriendAnalytics (added for AnalyticsPage)
+services/api/friendService.ts — also now REAL: getShortFriendList, getFriendAnalytics (AnalyticsPage), getFriendSocials/createFriendSocial/updateFriendSocial/deleteFriendSocial (SocialPage)
 services/api/connectionService.ts — still stubs, untouched
 utils/analyticsMath.ts         — ported 1:1 from analytics.js's EMA smoothing pipeline (see AnalyticsPage note)
+utils/socialFormat.ts          — platform icons/validation/help-text ported from social's config.js + formValidator.js + urlHelper.js (see SocialPage note)
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
 utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts; FRIENDS route removed — see HomePage note below; CREATE_GROUP repointed from the legacy nginx static-file path to the real SPA route)
@@ -301,6 +303,65 @@ friend with an analytics entry via `addFriend`, confirmed it appears in
 Jackson assigned, then deleted the friend. Not click-tested in a real
 browser — same `bun`-install gap as CalendarPage/SettingsPage.
 
+## SocialPage — what "ported" means here — read this for the URL/url gotcha before touching Social again
+
+`components/pages/SocialPage` reimplements `nginx/static/social/social.html`
++ its `modules/` directory (`config.js`, `formValidator.js`, `urlHelper.js`,
+`socialApiService.js`, `socialListRenderer.js`, `socialMediaManager.js`,
+`modalManager.js`) — CRUD for one friend's social/contact links. Only
+reachable in the legacy app from `profile.js`'s `socialLinks` module
+(`window.location.href = '/social?friendId=' + id`) — not linked from
+anywhere else there, and **not linked from anywhere in the SPA yet either**,
+since ProfilePage isn't ported. `friendSocialPath(id)` exists and the route
+works if hit directly; it becomes reachable through the UI once ProfilePage's
+social-links section is ported and links here — same "built ahead of its
+entry point" situation, worth remembering rather than assuming a page with
+no incoming link is dead (unlike `groupDetails.html`, this one is real).
+
+Repointed from the legacy's `?friendId=` query param to a `:id` path segment
+(`friendSocialPath`), matching every other per-entity route in this SPA.
+
+`SocialController`'s full CRUD (`GET/POST /api/friend/socials/{friendId}`,
+`PUT .../socials/update/{socialId}`, `DELETE .../socials/delete/{socialId}`)
+already existed — no backend changes needed.
+
+**Real bug found and deliberately NOT fixed — the `URL`/`url` casing trap:**
+`Social.java`/`SocialDTO.java` name the field `URL` (capital), and the legacy
+JS's `socialMediaManager.js` builds its POST/PUT body as `{...formData, URL:
+URLHelper.formatURL(...)}` — spreading the raw lowercase `url` from the form
+*and* adding a capital-`URL` key holding the platform-formatted value
+(auto `mailto:` prefix for Email, auto `https://` prefix otherwise).
+Verified live against the real backend: Jackson actually (de)serializes this
+field as **lowercase `url`**, on both request and response — a POST with
+`"URL"` 400s (`SocialService.validateSocialDTO` sees a null url and rejects
+it as empty). So the raw `formData.url` in the spread is what's actually
+saved; the capital-`URL` key — and the entire formatting step — has been
+silently dead in production this whole time. `socialListRenderer.js`'s own
+`social.URL || social.url || 'No URL'` fallback is a tell that whoever wrote
+it had already run into this inconsistency.
+
+This port sends the raw, unformatted value under `url` (the key the backend
+actually reads) rather than "fixing" it to apply the intended formatting —
+see `utils/socialFormat.ts`'s comment for why: the backend's own
+`isValidUrl` already accepts bare emails, bare phone numbers, and
+`@username`-style handles directly, and prefixing `https://` in front of an
+`@username` would break every one of those existing acceptance patterns.
+Matching years of real (if accidental) production behavior was judged safer
+than applying untested original intent.
+
+Edit is inline-in-row (toggle a row into an edit form in place) rather than
+the legacy's modal overlay, and delete uses `window.confirm` rather than the
+legacy's custom confirm modal — both match the "behavior preserved,
+presentation simplified" precedent already set (`CreateGroupPage`'s button
+color, every other delete flow in this SPA). Both Edit and Delete are real
+here (unlike `KnowledgeCrudPanel`'s Add+Delete-only scope) because the
+legacy page's edit flow was fully wired and working, not a stub.
+
+Verified against the live API through real nginx: created a throwaway
+friend, created a social link, confirmed it listed, updated it, deleted it,
+confirmed it was gone, then deleted the friend — exercising the full CRUD
+surface this page drives.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -337,6 +398,7 @@ browser — same `bun`-install gap as CalendarPage/SettingsPage.
 | AI mode / cloud provider keys | `ai_agent/routers/settings.py`, `services/api/settingsService.ts` (`getLlmSettings`/`setLlmMode`/`saveProviderKey`/`removeProviderKey`/`checkHostWrapperStatus`), `components/pages/SettingsPage` |
 | Google Drive backup/restore | `backup/.../BackupController.java` (mounted in `communicator-app`), `services/api/settingsService.ts` (`getBackupStatus`/`disconnectDrive`/`setBackupEnabled`/`runBackup`/`restoreBackup`), `components/pages/SettingsPage` |
 | Per-friend analytics charts / EMA smoothing | `FriendAnalyticsController` (`GET /api/friend/analyticsList`), `FriendController.getShortList`, `utils/analyticsMath.ts`, `components/pages/AnalyticsPage` |
+| Per-friend social/contact links CRUD | `SocialController` (`/api/friend/socials/**` — note lowercase `url` wire key despite the Java field name), `services/api/friendService.ts` social functions, `utils/socialFormat.ts`, `components/pages/SocialPage` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

@@ -11,6 +11,7 @@ import CreateGroupPage from './components/pages/CreateGroupPage';
 import GroupDetailsPage from './components/pages/GroupDetailsPage';
 import SettingsPage from './components/pages/SettingsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
+import SocialPage from './components/pages/SocialPage';
 import { ROUTES } from './utils/constants';
 
 const App: React.FC = () => {
@@ -28,6 +29,7 @@ const App: React.FC = () => {
           <Route path={ROUTES.GROUP_DETAILS} element={<GroupDetailsPage />} />
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
+          <Route path={ROUTES.FRIEND_SOCIAL} element={<SocialPage />} />
         </Routes>
       </PageLayout>
     </Router>
