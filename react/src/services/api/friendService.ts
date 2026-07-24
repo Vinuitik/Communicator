@@ -175,3 +175,21 @@ export const deleteFriendSocial = async (socialId: number): Promise<void> => {
         throw new Error(`Error: ${response.statusText}`);
     }
 };
+
+// Added for the fileUpload.html SPA port. Mirrors UploadController.js's
+// fetch to FRIEND_BASE/files/upload (FileController.uploadFiles, already
+// existed — no backend changes needed). Multipart body: a repeated `files`
+// field (not indexed like `files[0]`) plus a plain `friendId` field.
+export const uploadFriendFiles = async (friendId: number, files: File[]): Promise<void> => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    formData.append('friendId', String(friendId));
+    const response = await fetch(`${API_URL}/files/upload`, {
+        method: 'POST',
+        body: formData,
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({} as { error?: string }));
+        throw new Error(errorData.error || `Error: ${response.statusText}`);
+    }
+};

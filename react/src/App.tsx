@@ -12,6 +12,7 @@ import GroupDetailsPage from './components/pages/GroupDetailsPage';
 import SettingsPage from './components/pages/SettingsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import SocialPage from './components/pages/SocialPage';
+import FileUploadPage from './components/pages/FileUploadPage';
 import { ROUTES } from './utils/constants';
 
 const App: React.FC = () => {
@@ -30,6 +31,7 @@ const App: React.FC = () => {
           <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
           <Route path={ROUTES.FRIEND_SOCIAL} element={<SocialPage />} />
+          <Route path={ROUTES.FILE_UPLOAD} element={<FileUploadPage />} />
         </Routes>
       </PageLayout>
     </Router>

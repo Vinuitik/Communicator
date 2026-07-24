@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 11 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 12 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -28,6 +28,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /settings      → SettingsPage     [REAL — AI mode/keys, Drive backup/restore]
   /analytics     → AnalyticsPage    [REAL — per-friend EMA-smoothed charts]
   /friends/:id/social → SocialPage  [REAL — per-friend social/contact links]
+  /friends/:id/fileUpload → FileUploadPage [REAL — per-friend file upload]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
@@ -362,6 +363,20 @@ friend, created a social link, confirmed it listed, updated it, deleted it,
 confirmed it was gone, then deleted the friend — exercising the full CRUD
 surface this page drives.
 
+## FileUploadPage — what "ported" means here
+
+`components/pages/FileUploadPage` reimplements `nginx/static/fileUpload/{fileUpload.html,fileUpload.js}` + its 9-file `JS_Classes/` directory (`FileValidator`, `FileCollection`, `DragDropHandler`, `FileListRenderer`, `FileUtilities`, `PreviewManager`, `ProgressTracker`, `UIStateManager`, `UploadController`) — collapsed into one component's `useState`/`useEffect`, since React's re-render model replaces the manual DOM-listener/render wiring those classes existed for. Drag & drop, per-file validation (max 10 files, 50MB cap, duplicate-name+size check), a click-to-preview file list (image/video/audio/pdf/default, via `URL.createObjectURL` + revoke-on-close), and the upload/clear actions are all ported 1:1.
+
+Reached at `/friends/:id/fileUpload` (`fileUploadPath`) — legacy parsed `friendId` off the URL's last path segment (`/fileUpload/{friendId}`, `UploadController.js`) since it had no router; repointed to a real `:id` param, same as every other per-entity route in this SPA. **Not linked from anywhere in the SPA yet** — the only legacy entry point (`profile.js`/`modules/mediaUpload.js`, `window.location.href = '/fileUpload/' + friendId`) lives on `ProfilePage`, which isn't ported — same "built ahead of its entry point" situation `SocialPage` was in before it.
+
+`FileController.uploadFiles` (`POST /api/friend/files/upload`, mounted under the `/api/friend` prefix — see `PathPrefixConfig`) already existed and matches the legacy multipart body exactly (`files` repeated field + `friendId`) — no backend changes needed. Added `uploadFriendFiles` to `friendService.ts`.
+
+The progress bar is ported as **decorative**, matching real legacy behavior found while reading `UploadController.js`: `progressTracker.update()` is only ever called with `0` — before showing the bar and again in the `finally` block — nothing in the original code ever computed a real byte-level percentage. Preserved rather than "fixed" into a real progress indicator, consistent with this port's behavior-preserving mandate.
+
+No Font Awesome — the legacy page loaded it from a CDN (`cdnjs.cloudflare.com`) purely for file-type icons; replaced with emoji (🖼️🎬🎵📕📄), the same no-new-CDN-dependency call `AnalyticsPage` made for Chart.js, and the same icon convention `SocialPage` already established (📱✏️🗑️) rather than adding a font icon library for one page.
+
+Verified against the live API through real nginx during the port: `curl -F "files=@..." -F "friendId=..."` directly against `/api/friend/files/upload` and confirmed `{"message":"Files uploaded successfully"}`, using a throwaway friend (created and deleted after). **Not click-tested in a real browser** — same `bun`-install gap noted for CalendarPage/SettingsPage/AnalyticsPage; confirmed instead that the CRA production build compiles clean (`docker compose build react-ui`).
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -399,6 +414,7 @@ surface this page drives.
 | Google Drive backup/restore | `backup/.../BackupController.java` (mounted in `communicator-app`), `services/api/settingsService.ts` (`getBackupStatus`/`disconnectDrive`/`setBackupEnabled`/`runBackup`/`restoreBackup`), `components/pages/SettingsPage` |
 | Per-friend analytics charts / EMA smoothing | `FriendAnalyticsController` (`GET /api/friend/analyticsList`), `FriendController.getShortList`, `utils/analyticsMath.ts`, `components/pages/AnalyticsPage` |
 | Per-friend social/contact links CRUD | `SocialController` (`/api/friend/socials/**` — note lowercase `url` wire key despite the Java field name), `services/api/friendService.ts` social functions, `utils/socialFormat.ts`, `components/pages/SocialPage` |
+| Per-friend file upload | `FileController.uploadFiles` (`POST /api/friend/files/upload`), `services/api/friendService.ts` (`uploadFriendFiles`), `components/pages/FileUploadPage` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

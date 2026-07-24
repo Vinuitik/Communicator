@@ -11,8 +11,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   ANALYTICS: '/analytics',
   VALIDATION: '/validation',
-  // Not yet ported to the SPA — still served by the legacy MPA.
-  FILE_UPLOAD: '/fileUpload',
+  FILE_UPLOAD: '/friends/:id/fileUpload',
 };
 
 // ROUTES.TALKED is a react-router pattern (:id) — this fills it in for
@@ -32,6 +31,12 @@ export const friendSocialPath = (friendId: number) => `/friends/${friendId}/soci
 
 // Same pattern as talkedPath — fills in ROUTES.GROUP_DETAILS' :id.
 export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;
+
+// Same pattern as talkedPath — fills in ROUTES.FILE_UPLOAD's :id. Legacy
+// reached this at /fileUpload/{friendId} (the path's last segment, parsed
+// manually in UploadController.js) — repointed to a named :id param for
+// consistency with every other per-entity route in this SPA.
+export const fileUploadPath = (friendId: number) => `/friends/${friendId}/fileUpload`;
 
 export const TIMEOUTS = {
   API_REQUEST: 5000, // 5 seconds
