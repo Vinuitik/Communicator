@@ -20,6 +20,9 @@ export interface Friend {
     averageFrequency?: number;
     averageDuration?: number;
     averageExcitement?: number;
+    // Only populated by GET /api/friend/thisWeek (FriendController.getWeekFriends) —
+    // computed server-side against the current week's Mon-Sun window, not a stored field.
+    isBirthdayThisWeek?: boolean;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.

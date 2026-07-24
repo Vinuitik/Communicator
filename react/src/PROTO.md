@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 4 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 5 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,13 +11,14 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar).
 
 ## Internal wiring
 
 ```
 index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /              → HomePage        [REAL — friends list]
+  /calendar      → CalendarPage    [REAL — weekly calendar]
   /friends/add   → AddFriendPage   [REAL]
   /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
@@ -28,6 +29,10 @@ real nav links). Every top-level nav item is now either a real internal
 (Stats, Settings) — flip each link as its destination page is ported (see
 AddFriendForm/CreateGroupForm Cancel buttons and AddFriendPage/
 CreateGroupPage post-submit redirects, all now navigate(), for the pattern).
+NavigationBar's "Home" deliberately does NOT match the legacy nav (there,
+"Home" points at calendar.html, not "/") — see the comment in
+NavigationBar.tsx for why that's kept as the SPA's own convention rather than
+reproduced; Calendar got its own nav item instead.
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, removeFriend
@@ -60,6 +65,25 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 
 **This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which renders the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already makes, at a distinct path so it doesn't collide with the existing HTML route. **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages (anything under `group/.../templates/`) may not have a JSON counterpart at all — check for one before assuming the port is frontend-only. `Profile`/`Knowledge`/`Social` dropdown links still point at the legacy MPA; `Social`'s target (`/group/social/{id}`) was already a dead link in the legacy template (no matching nginx route) — copied as-is, not a regression from this port.
 
+## CalendarPage — what "ported" means here
+
+`components/pages/CalendarPage` + `organisms/CalendarBoard` reimplement
+`calendarView/calendar.html` + `calendar.js`: fetches `GET /api/friend/thisWeek`
+(same endpoint HomePage's "This Week" tab already uses — its response shape,
+including `isBirthdayThisWeek`, was added to `types/api.ts` `Friend` for this
+port) and buckets friends into a Mon-Sun grid plus a "Previous" (overdue)
+column, entirely client-side, matching the legacy date math exactly (including
+its loop-index-to-`Date#getDay()` conversion). Friend-box category coloring
+(birthday > family > work > personal, by keyword match on `experience`) and
+the birthday pulse animation (`tailwind.config.js` `birthday-pulse` keyframe)
+are ported 1:1. Clicking a friend box still navigates to the legacy Thymeleaf
+`talkedForm` page (`${API_BASE.FRIEND}/talked/{id}`, same pattern as
+FriendsTable's "Talked" link) — not ported yet, next up per the migration
+plan. "+ Add Friend" now uses internal `navigate()` since AddFriendPage is
+real; "+ Add Context" still just alerts "not implemented yet", matching
+legacy — that's a real unimplemented feature there too, not a stub introduced
+by this port.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -87,6 +111,7 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 | Friends-list coloring thresholds | `utils/friendMetrics.ts` |
 | Group-name validation rules | `components/organisms/CreateGroupForm/CreateGroupForm.tsx` (keep in sync with `SocialGroup` backend validation if that ever gains `@Valid` constraints) |
 | Group list JSON shape | `GroupApiController.listGroups` (`GET /api/groups/list`) + `types/api.ts` `GroupListResponse` |
+| Calendar week bucketing / friend-box coloring | `components/organisms/CalendarBoard/CalendarBoard.tsx` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

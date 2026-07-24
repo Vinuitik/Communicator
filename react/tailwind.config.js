@@ -16,6 +16,16 @@ module.exports = {
       fontFamily: {
         sans: ['Roboto', 'sans-serif'],
       },
+      // calendarView/calendar.css .friend-box.birthday pulse — page-specific, not a brand token.
+      keyframes: {
+        'birthday-pulse': {
+          '0%, 100%': { boxShadow: '0 4px 15px rgba(255, 107, 107, 0.4)' },
+          '50%': { boxShadow: '0 6px 20px rgba(255, 107, 107, 0.6)', transform: 'translateY(-2px)' },
+        },
+      },
+      animation: {
+        'birthday-pulse': 'birthday-pulse 2s infinite',
+      },
     },
   },
   plugins: [],
