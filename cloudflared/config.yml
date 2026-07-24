@@ -1,0 +1,16 @@
+tunnel: ffab881e-b703-4875-b191-d67eb91ab679
+credentials-file: /etc/cloudflared/credentials.json
+protocol: http2
+
+# Stability improvements (matches habitTracker's sibling setup)
+grace-period: 30s
+retries: 5
+heartbeat-interval: 10s
+heartbeat-count: 5
+
+ingress:
+  - hostname: communicator.work
+    service: http://nginx:80
+  - hostname: my.communicator.work
+    service: http://nginx:80
+  - service: http_status:404

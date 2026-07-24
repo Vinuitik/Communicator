@@ -73,6 +73,20 @@ services:
       - react-ui
     restart: unless-stopped
 
+  # Cloudflare Tunnel — publishes communicator.work / my.communicator.work
+  # with no open inbound port. Outbound-only connection to Cloudflare's edge;
+  # forwards to nginx:80 over the internal docker network per cloudflared/config.yml.
+  # Tunnel "app-tunnel" (ffab881e-b703-4875-b191-d67eb91ab679) — same pattern as
+  # HabitTracker's sibling setup. credentials.json is gitignored (real secret).
+  cloudflared:
+    build:
+      context: ./cloudflared
+      dockerfile: Dockerfile
+    container_name: communicator-cloudflared
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
   fileRepository:
     build:
       context: ./resourceRepository
