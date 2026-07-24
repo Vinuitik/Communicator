@@ -4,15 +4,18 @@ import PageLayout from './components/templates/PageLayout';
 import HomePage from './components/pages/HomePage';
 import FriendsPage from './components/pages/FriendsPage';
 import GroupsPage from './components/pages/GroupsPage';
+import AddFriendPage from './components/pages/AddFriendPage';
+import { ROUTES } from './utils/constants';
 
 const App: React.FC = () => {
   return (
-    <Router>
+    <Router basename="/app">
       <PageLayout>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/friends" element={<FriendsPage />} />
-          <Route path="/groups" element={<GroupsPage />} />
+          <Route path={ROUTES.HOME} element={<HomePage />} />
+          <Route path={ROUTES.FRIENDS} element={<FriendsPage />} />
+          <Route path={ROUTES.ADD_FRIEND} element={<AddFriendPage />} />
+          <Route path={ROUTES.GROUPS} element={<GroupsPage />} />
         </Routes>
       </PageLayout>
     </Router>
