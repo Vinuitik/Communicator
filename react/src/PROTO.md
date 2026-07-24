@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 2 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 3 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,28 +11,32 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup).
 
 ## Internal wiring
 
 ```
 index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
-  /             → HomePage     [REAL — friends list]
-  /friends/add  → AddFriendPage [REAL]
-  /groups       → GroupsPage   [STUB]
+  /             → HomePage       [REAL — friends list]
+  /friends/add  → AddFriendPage  [REAL]
+  /groups       → GroupsPage     [STUB — the actual list page, not ported yet]
+  /groups/create → CreateGroupPage [REAL]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Unported nav destinations are plain <a> to the legacy MPA's
 absolute path; ported ones are react-router <Link>. Flip each link as its
-page gets ported — same policy in AddFriendForm's Cancel button and
-AddFriendPage's post-submit redirect (now a real navigate(), not a page reload).
+page gets ported — same policy in AddFriendForm's/CreateGroupForm's Cancel
+buttons and AddFriendPage's post-submit redirect (now a real navigate(), not
+a page reload) vs CreateGroupPage's (still window.location.href, since its
+destination — the groups list — isn't ported yet).
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, removeFriend
-services/api/groupService.ts, connectionService.ts — still stubs, untouched
+services/api/groupService.ts  — REAL: createGroup; getGroups/deleteGroup still stubs, TODO-tagged for the GroupsPage port
+services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
-hooks/useApi.ts               — generic fetch hook, unused so far — HomePage/AddFriendPage each manage their own fetch state instead
-utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts; FRIENDS route removed — see HomePage note below)
+hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
+utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts; FRIENDS route removed — see HomePage note below; CREATE_GROUP repointed from the legacy nginx static-file path to the real SPA route)
 ```
 
 ## HomePage — what "ported" means here
@@ -45,11 +49,17 @@ utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL remov
 
 `components/pages/AddFriendPage` composes `AddFriendForm` (name/lastSpoken/experience/hours/dob — the 5 legacy fields) and `KnowledgeEditor` (fact/importance list). On submit it builds the exact payload shape `FriendController.addFriend` expects (`types/api.ts` `NewFriendPayload`, mirrored from the Java `Friend`/`FriendKnowledge` entities) and POSTs for real. `KnowledgeEditor` has **no API calls of its own** — matches the legacy behavior on this specific page (knowledgeManager.js only writes to the DOM table here; there's no friend id yet to attach knowledge to). It becomes API-backed when facts.html's equivalent gets ported.
 
+## CreateGroupPage — what "ported" means here
+
+`components/pages/CreateGroupPage` composes `CreateGroupForm` (name field, real-time validation mirroring the backend's own rules — 2-100 chars, no `<>"'&`) and the new `FlashMessage` molecule (auto-dismiss success/error banner — this exact pattern is hand-rolled independently in both `createGroup.js` and `settings.js` in the legacy code, worth reusing rather than re-deriving again when settings gets ported). Submits to the real `POST /api/groups/create` and models its actual response shape (`{success, message, group}` on **both** success and failure, not a bare `Group` — see `types/api.ts` `CreateGroupResponse`). Verified against the live API during the port (created and deleted a real group through nginx, not just curl against the container directly).
+
+The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy page uses the brand purple. Ported to `brand`, not copied — this migration is explicitly meant to *stop* carrying forward that kind of mismatch, not preserve it page-for-page.
+
 ## Seams (intended vs actual)
 
-**Outbound:** browser → main nginx `/api/friend/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
+**Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
 
-**Real today:** everything in `friendService.ts`. `groupService`/`connectionService` are still placeholders that return empty arrays / echo input / log to console — calling them does nothing real.
+**Real today:** everything in `friendService.ts`; `createGroup` in `groupService.ts`. `getGroups`/`deleteGroup`/`connectionService` are still placeholders that return empty arrays / log to console — calling them does nothing real.
 
 ## Gotchas / Technology Notes
 
@@ -69,6 +79,7 @@ utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL remov
 | Add a route | `App.tsx` `<Routes>` + `utils/constants.ts` `ROUTES` |
 | Port the next legacy page | new `components/pages/<Name>Page/`, reuse existing atoms/molecules/organisms first — check `components/{atoms,molecules,organisms}/index.ts` before writing a new one |
 | Friends-list coloring thresholds | `utils/friendMetrics.ts` |
+| Group-name validation rules | `components/organisms/CreateGroupForm/CreateGroupForm.tsx` (keep in sync with `SocialGroup` backend validation if that ever gains `@Valid` constraints) |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |
