@@ -4,6 +4,8 @@ import {
   getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup,
 } from '../../../services/api/settingsService';
 import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS } from '../../../types/api';
+import ConfirmDialog from '../../molecules/ConfirmDialog';
+import { useToast } from '../../molecules/Toast';
 
 const PROVIDER_LABELS: Record<string, string> = {
   gemini: 'Gemini',
@@ -54,6 +56,7 @@ const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, c
 // Neither backend needed changes; both already fully implement what this
 // page calls, the legacy page was simply the only UI for them.
 const SettingsPage: React.FC = () => {
+  const { showToast } = useToast();
   const [mode, setModeState] = useState<'ollama' | 'cloud' | null>(null);
   const [modeStatus, setModeStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
   const [providers, setProviders] = useState<Record<string, boolean>>({});
@@ -66,6 +69,8 @@ const SettingsPage: React.FC = () => {
   const [backupRunStatus, setBackupRunStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
   const [restoreStatus, setRestoreStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
   const [restoring, setRestoring] = useState(false);
+  const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
+  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
 
   const loadLlmSettings = useCallback(async () => {
     try {
@@ -111,7 +116,7 @@ const SettingsPage: React.FC = () => {
       setProviderInputs((s) => ({ ...s, [provider]: '' }));
       await loadLlmSettings();
     } catch (err) {
-      window.alert(`Could not save key: ${err instanceof Error ? err.message : err}`);
+      showToast(`Could not save key: ${err instanceof Error ? err.message : err}`, 'error');
     } finally {
       setProviderBusy((b) => ({ ...b, [provider]: false }));
     }
@@ -123,19 +128,19 @@ const SettingsPage: React.FC = () => {
       await removeProviderKey(provider);
       await loadLlmSettings();
     } catch (err) {
-      window.alert(`Could not remove key: ${err instanceof Error ? err.message : err}`);
+      showToast(`Could not remove key: ${err instanceof Error ? err.message : err}`, 'error');
     } finally {
       setProviderBusy((b) => ({ ...b, [provider]: false }));
     }
   };
 
   const handleDisconnectDrive = async () => {
-    if (!window.confirm('Disconnect Google Drive? Nightly backups will stop until reconnected.')) return;
+    setConfirmDisconnectOpen(false);
     try {
       await disconnectDrive();
       await loadBackupStatus();
     } catch (err) {
-      window.alert(`Could not disconnect: ${err instanceof Error ? err.message : err}`);
+      showToast(`Could not disconnect: ${err instanceof Error ? err.message : err}`, 'error');
     }
   };
 
@@ -147,7 +152,7 @@ const SettingsPage: React.FC = () => {
       await setBackupEnabled(next);
     } catch (err) {
       setBackup({ ...backup, enabled: !next });
-      window.alert(`Could not update schedule: ${err instanceof Error ? err.message : err}`);
+      showToast(`Could not update schedule: ${err instanceof Error ? err.message : err}`, 'error');
     }
   };
 
@@ -165,9 +170,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleRestore = async () => {
-    if (!window.confirm(
-      'This overwrites the current database (and media) with the latest Drive backup. This cannot be undone. Are you sure?'
-    )) return;
+    setConfirmRestoreOpen(false);
     setRestoring(true);
     setRestoreStatus({ text: 'Restoring…' });
     try {
@@ -309,7 +312,7 @@ const SettingsPage: React.FC = () => {
         {backup && backup.clientConfigured && (
           <div className="flex gap-2.5 mt-3.5">
             {backup.connected ? (
-              <button type="button" onClick={handleDisconnectDrive} className={ghostButtonClasses}>
+              <button type="button" onClick={() => setConfirmDisconnectOpen(true)} className={ghostButtonClasses}>
                 Disconnect
               </button>
             ) : (
@@ -359,7 +362,7 @@ const SettingsPage: React.FC = () => {
             )}
             <button
               type="button"
-              onClick={handleRestore}
+              onClick={() => setConfirmRestoreOpen(true)}
               disabled={restoring || !!backup.running || !backup.db?.exists}
               className={dangerButtonClasses}
             >
@@ -368,6 +371,25 @@ const SettingsPage: React.FC = () => {
           </Card>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmDisconnectOpen}
+        title="Disconnect Google Drive?"
+        message="Nightly backups will stop until reconnected."
+        confirmLabel="Disconnect"
+        danger
+        onConfirm={handleDisconnectDrive}
+        onCancel={() => setConfirmDisconnectOpen(false)}
+      />
+      <ConfirmDialog
+        open={confirmRestoreOpen}
+        title="Restore from latest backup?"
+        message="This overwrites the current database (and media) with the latest Drive backup. This cannot be undone."
+        confirmLabel="Restore"
+        danger
+        onConfirm={handleRestore}
+        onCancel={() => setConfirmRestoreOpen(false)}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Avatar from '../../atoms/Avatar';
 import KnowledgeCrudPanel from '../../organisms/KnowledgeCrudPanel';
+import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
 import {
   getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge,
@@ -31,6 +32,7 @@ const GroupDetailsPage: React.FC = () => {
   const [groupLoading, setGroupLoading] = useState(true);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const [members, setMembers] = useState<Friend[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
@@ -110,13 +112,13 @@ const GroupDetailsPage: React.FC = () => {
 
   const handleDeleteGroup = async () => {
     if (!group) return;
-    if (!window.confirm(`Are you sure you want to delete "${group.name}"? This cannot be undone.`)) return;
+    setConfirmDeleteOpen(false);
     setDeletingGroup(true);
     try {
       await deleteGroup(groupId);
       navigate(ROUTES.GROUPS);
     } catch {
-      window.alert('Failed to delete group. Please try again.');
+      showToast('Failed to delete group. Please try again.', 'error');
       setDeletingGroup(false);
     }
   };
@@ -186,7 +188,7 @@ const GroupDetailsPage: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={handleDeleteGroup}
+          onClick={() => setConfirmDeleteOpen(true)}
           disabled={deletingGroup}
           className="border border-bad/40 bg-bad/[.12] text-bad font-semibold text-[12.5px] px-[15px] py-2.5 rounded-input hover:bg-bad/[.2] disabled:opacity-50 transition-colors"
         >
@@ -304,6 +306,16 @@ const GroupDetailsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete "${group.name}"?`}
+        message="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteGroup}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 };

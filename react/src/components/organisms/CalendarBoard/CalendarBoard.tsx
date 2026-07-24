@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { Friend } from '../../../types/api';
-import Avatar from '../../atoms/Avatar';
 
 interface CalendarBoardProps {
   friends: Friend[];
