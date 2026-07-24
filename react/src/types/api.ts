@@ -15,6 +15,11 @@ export interface Friend {
     dateOfBirth?: string | null; // ISO date
     knowledge?: FriendKnowledge[];
     analytics?: FriendAnalyticsEntry[];
+    // Exponential moving averages, computed server-side by the chrono
+    // service — drive the friends-list "intensity score" color.
+    averageFrequency?: number;
+    averageDuration?: number;
+    averageExcitement?: number;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
