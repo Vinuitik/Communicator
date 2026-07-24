@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Settings</title>
+    <title>Settings</title>
     <link rel="stylesheet" href="settings/settings.css">
     <link rel="stylesheet" href="navigation/navigation.css">
 
@@ -20,12 +20,14 @@
             <li><a href="/calendarView/calendar.html">Home</a></li>
             <li><a href="/addFriendForm/addForm.html">Add Friend</a></li>
             <li><a href="/" id="navAllFriends">All Friends</a></li>
-            <li><a href="/settings/settings.html" class="active">AI Settings</a></li>
+            <li><a href="/settings/settings.html" class="active">Settings</a></li>
         </ul>
     </nav>
 
     <div class="container">
-        <h1>AI Settings</h1>
+        <h1>Settings</h1>
+
+        <h2 class="section-heading">AI</h2>
         <p class="subtitle">Choose whether chat and knowledge summarization run on your own machine or in the cloud.</p>
 
         <!-- Mode selection -->
@@ -65,6 +67,40 @@
             <h2>Cloud provider keys</h2>
             <p class="hint">Keys are encrypted at rest. Only used when mode is set to Cloud — leave any you don't have blank, the gateway skips providers with no key.</p>
             <div id="provider-list"></div>
+        </section>
+
+        <h2 class="section-heading">Backup</h2>
+        <p class="subtitle">Nightly copy of your data (database + media) to Google Drive.</p>
+
+        <section class="card">
+            <h2>Google Drive connection</h2>
+            <div class="status-row">
+                <span id="drive-dot" class="status-dot status-unknown"></span>
+                <span id="drive-text">Checking…</span>
+            </div>
+            <div id="drive-actions" class="backup-actions"></div>
+        </section>
+
+        <section class="card" id="backup-controls-card" style="display:none">
+            <h2>Backup schedule</h2>
+            <label class="toggle-row">
+                <input type="checkbox" id="backup-enabled-toggle">
+                <span>Nightly automatic backup</span>
+            </label>
+            <div id="backup-run-status" class="save-status"></div>
+            <div class="backup-actions">
+                <button id="run-backup-btn" class="btn-primary">Back up now</button>
+            </div>
+            <p class="hint" id="last-run-hint"></p>
+        </section>
+
+        <section class="card" id="restore-card" style="display:none">
+            <h2>Restore from backup</h2>
+            <p class="hint">Restores the database (and media) from the most recent Drive backup. <strong>This overwrites current data</strong> — only needed after data loss, not routine use.</p>
+            <div id="restore-status" class="save-status"></div>
+            <div class="backup-actions">
+                <button id="restore-btn" class="btn-danger">Restore from latest backup</button>
+            </div>
         </section>
     </div>
 

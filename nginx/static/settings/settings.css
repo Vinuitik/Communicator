@@ -30,6 +30,19 @@ h1 {
     margin-bottom: 24px;
 }
 
+.section-heading {
+    font-size: 1.3rem;
+    margin: 36px 0 4px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.section-heading:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
 .card {
     background-color: #fff;
     padding: 20px 24px;
@@ -204,4 +217,68 @@ h1 {
 
 .provider-row .remove-btn:disabled {
     display: none;
+}
+
+/* Backup section */
+.backup-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.backup-actions button,
+.btn-primary,
+.btn-danger {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: #4a7dff;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #3a6be0;
+}
+
+.btn-secondary {
+    background-color: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.btn-secondary:hover {
+    background-color: #f5f5f5;
+}
+
+.btn-danger {
+    background-color: #fff;
+    color: #d1242f;
+    border: 1px solid #d1242f;
+}
+
+.btn-danger:hover {
+    background-color: #fff0f0;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.95rem;
+}
+
+.toggle-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
 }
