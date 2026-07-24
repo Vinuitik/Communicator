@@ -1,0 +1,6 @@
+The legacy multi-page UI that used to live here has been removed —
+the React SPA at /app/ (react/) is now the only frontend. See
+nginx/nginx.conf (root `/` redirects to /app/) and react/PROTO.md.
+Kept as an empty directory (Docker's `COPY static/` in nginx/Dockerfile
+needs the source path to exist) rather than removed from the Dockerfile,
+in case a future static asset (favicon, robots.txt) needs this path again.
