@@ -2,10 +2,10 @@ export const ROUTES = {
   HOME: '/',
   ADD_FRIEND: '/friends/add',
   GROUPS: '/groups',
+  CREATE_GROUP: '/groups/create',
   VALIDATION: '/validation',
   // Not yet ported to the SPA — still served by the legacy MPA.
   SOCIAL: '/social',
-  CREATE_GROUP: '/api/groups/createGroup',
   FILE_UPLOAD: '/fileUpload',
 };
 
