@@ -43,7 +43,7 @@ Note the upstream names use the **compose `container_name`** (e.g. `groupService
 | `/api/mcp/knowledge/` | `mcp-knowledge-server:8000/` | CORS + preflight |
 | `/api/chrono/` | `chronoService:8087/chrono/` | **manual test only** — chrono normally self-triggers |
 | `/api/ai/` | `ai-agent:8001/` | **WebSocket upgrade headers** + CORS |
-| `/app/` | `react-ui:80/` | SPA, `try_files … /index.html`, no-cache, security headers |
+| `/app/` | `react-ui:80/` | SPA, pure proxy_pass, no-cache, security headers. SPA fallback for client-side routes lives in `react-ui`'s *own* nginx (`react/nginx.conf`), not here — see Gotchas. |
 
 **Static pages served directly by nginx** (legacy MPA, `root /usr/share/nginx/html`, all no-cache):
 
@@ -99,7 +99,8 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 
 ## Gotchas / Technology Notes
 
-- **Two frontends, one origin.** The legacy vanilla-JS MPA is served *directly by nginx* from baked `static/`; the React SPA is *proxied* at `/app/`. They share `localhost:8090`. Which one you get depends purely on the path. New work is React; the MPA (`mainPage`, `addFriendForm`, `facts`, `analytics`, `social`, `profile`, `groupsView`) is `[LEGACY]` but still live and still the default at `/`.
+- **Two frontends, one origin.** The legacy vanilla-JS MPA is served *directly by nginx* from baked `static/`; the React SPA is *proxied* at `/app/`. They share `localhost:8090`. Which one you get depends purely on the path. New work is React; the MPA (`mainPage`, `addFriendForm`, `facts`, `analytics`, `social`, `profile`, `groupsView`) is `[LEGACY]` but still live and still the default at `/`. Pages are being ported to the SPA one at a time — see [react/PROTO.md](../react/PROTO.md) for which ones are real vs still legacy-only, and `NavigationBar`/`AddFriendForm`'s own comments for the "external `<a>` vs internal `<Link>`" convention used to link between the two during migration.
+- **`/app/` was silently broken until 2026-07-24.** The location mixed `proxy_pass` with `try_files $uri $uri/ /index.html;`. `try_files` needs a `root` to check against, which this location never had, so it always missed and fell through to nginx's catch-all `location /`, serving the *legacy* `index.html` — proxy_pass was never reached. curl looked fine (200 OK) because the wrong response was still a valid page. Fixed by making `/app/` pure `proxy_pass` and moving SPA-fallback (`try_files $uri /index.html`) into react-ui's own nginx config (`react/nginx.conf`) instead.
 - **Config is COPY-baked, not mounted.** `Dockerfile` does `COPY nginx.conf …` and `COPY static/`. Editing `nginx.conf` or any static file requires **rebuilding the nginx image** (`docker compose build nginx`) — a plain restart runs the old baked copy. This is the #1 "my change didn't take" trap.
 - **CORS is per-location and inconsistent.** groups/mcp/ai add `Access-Control-Allow-Origin *`; friend/connections/fileRepository do not. Meanwhile the Spring controllers pin `@CrossOrigin(origins="http://nginx")`. Since everything is same-origin through nginx in normal use, this rarely bites — but a direct cross-origin call behaves differently per service.
 - **`no-store` everywhere** ("development" caching disabled on every static/app route). Every page reload re-fetches. Fine for a personal single-user tool; would hammer bandwidth at scale. The `expires 14d` production lines are commented out, ready to re-enable.

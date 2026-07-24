@@ -1,51 +1,69 @@
-# React UI — Proto  `[SCAFFOLD / PARTIALLY IMPLEMENTED]`
+# React UI — Proto `[PARTIALLY REAL — one page ported]`
 
-> **Proto, not a flow.** And be careful: **the React app is NOT the live UI yet** — its API layer is placeholder stubs. The working user flows today run through the **legacy static MPA** baked into nginx (`nginx/static/`), documented in the [nginx proto](../../nginx/PROTO.md). See "Two frontends" there.
+> **Proto, not a flow.** Pages are being ported from the legacy MPA
+> (`nginx/static/`) one at a time, preserving existing behavior/styling —
+> the visual redesign is a deliberately separate later pass. See the "Two
+> frontends" gotcha in [nginx/PROTO.md](../../nginx/PROTO.md).
 
-Files: App.tsx, index.tsx, services/api/{friendService,groupService,connectionService}.ts, hooks/useApi.ts, utils/constants.ts, components/{atoms,molecules,organisms,templates,pages}/*
+Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,connectionService}.ts, hooks/useApi.ts, utils/constants.ts, components/{atoms,molecules,organisms,templates,pages}/*
 
-## Role (intended)
+## Role
 
-The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`), which the main nginx proxies at **`/app/`** (`try_files … /index.html` for client-side routing).
+The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input) → `molecules` (FormField, SearchBar) → `organisms` (Header, NavigationBar) → `templates` (PageLayout) → `pages` (Home, Friends, Groups).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm) → `templates` (PageLayout) → `pages` (Home, Friends, Groups, AddFriend).
 
 ## Internal wiring
 
 ```
-index.tsx → App.tsx → <Router><PageLayout><Routes>
-  /        → HomePage
-  /friends → FriendsPage
-  /groups  → GroupsPage
-services/api/friendService.ts, groupService.ts, connectionService.ts  — the backend seam (STUBBED)
-hooks/useApi.ts                                                       — generic fetch hook
-utils/constants.ts                                                    — API_BASE_URL, ROUTES, DEFAULTS
+index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
+  /             → HomePage    [STUB — still "coming soon"]
+  /friends      → FriendsPage [STUB]
+  /friends/add  → AddFriendPage [REAL — first ported page]
+  /groups       → GroupsPage  [STUB]
+
+PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
+real nav links). Unported nav destinations are plain <a> to the legacy MPA's
+absolute path; ported ones are react-router <Link>. Flip each link as its
+page gets ported — same policy in AddFriendForm's Cancel button.
+
+services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
+services/api/friendService.ts — addFriend() is REAL (POST /api/friend/addFriend); getFriends/removeFriend still stubs, TODO-tagged for the FriendsPage port
+services/api/groupService.ts, connectionService.ts — still stubs, untouched
+hooks/useApi.ts               — generic fetch hook, unused so far
+utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts)
 ```
+
+## AddFriendPage — what "ported" means here
+
+`components/pages/AddFriendPage` composes `AddFriendForm` (name/lastSpoken/experience/hours/dob — the 5 legacy fields) and `KnowledgeEditor` (fact/importance list). On submit it builds the exact payload shape `FriendController.addFriend` expects (`types/api.ts` `NewFriendPayload`, mirrored from the Java `Friend`/`FriendKnowledge` entities) and POSTs for real. `KnowledgeEditor` has **no API calls of its own** — matches the legacy behavior on this specific page (knowledgeManager.js only writes to the DOM table here; there's no friend id yet to attach knowledge to). It becomes API-backed when facts.html's equivalent gets ported.
+
+Not yet ported from `addForm.html`: nothing — this page is functionally complete. Untouched: everything else in the nav (Home/friends-list, Stats, Settings, group pages, profile, social, file upload).
 
 ## Seams (intended vs actual)
 
-**Outbound (intended):** browser → main nginx `/api/friend|groups|connections/...` → Spring services. Relative `/api/...` is correct **when served at `/app/`** so it shares the nginx origin.
+**Outbound:** browser → main nginx `/api/friend/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
 
-**Actual today:** essentially none wired.
-- `services/api/friendService.ts` — `getFriends()` returns `[]`, `addFriend()` echoes input, `removeFriend()` just `console.log`s. **Placeholder implementations**, not real fetches.
-- `utils/constants.ts` — `API_BASE_URL = 'http://localhost:8090/api'` is **hardcoded to the host port** (won't work from inside the served app / other origins; should be the relative `/api`). `friendService` uses a *different* base (`/api/friend`) than this constant — inconsistent.
+**Real today:** `addFriend()` only. Everything else in `friendService`/`groupService`/`connectionService` is still a placeholder that returns empty arrays / echoes input / logs to console — calling them does nothing real.
 
 ## Gotchas / Technology Notes
 
-- **This app does not talk to the backend yet.** Any "React flow" is aspirational. The real, working flows (add friend, this-week list, facts, analytics, social, media upload) are the **vanilla-JS pages in `nginx/static/`** served directly by nginx. Don't debug a live issue here expecting it to be the running UI.
-- **Two conflicting API base URLs.** `constants.API_BASE_URL` (`http://localhost:8090/api`, absolute host) vs `friendService.API_URL` (`/api/friend`, relative). Pick the relative form (works behind `/app/` through nginx) before wiring real calls.
-- **CRA/react-scripts + Node 18 build** → static files served by a second nginx. So there are **two nginx containers** in play: `react-ui` (serves the SPA build) and the main `nginx` (ingress that proxies `/app/` to it). Editing the SPA requires a rebuild of the `react-ui` image (static build baked in), same trap as the main nginx.
-- **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — just `useApi`. Fine now; will need one once real data flows.
-- **Routes in `constants.ROUTES` reference legacy paths** (`/social`, `/api/groups/createGroup`, `/fileUpload`) that are served by the *legacy MPA*, not React routes — a sign the two frontends are meant to interoperate during migration.
+- **Styles are being ported as Tailwind utility classes, not the legacy CSS files verbatim.** `tailwind.config.js` carries the legacy brand tokens (`brand` = `#6A5ACD`, `surface` = `#f5f5f5`, `font-sans` = Roboto) so ported components look the same without copying 100+ line CSS files in wholesale. If a ported page visibly drifts from the legacy page's look, check the Tailwind classes against the source CSS file in `nginx/static/`, not the other way around.
+- **`react-ui` is a baked Docker image**, same trap as the main nginx: editing anything under `react/` (including `react/nginx.conf`) does nothing to the running container until `docker compose build react-ui && docker compose up -d react-ui`.
+- **`Router` needs `basename="/app"`.** The browser URL is always `/app/...` (that's what nginx's `location /app/` matches on), but proxy_pass strips the prefix before react-ui ever sees the request — react-ui's own server only ever sees `/`, `/friends/add`, etc. `basename` reconciles this: without it, every route silently fails to match once actually deployed through nginx (this bit the very first page ported — see nginx/PROTO.md's `/app/` gotcha for the matching backend-side bug).
+- **CRA detects the `/app/` mount from `package.json`'s `homepage` field** and prefixes built asset URLs accordingly (`/app/static/js/main.*.js`). Don't remove that field.
+- **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — just `useApi`, currently unused. Fine while only one page is real; revisit once 2-3 pages need shared server state.
 
 ## Change Index
 
 | Thing to change | Where |
 |---|---|
-| Wire real API calls | `src/services/api/*.ts` (replace placeholder bodies) |
-| API base URL | `src/utils/constants.ts API_BASE_URL` (make it relative `/api`) — reconcile with `friendService.API_URL` |
-| Routes | `src/App.tsx` `<Routes>` + `src/utils/constants.ts ROUTES` |
-| Generic fetch behaviour | `src/hooks/useApi.ts` |
-| SPA mount path (ingress) | `nginx/nginx.conf location /app/` |
+| Add/change a backend API prefix | `services/api/config.ts` `API_BASE` |
+| Wire a real API call for a stubbed page | `services/api/*.ts` (replace placeholder body) |
+| Add a route | `App.tsx` `<Routes>` + `utils/constants.ts` `ROUTES` |
+| Port the next legacy page | new `components/pages/<Name>Page/`, reuse existing atoms/molecules/organisms first — check `components/{atoms,molecules,organisms}/index.ts` before writing a new one |
+| Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
+| Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
+| SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |
+| SPA client-route fallback | `react/nginx.conf` (react-ui's own nginx) |
 | Build/serve | `react/Dockerfile` (CRA build → nginx:alpine), rebuild `react-ui` image to deploy |
-| Design tokens | Tailwind (`tailwind.config.js`) + `src/styles/*` |
