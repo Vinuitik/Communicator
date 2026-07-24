@@ -2,16 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Matches the legacy MPA's per-page body rule (nginx/static CSS files) so
-   ported pages don't visibly shift until the redesign changes these. */
+/* Single re-themeable accent token (see tailwind.config.js comment). Default
+   is the handoff's purple; swap these five lines to the sanctioned dark-blue
+   alternate (#6366F1) to retheme the whole app. Values are "R G B" triples
+   (no commas) so Tailwind's `rgb(var(--x) / <alpha-value>)` opacity syntax
+   works. */
+:root {
+    --accent: 139 92 246;        /* #8B5CF6 */
+    --accent-light: 167 139 250; /* #A78BFA */
+    --accent-lighter: 196 181 253; /* #C4B5FD */
+    --accent-grad-from: #9B6DFF;
+    --accent-grad-to: #6D28D9;
+}
+
 body {
-    @apply bg-surface text-gray-800 font-sans;
+    @apply bg-bg text-text-primary font-sans;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    @apply font-medium;
+    @apply font-display font-medium;
 }
 
 a {
-    @apply text-brand hover:text-brand-dark;
+    @apply text-accent-light hover:text-accent-lighter;
 }
