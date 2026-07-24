@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DropdownMenu from '../../molecules/DropdownMenu';
 import { Friend } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
-import { talkedPath } from '../../../utils/constants';
+import { talkedPath, friendKnowledgePath } from '../../../utils/constants';
 import {
   getDaysDiff, getGradientColor, formatDaysDiff,
   calculateIntensityScore, getIntensityGradientColor,
@@ -17,9 +17,9 @@ interface FriendsTableProps {
 }
 
 // Ported from the <table> in nginx/static/mainPage/index.html + the row
-// rendering in index.js. Profile/Knowledge/Groups/Connections still point at
-// the legacy MPA — none of those pages are ported yet. Talked now navigates
-// internally to TalkedPage.
+// rendering in index.js. Profile/Groups/Connections still point at the
+// legacy MPA — none of those pages are ported yet. Talked/Knowledge now
+// navigate internally to TalkedPage/FactsPage.
 const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, onDelete }) => {
   const navigate = useNavigate();
   return (
@@ -59,7 +59,7 @@ const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, on
                     items={[
                       { label: 'Talked', onClick: () => navigate(talkedPath(friend.id)) },
                       { label: 'Profile', href: `${API_BASE.FRIEND}/profile/${friend.id}` },
-                      { label: 'Knowledge', href: `${API_BASE.FRIEND}/knowledge/${friend.id}` },
+                      { label: 'Knowledge', onClick: () => navigate(friendKnowledgePath(friend.id)) },
                       { label: 'Groups', href: API_BASE.GROUPS },
                       { label: 'Connections', href: `${API_BASE.CONNECTIONS}/${friend.id}` },
                       {

@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import Textarea from '../../atoms/Textarea';
 import Input from '../../atoms/Input';
 import Button from '../../atoms/Button';
-import { GroupCrudItem } from '../../../types/api';
+import { KnowledgeCrudItem } from '../../../types/api';
 
 interface KnowledgeCrudPanelProps {
   title: string;
   factLabel: string;
   importanceLabel: string;
   addButtonLabel: string;
-  items: GroupCrudItem[];
+  items: KnowledgeCrudItem[];
   loading: boolean;
   error: string | null;
   onAdd: (fact: string, importance: number) => Promise<void>;

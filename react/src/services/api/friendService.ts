@@ -1,4 +1,4 @@
-import { Friend, NewFriendPayload } from '../../types/api';
+import { Friend, NewFriendPayload, KnowledgeCrudItem } from '../../types/api';
 import { API_BASE } from './config';
 
 const API_URL = API_BASE.FRIEND;
@@ -66,6 +66,38 @@ export const talkedToFriend = async (friendId: number, payload: NewFriendPayload
 
 export const removeFriend = async (friendId: number): Promise<void> => {
     const response = await fetch(`${API_URL}/deleteFriend/${friendId}`, { method: 'DELETE' });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+};
+
+// Added for the facts.html SPA port. FriendKnowledgeController.getKnowledgePaginatedCustomSize
+// (GET /api/friend/getKnowledge/{friendId}/page/{page}/size/{size}) already returns exactly the
+// {id, fact, importance} shape we need (it exists for the MCP/AI server) — reused here with a
+// large size instead of adding a new endpoint, since this app's per-friend fact counts are small
+// enough that real pagination isn't worth the UI complexity (matches the same call GroupDetailsPage
+// made for group knowledge/settings).
+export const getFriendKnowledge = async (friendId: number): Promise<KnowledgeCrudItem[]> => {
+    const response = await fetch(`${API_URL}/getKnowledge/${friendId}/page/0/size/1000`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const addFriendKnowledgeItem = async (friendId: number, fact: string, importance: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/addKnowledge/${friendId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([{ fact, importance }]),
+    });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+};
+
+export const deleteFriendKnowledgeItem = async (knowledgeId: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/deleteKnowledge/${knowledgeId}`, { method: 'DELETE' });
     if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
     }

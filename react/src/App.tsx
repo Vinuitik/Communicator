@@ -6,6 +6,7 @@ import CalendarPage from './components/pages/CalendarPage';
 import GroupsPage from './components/pages/GroupsPage';
 import AddFriendPage from './components/pages/AddFriendPage';
 import TalkedPage from './components/pages/TalkedPage';
+import FactsPage from './components/pages/FactsPage';
 import CreateGroupPage from './components/pages/CreateGroupPage';
 import GroupDetailsPage from './components/pages/GroupDetailsPage';
 import { ROUTES } from './utils/constants';
@@ -19,6 +20,7 @@ const App: React.FC = () => {
           <Route path={ROUTES.CALENDAR} element={<CalendarPage />} />
           <Route path={ROUTES.ADD_FRIEND} element={<AddFriendPage />} />
           <Route path={ROUTES.TALKED} element={<TalkedPage />} />
+          <Route path={ROUTES.FRIEND_KNOWLEDGE} element={<FactsPage />} />
           <Route path={ROUTES.GROUPS} element={<GroupsPage />} />
           <Route path={ROUTES.CREATE_GROUP} element={<CreateGroupPage />} />
           <Route path={ROUTES.GROUP_DETAILS} element={<GroupDetailsPage />} />

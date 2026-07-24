@@ -3,6 +3,7 @@ export const ROUTES = {
   CALENDAR: '/calendar',
   ADD_FRIEND: '/friends/add',
   TALKED: '/friends/:id/talked',
+  FRIEND_KNOWLEDGE: '/friends/:id/knowledge',
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
   GROUP_DETAILS: '/groups/:id',
@@ -16,6 +17,9 @@ export const ROUTES = {
 // building an actual link/navigate target, the first internal per-entity
 // route in the SPA.
 export const talkedPath = (friendId: number) => `/friends/${friendId}/talked`;
+
+// Same pattern as talkedPath — fills in ROUTES.FRIEND_KNOWLEDGE's :id.
+export const friendKnowledgePath = (friendId: number) => `/friends/${friendId}/knowledge`;
 
 // Same pattern as talkedPath — fills in ROUTES.GROUP_DETAILS' :id.
 export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;

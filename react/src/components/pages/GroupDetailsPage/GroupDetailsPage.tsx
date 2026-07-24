@@ -5,7 +5,7 @@ import {
   getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge,
   getGroupPermissions, addGroupPermission, deleteGroupPermission, deleteGroup,
 } from '../../../services/api/groupService';
-import { Group, GroupCrudItem } from '../../../types/api';
+import { Group, KnowledgeCrudItem } from '../../../types/api';
 import { ROUTES } from '../../../utils/constants';
 import { buttonClasses } from '../../atoms/Button';
 
@@ -38,11 +38,11 @@ const GroupDetailsPage: React.FC = () => {
   const [groupError, setGroupError] = useState<string | null>(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
 
-  const [knowledge, setKnowledge] = useState<GroupCrudItem[]>([]);
+  const [knowledge, setKnowledge] = useState<KnowledgeCrudItem[]>([]);
   const [knowledgeLoading, setKnowledgeLoading] = useState(true);
   const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
 
-  const [permissions, setPermissions] = useState<GroupCrudItem[]>([]);
+  const [permissions, setPermissions] = useState<KnowledgeCrudItem[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsError, setPermissionsError] = useState<string | null>(null);
 

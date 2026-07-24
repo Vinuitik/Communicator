@@ -97,11 +97,13 @@ export interface GetGroupResponse {
     message?: string;
 }
 
-// Shared shape for both GroupKnowledge.java ("Notes") and GroupPermission.java
-// ("Settings") — same entity fields (text/priority, @JsonProperty-renamed to
-// fact/importance on the wire), same controller pattern, just two different
-// tables/endpoints. See GroupDetailsPage's two KnowledgeCrudPanel instances.
-export interface GroupCrudItem {
+// Shared shape across every fact/importance knowledge-like entity in the app —
+// GroupKnowledge.java ("Notes"), GroupPermission.java ("Settings"), and
+// FriendKnowledge.java (facts.html) all serialize to this same {id, fact,
+// importance} wire shape (via @JsonProperty text->fact, priority->importance),
+// even though they're three separate backend tables/endpoints. Drives every
+// KnowledgeCrudPanel instance.
+export interface KnowledgeCrudItem {
     id: number;
     fact: string;
     importance: number;
@@ -111,7 +113,7 @@ export interface GroupCrudItem {
 // (GET /api/groups/getKnowledge/{groupId}).
 export interface GetGroupKnowledgeResponse {
     success: boolean;
-    knowledge: GroupCrudItem[];
+    knowledge: KnowledgeCrudItem[];
     message?: string;
 }
 
@@ -119,7 +121,7 @@ export interface GetGroupKnowledgeResponse {
 // (GET /api/groups/permission/getPermission/{groupId}).
 export interface GetGroupPermissionResponse {
     success: boolean;
-    permission: GroupCrudItem[];
+    permission: KnowledgeCrudItem[];
     message?: string;
 }
 

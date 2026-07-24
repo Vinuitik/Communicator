@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 7 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 8 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,7 +11,7 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked, GroupDetails).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked, GroupDetails, Facts).
 
 ## Internal wiring
 
@@ -21,6 +21,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /calendar      → CalendarPage    [REAL — weekly calendar]
   /friends/add   → AddFriendPage   [REAL]
   /friends/:id/talked → TalkedPage [REAL — edit friend after talking]
+  /friends/:id/knowledge → FactsPage [REAL — per-friend knowledge management]
   /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
   /groups/:id    → GroupDetailsPage [REAL — single group, notes, settings]
@@ -37,7 +38,7 @@ NavigationBar.tsx for why that's kept as the SPA's own convention rather than
 reproduced; Calendar got its own nav item instead.
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
-services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend
+services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend, getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
 services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
@@ -174,6 +175,40 @@ Verified against the live API through real nginx during the port: created a
 throwaway group, fetched it via the new page's calls, added and deleted both
 a note and a setting, confirmed each round-tripped, then deleted the group.
 
+## FactsPage — what "ported" means here
+
+`components/pages/FactsPage` reimplements `friend/.../templates/facts.html`
+(reachable at `WebController.knowledge`, `GET /api/friend/knowledge/{id}` —
+genuinely live, unlike groupDetails). Reuses `KnowledgeCrudPanel` a second
+time, proving out the abstraction: `FriendKnowledge.java` serializes to the
+identical `{id, fact, importance}` shape `GroupKnowledge`/`GroupPermission`
+do, so nothing new was needed there. Backend: no new endpoint either —
+`FriendKnowledgeController.getKnowledgePaginatedCustomSize` (`GET
+/api/friend/getKnowledge/{friendId}/page/{page}/size/{size}`) already
+existed for the MCP/AI server and happens to return exactly this shape;
+called with `size=1000` instead of adding a bespoke "get all" endpoint.
+
+Same two simplifications as `GroupDetailsPage`, applied consistently: no
+stage-then-batch-submit (legacy's "add to a temp table, then click Submit
+Info" two-step — each Add here is an immediate real API call) and no
+pagination (per-friend fact counts are small in this single-tenant app).
+`FriendsTable`'s "Knowledge" dropdown item now navigates internally
+(`friendKnowledgePath()`) instead of linking to the legacy MPA.
+
+**`groupKnowledge.html` (the group-side equivalent, at `GET
+/{id}/knowledge`) was deliberately *not* ported as its own page** — it would
+have been near-total UI duplication of `GroupDetailsPage`'s existing "Notes"
+`KnowledgeCrudPanel`, which already covers add/list/delete for group
+knowledge on the group details page itself. `groupKnowledge.html` is real
+(unlike `groupDetails.html` was), just redundant now that its functionality
+lives on the details page — if per-page real estate or a dedicated
+management view is wanted later, revisit, but building a second copy of the
+same CRUD list wasn't worth it.
+
+Verified against the live API through real nginx during the port: created a
+throwaway friend, added and deleted a knowledge item via the new page's
+calls, confirmed it round-tripped, then deleted the friend.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -205,6 +240,7 @@ a note and a setting, confirmed each round-tripped, then deleted the group.
 | Calendar week bucketing / friend-box coloring | `components/organisms/CalendarBoard/CalendarBoard.tsx` |
 | Single-friend fetch / talked-to update | `FriendController.getFriend` (`GET /api/friend/{id}`) + `.updateFriend` (`PUT /api/friend/talkedToFriend/{id}`), `services/api/friendService.ts` |
 | Group notes / settings CRUD | `GroupApiController` knowledge endpoints + `GroupPermissionController`, `services/api/groupService.ts`, `components/organisms/KnowledgeCrudPanel` |
+| Per-friend knowledge CRUD | `FriendKnowledgeController`, `services/api/friendService.ts` (`getFriendKnowledge`/`addFriendKnowledgeItem`/`deleteFriendKnowledgeItem`), `components/pages/FactsPage` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

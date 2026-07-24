@@ -1,6 +1,6 @@
 import {
     CreateGroupPayload, CreateGroupResponse, GroupListResponse, DeleteGroupResponse,
-    Group, GetGroupResponse, GroupCrudItem, GetGroupKnowledgeResponse, GetGroupPermissionResponse,
+    Group, GetGroupResponse, KnowledgeCrudItem, GetGroupKnowledgeResponse, GetGroupPermissionResponse,
 } from '../../types/api';
 import { API_BASE } from './config';
 
@@ -55,7 +55,7 @@ export const getGroup = async (groupId: number): Promise<Group> => {
     return data.group;
 };
 
-export const getGroupKnowledge = async (groupId: number): Promise<GroupCrudItem[]> => {
+export const getGroupKnowledge = async (groupId: number): Promise<KnowledgeCrudItem[]> => {
     const response = await fetch(`${API_URL}/getKnowledge/${groupId}`);
     const data: GetGroupKnowledgeResponse = await response.json();
     if (!response.ok || !data.success) {
@@ -85,7 +85,7 @@ export const deleteGroupKnowledge = async (knowledgeId: number): Promise<void> =
 // "Settings" in the legacy template — GroupPermission.java, same shape and
 // controller pattern as GroupKnowledge, just a separate table/endpoint
 // (GroupPermissionController, mounted at /api/groups/permission/...).
-export const getGroupPermissions = async (groupId: number): Promise<GroupCrudItem[]> => {
+export const getGroupPermissions = async (groupId: number): Promise<KnowledgeCrudItem[]> => {
     const response = await fetch(`${API_URL}/permission/getPermission/${groupId}`);
     const data: GetGroupPermissionResponse = await response.json();
     if (!response.ok || !data.success) {
