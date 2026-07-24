@@ -290,3 +290,17 @@ export const addFriendToGroups = async (friendId: number, groupIds: number[]): P
         throw new Error(`Error: ${response.statusText}`);
     }
 };
+
+// Group-centric twin of addFriendToGroups — used by GroupDetailsPage's
+// "People in group" add flow. No remove/unlink endpoint exists yet
+// (GroupMemberController only has add + list methods).
+export const addFriendsToGroup = async (groupId: number, friendIds: number[]): Promise<void> => {
+    const response = await fetch(`${GROUP_MEMBER_URL}/addFriendsToGroup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId, friendIds }),
+    });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+};
