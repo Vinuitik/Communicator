@@ -31,30 +31,30 @@ const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap justify-between items-center gap-4 my-4 p-4 bg-white rounded-lg shadow-sm">
-      <div className="text-gray-600 text-sm flex-1 min-w-[200px]">{infoText}</div>
+    <div className="flex flex-wrap justify-between items-center gap-4 my-4 p-4 bg-surface border border-hairline rounded-card">
+      <div className="text-text-muted text-sm flex-1 min-w-[200px]">{infoText}</div>
       {showControls && (
         <div className="flex items-center gap-4 shrink-0">
           <button
             type="button" onClick={onPrev} disabled={currentPage <= 1}
-            className="px-4 py-2 border border-gray-300 bg-white rounded text-sm enabled:hover:bg-brand enabled:hover:text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-white/10 bg-input rounded-input text-sm text-text-secondary enabled:hover:border-accent/40 enabled:hover:text-text-emphasis transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          <span className="flex items-center gap-2 text-gray-600 text-sm whitespace-nowrap">
+          <span className="flex items-center gap-2 text-text-muted text-sm whitespace-nowrap">
             Page
             <input
               type="number" min={1} max={totalPages} value={pageInput}
               onChange={(e) => setPageInput(e.target.value)}
               onBlur={commitPageInput}
               onKeyDown={(e) => { if (e.key === 'Enter') commitPageInput(); }}
-              className="w-16 text-center border border-gray-300 rounded p-1 focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-16 text-center bg-input border border-white/10 rounded-input p-1 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
             of {totalPages}
           </span>
           <button
             type="button" onClick={onNext} disabled={currentPage >= totalPages}
-            className="px-4 py-2 border border-gray-300 bg-white rounded text-sm enabled:hover:bg-brand enabled:hover:text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-2 border border-white/10 bg-input rounded-input text-sm text-text-secondary enabled:hover:border-accent/40 enabled:hover:text-text-emphasis transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next
           </button>

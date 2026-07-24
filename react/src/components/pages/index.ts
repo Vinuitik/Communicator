@@ -1,5 +1,5 @@
 export { default as HomePage } from './HomePage';
-export { default as CalendarPage } from './CalendarPage';
+export { default as FriendsPage } from './FriendsPage';
 export { default as TalkedPage } from './TalkedPage';
 export { default as GroupDetailsPage } from './GroupDetailsPage';
 export { default as FactsPage } from './FactsPage';

@@ -11,7 +11,6 @@ export const ROUTES = {
   GROUP_DETAILS: '/groups/:id',
   SETTINGS: '/settings',
   ANALYTICS: '/analytics',
-  VALIDATION: '/validation',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',
 };

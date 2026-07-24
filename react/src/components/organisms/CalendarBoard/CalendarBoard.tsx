@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Friend } from '../../../types/api';
-import { ROUTES, talkedPath } from '../../../utils/constants';
+import Avatar from '../../atoms/Avatar';
 
 interface CalendarBoardProps {
   friends: Friend[];
   loading: boolean;
   error: string | null;
+  onOpenFriend: (friend: Friend) => void;
+  onLogChat: (friend: Friend) => void;
+  onAddFriend: () => void;
 }
 
 interface DayColumn {
@@ -23,6 +25,9 @@ const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'sh
 // Sorts friends into Mon-Sun columns (current week) plus an "overdue" bucket,
 // mirroring calendarView/calendar.js renderCalendar exactly (including its
 // day-index math: loop index 0-6 is Mon-Sun, JS Date#getDay() is Sun-Sat).
+// GET /api/friend/thisWeek has no date param — it only ever returns the
+// real current week, so there's nothing to page prev/next through; see
+// WeekBoardHeader for how the prev/Today/next buttons are treated.
 const useWeekColumns = (friends: Friend[]) => useMemo(() => {
   const today = new Date();
   const currentDay = today.getDay();
@@ -61,7 +66,9 @@ const useWeekColumns = (friends: Friend[]) => useMemo(() => {
   return { previousFriends, columns };
 }, [friends]);
 
-const categoryFor = (friend: Friend): 'birthday' | 'family' | 'work' | 'personal' => {
+type Category = 'birthday' | 'family' | 'work' | 'personal';
+
+const categoryFor = (friend: Friend): Category => {
   if (friend.isBirthdayThisWeek) return 'birthday';
   const experience = friend.experience?.toLowerCase() ?? '';
   if (experience.includes('family')) return 'family';
@@ -69,72 +76,103 @@ const categoryFor = (friend: Friend): 'birthday' | 'family' | 'work' | 'personal
   return 'personal';
 };
 
-const CATEGORY_CLASSES: Record<ReturnType<typeof categoryFor>, string> = {
-  personal: 'bg-[#2ecc71]',
-  family: 'bg-[#9b59b6]',
-  work: 'bg-[#f39c12]',
-  birthday: 'bg-gradient-to-br from-[#ff6b6b] to-[#ffd93d] border-2 border-[#ff4757] animate-birthday-pulse',
+// bg-category-* classes must appear literally somewhere for Tailwind to
+// generate them — this map is that literal usage.
+const CATEGORY_DOT: Record<Category, string> = {
+  personal: 'bg-category-personal',
+  family: 'bg-category-family',
+  work: 'bg-category-work',
+  birthday: 'bg-category-birthday',
 };
 
-// Ported from calendarView/calendar.html + calendar.js. Renders the current
-// week (Mon-Sun) plus a "Previous"/overdue column, exactly as the legacy
-// page does client-side from GET /api/friend/thisWeek.
-const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error }) => {
-  const navigate = useNavigate();
+export const CATEGORY_LEGEND: { label: string; dot: string }[] = [
+  { label: 'Personal', dot: 'bg-category-personal' },
+  { label: 'Family', dot: 'bg-category-family' },
+  { label: 'Work', dot: 'bg-category-work' },
+  { label: 'Birthday', dot: 'bg-category-birthday' },
+];
+
+// The week-column "day-column catch-up board" from the redesign handoff —
+// 8 horizontally-scrollable columns (Previous/overdue + Mon-Sun), a colored
+// dot per category instead of the legacy's solid-color card backgrounds,
+// and a "Log chat" button on every card that opens the quick-log modal
+// instead of navigating away.
+const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error, onOpenFriend, onLogChat, onAddFriend }) => {
   const { previousFriends, columns } = useWeekColumns(friends);
 
-  const goToFriend = (friend: Friend) => {
-    navigate(talkedPath(friend.id));
-  };
-
-  const friendBox = (friend: Friend) => (
+  const friendCard = (friend: Friend) => (
     <div
       key={friend.id}
-      className={`text-white p-2.5 rounded mb-2.5 cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-md ${CATEGORY_CLASSES[categoryFor(friend)]}`}
-      onClick={() => goToFriend(friend)}
+      className={`bg-surface-2 border rounded-[10px] px-2.5 py-2.5 ${
+        friend.isBirthdayThisWeek ? 'border-category-birthday/50' : 'border-white/[.06]'
+      }`}
     >
-      <div className="font-bold">{friend.isBirthdayThisWeek ? `🎂 ${friend.name}` : friend.name}</div>
-      <div className="text-xs mt-1 opacity-90">{friend.experience || ''}</div>
+      <div className="cursor-pointer" onClick={() => onOpenFriend(friend)}>
+        <div className="flex items-center gap-1.5">
+          <span className={`w-2 h-2 rounded-sm flex-none ${CATEGORY_DOT[categoryFor(friend)]}`} />
+          <span className="font-bold text-xs leading-tight text-text-primary">
+            {friend.isBirthdayThisWeek ? `🎂 ${friend.name}` : friend.name}
+          </span>
+        </div>
+        <div className="text-[10.5px] text-text-muted mt-1">{friend.relationshipType || friend.experience || ''}</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onLogChat(friend)}
+        className="mt-2.5 w-full border-none bg-accent/16 text-accent-light text-[11px] font-bold py-1.5 rounded-md hover:bg-accent/28 transition-colors"
+      >
+        ✓ Log chat
+      </button>
     </div>
   );
 
+  const addButton = (
+    <button
+      type="button"
+      onClick={onAddFriend}
+      className="border border-dashed border-white/[.14] bg-transparent text-text-faint text-[11px] py-2 rounded-[7px] hover:text-text-muted transition-colors"
+    >
+      + Add
+    </button>
+  );
+
   if (loading) {
-    return <div className="bg-white rounded-lg shadow-sm p-8 text-center">Loading...</div>;
+    return <div className="text-center p-8 text-text-muted">Loading…</div>;
   }
   if (error) {
-    return <div className="bg-white rounded-lg shadow-sm p-8 text-center text-red-600">{error}</div>;
+    return <div className="text-center p-8 text-bad">{error}</div>;
   }
 
   return (
-    <div className="flex w-full overflow-x-auto bg-white rounded-lg shadow-sm">
-      <div className="min-w-[120px] p-4 bg-gray-50 border-r border-gray-100">
-        <div className="text-center pb-2.5 border-b-2 border-[#3498db] mb-4">
-          <div className="font-bold text-[#2c3e50]">Previous</div>
-          <div className="text-xs text-[#7f8c8d] mt-1">Overdue</div>
+    <div className="flex gap-2.5 overflow-x-auto pb-2">
+      <div className="flex-none w-[152px] bg-bad/5 border border-bad/40 rounded-card p-[13px]">
+        <div className="pb-2.5 mb-2.5 border-b border-hairline">
+          <div className="font-bold text-[12.5px] text-bad">Previous</div>
+          <div className="text-[10.5px] text-text-faint mt-0.5">Overdue</div>
         </div>
-        {previousFriends.map(friendBox)}
-        <div
-          className="text-center p-2.5 mt-4 rounded bg-[#ecf0f1] text-[#7f8c8d] cursor-pointer hover:bg-[#d6dbdf]"
-          onClick={() => window.alert('Add context functionality will be implemented in the future')}
-        >
-          + Add Context
+        <div className="flex flex-col gap-2 min-h-[220px]">
+          {previousFriends.map(friendCard)}
+          {addButton}
         </div>
       </div>
-      {columns.map((column) => (
+      {columns.map((col) => (
         <div
-          key={column.dayName}
-          className={`flex-1 min-w-[120px] p-4 border-r border-gray-100 last:border-0 ${column.isToday ? 'bg-[#fff9e6] border-2 border-[#f39c12]' : ''}`}
+          key={col.dayName}
+          className={`flex-none w-[170px] border rounded-card p-[13px] ${
+            col.isToday ? 'bg-accent/[.08] border-accent/40' : 'bg-surface border-white/[.06]'
+          }`}
         >
-          <div className={`text-center pb-2.5 border-b-2 mb-4 ${column.isToday ? 'border-[#f39c12]' : 'border-[#3498db]'}`}>
-            <div className={`font-bold ${column.isToday ? 'text-[#f39c12]' : 'text-[#2c3e50]'}`}>{column.dayName}</div>
-            <div className="text-xs text-[#7f8c8d] mt-1">{column.dateLabel}</div>
+          <div className="pb-2.5 mb-2.5 border-b border-hairline">
+            <div className={`font-bold text-[12.5px] ${col.isToday ? 'text-accent-light' : 'text-text-emphasis'}`}>
+              {col.dayName}
+            </div>
+            <div className="text-[10.5px] text-text-faint mt-0.5">
+              {col.dateLabel}{col.isToday ? ' · today' : ''}
+            </div>
           </div>
-          {column.friends.map(friendBox)}
-          <div
-            className="text-center p-2.5 mt-4 rounded bg-[#ecf0f1] text-[#7f8c8d] cursor-pointer hover:bg-[#d6dbdf]"
-            onClick={() => navigate(ROUTES.ADD_FRIEND)}
-          >
-            + Add Friend
+          <div className="flex flex-col gap-2 min-h-[220px]">
+            {col.friends.map(friendCard)}
+            {addButton}
           </div>
         </div>
       ))}

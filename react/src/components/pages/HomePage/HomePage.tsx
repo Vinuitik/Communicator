@@ -1,104 +1,81 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import FriendsTable from '../../organisms/FriendsTable';
-import Pagination from '../../molecules/Pagination';
-import Button from '../../atoms/Button';
+import { useNavigate } from 'react-router-dom';
+import CalendarBoard, { CATEGORY_LEGEND } from '../../organisms/CalendarBoard';
+import QuickLogModal from '../../organisms/QuickLogModal';
 import { Friend } from '../../../types/api';
-import { getFriendsPage, getFriendsCount, getFriendsThisWeek, removeFriend } from '../../../services/api/friendService';
-import { DEFAULTS } from '../../../utils/constants';
+import { getFriendsThisWeek } from '../../../services/api/friendService';
+import { getDaysDiff } from '../../../utils/friendMetrics';
+import { ROUTES, profilePath } from '../../../utils/constants';
 
-type Mode = 'allFriends' | 'thisWeek';
-
-// Ported from nginx/static/mainPage/index.html + index.js. "All Friends" and
-// "This Week" are an in-page mode toggle in the legacy code (intercepted
-// clicks on what look like nav links) — kept as page-local tabs here rather
-// than duplicating them into the site-wide NavigationBar, which only makes
-// sense once per page.
+// "Week" — the new home (see design_handoff_friends_tracker/README.md). Was
+// CalendarPage/CalendarBoard's job; HomePage inherits it since '/' already
+// routed here and this keeps route churn to just adding /friends (see
+// FriendsPage, which now owns what HomePage used to render).
 const HomePage: React.FC = () => {
-  const [mode, setMode] = useState<Mode>('allFriends');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const navigate = useNavigate();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [logTarget, setLogTarget] = useState<Friend | null>(null);
 
-  const load = useCallback(async (targetMode: Mode, targetPage: number) => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let data: Friend[];
-      if (targetMode === 'allFriends') {
-        data = await getFriendsPage(targetPage - 1, DEFAULTS.PAGE_SIZE);
-        try {
-          const count = await getFriendsCount();
-          setTotalCount(count);
-          setTotalPages(Math.max(1, Math.ceil(count / DEFAULTS.PAGE_SIZE)));
-        } catch {
-          setTotalCount(data.length);
-          setTotalPages(Math.max(1, Math.ceil(data.length / DEFAULTS.PAGE_SIZE)));
-        }
-      } else {
-        data = await getFriendsThisWeek();
-        setTotalCount(data.length);
-        setTotalPages(1);
-      }
-      data.sort((a, b) => a.name.localeCompare(b.name));
+      const data = await getFriendsThisWeek();
       setFriends(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load friends.');
+    } catch {
+      setError('Could not load friends data. Please try again later.');
       setFriends([]);
-      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    load(mode, page);
-  }, [mode, page, load]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleModeChange = (nextMode: Mode) => {
-    if (nextMode === mode) return;
-    setMode(nextMode);
-    setPage(1);
-  };
-
-  const handleDelete = async (friend: Friend) => {
-    try {
-      await removeFriend(friend.id);
-      await load(mode, page);
-    } catch {
-      window.alert('Failed to delete friend. Please try again.');
-    }
-  };
-
-  const startItem = totalCount === 0 ? 0 : (page - 1) * DEFAULTS.PAGE_SIZE + 1;
-  const endItem = Math.min(page * DEFAULTS.PAGE_SIZE, totalCount);
-  const infoText = mode === 'allFriends'
-    ? `Showing ${startItem}-${endItem} of ${totalCount} friends`
-    : `Showing ${totalCount} friends`;
+  const overdueCount = friends.filter((f) => getDaysDiff(f.plannedSpeakingTime) < 0).length;
+  const dueCount = friends.length - overdueCount;
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-medium text-gray-800 text-center mb-2">Friends Tracker</h1>
-      <div className="flex justify-center gap-2 mb-2">
-        <Button type="button" onClick={() => handleModeChange('allFriends')} className={mode !== 'allFriends' ? 'opacity-60' : ''}>
-          All Friends
-        </Button>
-        <Button type="button" onClick={() => handleModeChange('thisWeek')} className={mode !== 'thisWeek' ? 'opacity-60' : ''}>
-          This Week
-        </Button>
+    <div className="px-[30px] py-[26px] animate-ftfade">
+      <div className="flex justify-between items-end mb-4.5 flex-wrap gap-3">
+        <div>
+          <h1 className="m-0 font-display font-bold text-[26px] tracking-tight text-text-primary">This week</h1>
+          <p className="mt-1 text-[13px] text-text-muted">
+            {overdueCount} overdue · {dueCount} due this week
+          </p>
+        </div>
+        <div className="flex items-center gap-3.5">
+          <div className="flex gap-3 text-[11.5px] text-text-muted">
+            {CATEGORY_LEGEND.map((item) => (
+              <span key={item.label} className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-sm ${item.dot}`} />
+                {item.label}
+              </span>
+            ))}
+          </div>
+          {/* No date-parameterized week endpoint exists (GET /thisWeek always
+              returns the real current week) — these stay visual, like the nav
+              search box, rather than faking navigation to weeks with no data. */}
+          <div className="flex gap-1">
+            <button type="button" disabled title="Only the current week has data" className="w-8 h-8 rounded-lg border border-white/10 bg-input text-text-muted opacity-40 cursor-not-allowed">‹</button>
+            <button type="button" className="px-3 h-8 rounded-lg border border-accent/40 bg-accent/[.16] text-accent-lighter text-xs font-bold">Today</button>
+            <button type="button" disabled title="Only the current week has data" className="w-8 h-8 rounded-lg border border-white/10 bg-input text-text-muted opacity-40 cursor-not-allowed">›</button>
+          </div>
+        </div>
       </div>
-      <FriendsTable friends={friends} loading={loading} error={error} onDelete={handleDelete} />
-      <Pagination
-        infoText={infoText}
-        currentPage={page}
-        totalPages={totalPages}
-        showControls={mode === 'allFriends'}
-        onPrev={() => setPage((p) => Math.max(1, p - 1))}
-        onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
-        onGoToPage={(p) => setPage(p)}
+
+      <CalendarBoard
+        friends={friends}
+        loading={loading}
+        error={error}
+        onOpenFriend={(friend) => navigate(profilePath(friend.id))}
+        onLogChat={(friend) => setLogTarget(friend)}
+        onAddFriend={() => navigate(ROUTES.ADD_FRIEND)}
       />
+
+      <QuickLogModal friend={logTarget} onClose={() => setLogTarget(null)} onSaved={() => load()} />
     </div>
   );
 };

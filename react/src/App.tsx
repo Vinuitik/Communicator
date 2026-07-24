@@ -1,9 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PageLayout from './components/templates/PageLayout';
 import { ToastProvider } from './components/molecules/Toast';
 import HomePage from './components/pages/HomePage';
-import CalendarPage from './components/pages/CalendarPage';
+import FriendsPage from './components/pages/FriendsPage';
 import GroupsPage from './components/pages/GroupsPage';
 import AddFriendPage from './components/pages/AddFriendPage';
 import TalkedPage from './components/pages/TalkedPage';
@@ -24,7 +24,9 @@ const App: React.FC = () => {
         <PageLayout>
           <Routes>
             <Route path={ROUTES.HOME} element={<HomePage />} />
-            <Route path={ROUTES.CALENDAR} element={<CalendarPage />} />
+            <Route path={ROUTES.FRIENDS} element={<FriendsPage />} />
+            {/* Week board absorbed Calendar's role — old bookmarks still land somewhere real. */}
+            <Route path={ROUTES.CALENDAR} element={<Navigate to={ROUTES.HOME} replace />} />
             <Route path={ROUTES.ADD_FRIEND} element={<AddFriendPage />} />
             <Route path={ROUTES.TALKED} element={<TalkedPage />} />
             <Route path={ROUTES.FRIEND_KNOWLEDGE} element={<FactsPage />} />

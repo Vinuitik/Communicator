@@ -1,9 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import DropdownMenu from '../../molecules/DropdownMenu';
+import Avatar from '../../atoms/Avatar';
+import ProgressBar from '../../atoms/ProgressBar';
 import { Friend } from '../../../types/api';
-import { API_BASE } from '../../../services/api/config';
-import { talkedPath, friendKnowledgePath, profilePath, ROUTES } from '../../../utils/constants';
 import {
   getDaysDiff, getGradientColor, formatDaysDiff,
   calculateIntensityScore, getIntensityGradientColor,
@@ -13,74 +11,86 @@ interface FriendsTableProps {
   friends: Friend[];
   loading: boolean;
   error: string | null;
-  onDelete: (friend: Friend) => void;
+  onOpenFriend: (friend: Friend) => void;
+  onLogChat: (friend: Friend) => void;
 }
 
-// Ported from the <table> in nginx/static/mainPage/index.html (since removed —
-// see nginx/PROTO.md) + the row rendering in index.js. Talked/Profile/Knowledge/
-// Groups all navigate internally now. Connections has no page to link to —
-// the connections module never had a Thymeleaf/HTML view, only a REST stub
-// (services/api/connectionService.ts is still a placeholder) — so that link
-// still points at the bare API endpoint, same as it always did.
-const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, onDelete }) => {
-  const navigate = useNavigate();
+// Card-wrapped dark table from the redesign handoff. Row click -> Profile,
+// "Log chat" opens the quick-log modal. The old triple-dot dropdown
+// (Talked/Profile/Knowledge/Groups/Connections/Delete) is gone — the
+// Profile hub (Stage 3) is now the single entry point for everything it
+// used to fan out to, and Delete moves there too (design has no delete
+// affordance on this screen).
+const FriendsTable: React.FC<FriendsTableProps> = ({ friends, loading, error, onOpenFriend, onLogChat }) => {
   return (
-    <table className="w-full border-collapse bg-white rounded-lg shadow-sm overflow-visible">
-      <thead>
-        <tr>
-          <th className="text-left p-4 bg-brand text-white font-medium">Name</th>
-          <th className="text-left p-4 bg-brand text-white font-medium">Planned Speaking Time</th>
-          <th className="text-left p-4 bg-brand text-white font-medium">Intensity Score</th>
-          <th className="text-left p-4 bg-brand text-white font-medium">Date of Birth</th>
-          <th className="text-left p-4 bg-brand text-white font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {loading ? (
-          <tr><td colSpan={5} className="text-center p-8">Loading...</td></tr>
-        ) : error ? (
-          <tr><td colSpan={5} className="text-center p-8 text-red-600">{error}</td></tr>
-        ) : friends.length === 0 ? (
-          <tr><td colSpan={5} className="text-center p-8 text-gray-500">No friends found.</td></tr>
-        ) : (
-          friends.map((friend) => {
-            const daysDiff = getDaysDiff(friend.plannedSpeakingTime);
-            const intensityScore = calculateIntensityScore(friend);
-            return (
-              <tr key={friend.id} className="hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                <td className="p-4">{friend.name || 'Unknown'}</td>
-                <td className="p-4 font-bold" style={{ color: getGradientColor(daysDiff) }}>
-                  {formatDaysDiff(daysDiff)}
-                </td>
-                <td className="p-4 font-bold" style={{ color: getIntensityGradientColor(intensityScore) }}>
-                  {isNaN(intensityScore) ? 'N/A' : intensityScore.toFixed(2)}
-                </td>
-                <td className="p-4">{friend.dateOfBirth || ''}</td>
-                <td className="p-4 relative">
-                  <DropdownMenu
-                    items={[
-                      { label: 'Talked', onClick: () => navigate(talkedPath(friend.id)) },
-                      { label: 'Profile', onClick: () => navigate(profilePath(friend.id)) },
-                      { label: 'Knowledge', onClick: () => navigate(friendKnowledgePath(friend.id)) },
-                      { label: 'Groups', onClick: () => navigate(ROUTES.GROUPS) },
-                      { label: 'Connections', href: `${API_BASE.CONNECTIONS}/${friend.id}` },
-                      {
-                        label: 'Delete', danger: true,
-                        onClick: () => {
-                          if (window.confirm(`Are you sure you want to delete ${friend.name || 'this friend'}?`)) {
-                            onDelete(friend);
-                          }
-                        },
-                      },
-                    ]}
-                  />
-                </td>
-              </tr>
-            );
-          })
-        )}
-      </tbody>
-    </table>
+    <div className="bg-surface border border-hairline rounded-card overflow-hidden">
+      <div className="grid grid-cols-[2.4fr_1.5fr_1.5fr_1fr_130px] px-5 py-3.5 text-[10.5px] font-bold tracking-[.08em] text-text-faint border-b border-hairline">
+        <div>NAME</div>
+        <div>NEXT CATCH-UP</div>
+        <div>INTENSITY</div>
+        <div>BIRTHDAY</div>
+        <div />
+      </div>
+      {loading ? (
+        <div className="text-center p-8 text-text-muted">Loading…</div>
+      ) : error ? (
+        <div className="text-center p-8 text-bad">{error}</div>
+      ) : friends.length === 0 ? (
+        <div className="text-center p-8 text-text-muted">No friends found.</div>
+      ) : (
+        friends.map((friend) => {
+          const daysDiff = getDaysDiff(friend.plannedSpeakingTime);
+          const intensityScore = calculateIntensityScore(friend);
+          const hasIntensity = !isNaN(intensityScore) && intensityScore > 0;
+          return (
+            <div
+              key={friend.id}
+              onClick={() => onOpenFriend(friend)}
+              className="grid grid-cols-[2.4fr_1.5fr_1.5fr_1fr_130px] items-center px-5 py-3.5 border-b border-white/[.04] last:border-0 cursor-pointer hover:bg-white/[.03] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar id={friend.id} name={friend.name} />
+                <div>
+                  <div className="font-semibold text-sm text-text-primary">{friend.name || 'Unknown'}</div>
+                  <div className="text-[11.5px] text-text-faint">{friend.relationshipType || '—'}</div>
+                </div>
+              </div>
+              <div className="font-bold text-[13px]" style={{ color: getGradientColor(daysDiff) }}>
+                {formatDaysDiff(daysDiff)}
+              </div>
+              <div className="flex items-center gap-2.5">
+                {hasIntensity ? (
+                  <>
+                    <ProgressBar
+                      percent={intensityScore * 10}
+                      color={getIntensityGradientColor(intensityScore)}
+                      className="w-16 flex-none"
+                    />
+                    <span className="font-bold text-[12.5px]" style={{ color: getIntensityGradientColor(intensityScore) }}>
+                      {intensityScore.toFixed(1)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-bold text-[12.5px] text-text-faintest">—</span>
+                )}
+              </div>
+              <div className={`text-[12.5px] ${friend.dateOfBirth ? 'text-text-muted' : 'text-text-faintest'}`}>
+                {friend.dateOfBirth || '—'}
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onLogChat(friend); }}
+                  className="border border-accent/35 bg-accent/[.14] text-accent-light text-[11.5px] font-bold px-3 py-1.5 rounded-lg hover:bg-accent/[.26] transition-colors"
+                >
+                  Log chat
+                </button>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
   );
 };
 

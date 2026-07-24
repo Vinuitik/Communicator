@@ -10,3 +10,4 @@ export * from './KnowledgeCrudPanel';
 export * from './MediaGallery';
 export * from './AiChatWidget';
 export * from './KnowledgeSummaryTable';
+export * from './QuickLogModal';

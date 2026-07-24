@@ -1,1 +1,1 @@
-export { default } from './CalendarBoard';
+export { default, CATEGORY_LEGEND } from './CalendarBoard';
