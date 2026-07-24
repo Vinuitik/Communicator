@@ -190,6 +190,108 @@ export interface HostWrapperStatus {
     providers?: Record<string, { configured: boolean }>;
 }
 
+// ── Profile (profile.html port) ────────────────────────────────────────────
+
+// Response shape from FriendController.getProfileData (GET /api/friend/profile/{id}/data) —
+// JSON twin of WebController.profile's Thymeleaf model, resolved server-side
+// (mainPhotoName comes from the friend's primaryPhotoId, already looked up).
+export interface FriendProfileData {
+    id: number;
+    name: string;
+    relationshipType: string | null;
+    dateMet: string | null;
+    mainPhotoName: string | null;
+}
+
+// Mirrors Photos.java (only the fields the SPA reads — @JsonBackReference
+// hides the `friend` field from the wire).
+export interface MediaPhoto {
+    id: number;
+    photoName: string;
+    mimeType?: string;
+    timeBuilt?: string;
+}
+
+// Mirrors Videos.java.
+export interface MediaVideo {
+    id: number;
+    videoName: string;
+    mimeType?: string;
+    timeBuilt?: string;
+}
+
+// Mirrors PersonalResource.java.
+export interface MediaResource {
+    id: number;
+    resourceName: string;
+    mimeType: string;
+    timeBuilt?: string;
+}
+
+// Response shape from FileController.getFileUploadPage
+// (GET /api/friend/files/{friendId}/page/{pageId}) — mirrors PaginationDTO.java.
+// currentPage is 1-indexed on the wire (PaginationLogicService's own convention).
+export interface MediaPageResponse {
+    photos: MediaPhoto[];
+    videos: MediaVideo[];
+    resources: MediaResource[];
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    pageSize: number;
+}
+
+export type MediaType = 'photo' | 'video' | 'resource';
+
+// Response shape from FriendController.getPrimaryPhoto (GET /api/friend/{friendId}/primary-photo).
+export interface PrimaryPhotoResponse {
+    primaryPhotoId: number | null;
+}
+
+// One fact in ai_agent's knowledge summary response (routers/knowledge.py).
+// stability_score is 0-1 (rendered as a confidence percentage); references
+// are the supporting knowledge-base chunks the summarizer drew from.
+export interface KnowledgeSummaryFact {
+    key: string;
+    value: string;
+    stability_score?: number;
+    references?: KnowledgeSummaryReference[];
+}
+
+export interface KnowledgeSummaryReference {
+    chunk_text?: string;
+    relevance_score: number;
+}
+
+// Response shape from POST /api/ai/knowledge/summarize.
+export interface KnowledgeSummaryResponse {
+    friend_id: number;
+    facts: KnowledgeSummaryFact[];
+    fact_count: number;
+    last_updated: string;
+}
+
+// One frame of the AI chat websocket protocol (ai_agent/routers/chat.py,
+// models.schemas.WebSocketMessage) — a state machine, not one blob:
+// thinking → agent started reasoning; tool_call/tool_result → an agent tool
+// invocation and its result; trace → raw LLM thought (debug only); token →
+// a streamed answer delta; ai_response → the terminal complete answer;
+// error → failure. See utils/aiChatSocket.ts.
+export interface AiChatFrame {
+    type: 'thinking' | 'tool_call' | 'tool_result' | 'trace' | 'token' | 'ai_response' | 'error';
+    content?: string;
+    name?: string;
+    data?: unknown;
+    phase?: string;
+}
+
+// One turn of the client-owned chat transcript (sessionStorage-persisted,
+// replayed to the stateless server every message — see AiChatWidget).
+export interface AiChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
 // Response shape from backup service's GET /backup/status
 // (BackupController.status) — fields are only meaningful once clientConfigured
 // && connected are both true; see SettingsPage for the gating logic.

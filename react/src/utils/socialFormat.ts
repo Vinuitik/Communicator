@@ -50,6 +50,40 @@ export const validateSocialUrl = (url: string, platform: string): string | null 
   }
 };
 
+// Ported from profile's modules/socialLinks.js's formatUrlForPlatform() — used
+// only to build the clickable href for the profile page's read-only social
+// links list. Unlike socialMediaManager.js's save-time formatURL() (dead code
+// — see friendService.ts), this one runs purely client-side at display time on
+// values already saved raw, so it's real, executing behavior worth preserving
+// exactly, not a bug to route around.
+export const formatSocialUrlForDisplay = (url: string, platform: string): string => {
+  if (!url) return '#';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+
+  const lower = platform.toLowerCase();
+  if (lower === 'email') return trimmed.startsWith('mailto:') ? trimmed : `mailto:${trimmed}`;
+  if (lower === 'phone') return '#';
+
+  const handle = trimmed.replace('@', '');
+  switch (lower) {
+    case 'instagram': return `https://www.instagram.com/${handle}`;
+    case 'facebook': return `https://www.facebook.com/${handle}`;
+    case 'twitter': return `https://twitter.com/${handle}`;
+    case 'linkedin': return `https://www.linkedin.com/in/${handle}`;
+    case 'github': return `https://github.com/${handle}`;
+    case 'youtube': return `https://www.youtube.com/${handle}`;
+    case 'tiktok': return `https://www.tiktok.com/@${handle}`;
+    case 'snapchat': return `https://snapchat.com/add/${handle}`;
+    case 'whatsapp': {
+      const phone = trimmed.replace(/[^\d+]/g, '');
+      return phone.startsWith('+') || phone.length > 7 ? `https://wa.me/${phone.replace('+', '')}` : `https://wa.me/${handle}`;
+    }
+    case 'telegram': return `https://t.me/${handle}`;
+    default: return `https://${trimmed}`;
+  }
+};
+
 // Deliberately NOT reformatting the value before saving (e.g. auto-prefixing
 // mailto:/https://) — see friendService.ts's social functions comment for
 // why: the legacy page's formatURL() was silently dead code in production

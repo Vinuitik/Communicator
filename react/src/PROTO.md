@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 12 pages ported]`
+# React UI — Proto `[REAL — 13/13 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,7 +11,7 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked, GroupDetails, Facts).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm, KnowledgeCrudPanel, MediaGallery, AiChatWidget, KnowledgeSummaryTable) → `templates` (PageLayout) → `pages` (all 13 legacy pages, listed below).
 
 ## Internal wiring
 
@@ -29,6 +29,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /analytics     → AnalyticsPage    [REAL — per-friend EMA-smoothed charts]
   /friends/:id/social → SocialPage  [REAL — per-friend social/contact links]
   /friends/:id/fileUpload → FileUploadPage [REAL — per-friend file upload]
+  /friends/:id/profile → ProfilePage       [REAL — media gallery, socials, AI knowledge summary, AI chat]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
@@ -45,11 +46,13 @@ services/api/config.ts        — single source of API base paths (mirrors nginx
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend, getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
 services/api/settingsService.ts — REAL: getLlmSettings, setLlmMode, saveProviderKey, removeProviderKey, checkHostWrapperStatus, getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup
-services/api/friendService.ts — also now REAL: getShortFriendList, getFriendAnalytics (AnalyticsPage), getFriendSocials/createFriendSocial/updateFriendSocial/deleteFriendSocial (SocialPage)
+services/api/friendService.ts — also now REAL: getShortFriendList, getFriendAnalytics (AnalyticsPage), getFriendSocials/createFriendSocial/updateFriendSocial/deleteFriendSocial (SocialPage), uploadFriendFiles (FileUploadPage), getFriendProfileData/getFriendMediaPage/getPrimaryPhoto/setPrimaryPhoto/deleteFriendMedia (ProfilePage)
+services/api/profileAiService.ts — REAL: summarizeFriendKnowledge, buildAiChatWsUrl (ProfilePage's KnowledgeSummaryTable/AiChatWidget)
 services/api/connectionService.ts — still stubs, untouched
 utils/analyticsMath.ts         — ported 1:1 from analytics.js's EMA smoothing pipeline (see AnalyticsPage note)
 utils/socialFormat.ts          — platform icons/validation/help-text ported from social's config.js + formValidator.js + urlHelper.js (see SocialPage note)
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
+utils/markdownParser.ts       — ported 1:1 from profile's modules/markdownParser.js (see ProfilePage/AiChatWidget note)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
 utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts; FRIENDS route removed — see HomePage note below; CREATE_GROUP repointed from the legacy nginx static-file path to the real SPA route)
 ```
@@ -58,7 +61,7 @@ utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL remov
 
 `components/pages/HomePage` reimplements `nginx/static/mainPage/index.js`: paginated "All Friends" / non-paginated "This Week" toggle, colored days-until-due and intensity-score cells (`utils/friendMetrics.ts`), per-row actions dropdown (`molecules/DropdownMenu`, generic — not friends-specific), delete with `confirm()` + refresh. The scaffold had a separate `/friends` route (`FriendsPage`) that didn't correspond to anything in the legacy app — "All Friends" and "This Week" are the *same* legacy page, toggled client-side, not two pages — so that route was deleted rather than left as a second, competing implementation.
 
-`Talked`/`Profile`/`Knowledge`/`Groups`/`Connections` per-row links still point at the legacy MPA (`services/api/config.ts` `API_BASE` prefixes) — none of those destination pages are ported yet.
+`Groups`/`Connections` per-row links still point at the legacy MPA (`services/api/config.ts` `API_BASE` prefixes) — neither destination page is ported yet. `Talked`/`Knowledge`/`Profile` navigate internally (`FriendsTable.tsx`).
 
 ## AddFriendPage — what "ported" means here
 
@@ -312,12 +315,11 @@ browser — same `bun`-install gap as CalendarPage/SettingsPage.
 `modalManager.js`) — CRUD for one friend's social/contact links. Only
 reachable in the legacy app from `profile.js`'s `socialLinks` module
 (`window.location.href = '/social?friendId=' + id`) — not linked from
-anywhere else there, and **not linked from anywhere in the SPA yet either**,
-since ProfilePage isn't ported. `friendSocialPath(id)` exists and the route
-works if hit directly; it becomes reachable through the UI once ProfilePage's
-social-links section is ported and links here — same "built ahead of its
+anywhere else there. Was unreachable from the SPA's own UI at the time this
+page was ported (ProfilePage wasn't real yet) — same "built ahead of its
 entry point" situation, worth remembering rather than assuming a page with
-no incoming link is dead (unlike `groupDetails.html`, this one is real).
+no incoming link is dead (unlike `groupDetails.html`, this one is real). Now
+reachable: `ProfilePage`'s "Add Social" button navigates to `friendSocialPath(id)`.
 
 Repointed from the legacy's `?friendId=` query param to a `:id` path segment
 (`friendSocialPath`), matching every other per-entity route in this SPA.
@@ -367,7 +369,7 @@ surface this page drives.
 
 `components/pages/FileUploadPage` reimplements `nginx/static/fileUpload/{fileUpload.html,fileUpload.js}` + its 9-file `JS_Classes/` directory (`FileValidator`, `FileCollection`, `DragDropHandler`, `FileListRenderer`, `FileUtilities`, `PreviewManager`, `ProgressTracker`, `UIStateManager`, `UploadController`) — collapsed into one component's `useState`/`useEffect`, since React's re-render model replaces the manual DOM-listener/render wiring those classes existed for. Drag & drop, per-file validation (max 10 files, 50MB cap, duplicate-name+size check), a click-to-preview file list (image/video/audio/pdf/default, via `URL.createObjectURL` + revoke-on-close), and the upload/clear actions are all ported 1:1.
 
-Reached at `/friends/:id/fileUpload` (`fileUploadPath`) — legacy parsed `friendId` off the URL's last path segment (`/fileUpload/{friendId}`, `UploadController.js`) since it had no router; repointed to a real `:id` param, same as every other per-entity route in this SPA. **Not linked from anywhere in the SPA yet** — the only legacy entry point (`profile.js`/`modules/mediaUpload.js`, `window.location.href = '/fileUpload/' + friendId`) lives on `ProfilePage`, which isn't ported — same "built ahead of its entry point" situation `SocialPage` was in before it.
+Reached at `/friends/:id/fileUpload` (`fileUploadPath`) — legacy parsed `friendId` off the URL's last path segment (`/fileUpload/{friendId}`, `UploadController.js`) since it had no router; repointed to a real `:id` param, same as every other per-entity route in this SPA. Was unreachable from the UI at the time this page was ported (the only legacy entry point, `profile.js`/`modules/mediaUpload.js`, lived on the not-yet-ported `ProfilePage`) — same "built ahead of its entry point" situation `SocialPage` was in. Now reachable: `ProfilePage`'s "Add Media" button navigates here.
 
 `FileController.uploadFiles` (`POST /api/friend/files/upload`, mounted under the `/api/friend` prefix — see `PathPrefixConfig`) already existed and matches the legacy multipart body exactly (`files` repeated field + `friendId`) — no backend changes needed. Added `uploadFriendFiles` to `friendService.ts`.
 
@@ -377,11 +379,47 @@ No Font Awesome — the legacy page loaded it from a CDN (`cdnjs.cloudflare.com`
 
 Verified against the live API through real nginx during the port: `curl -F "files=@..." -F "friendId=..."` directly against `/api/friend/files/upload` and confirmed `{"message":"Files uploaded successfully"}`, using a throwaway friend (created and deleted after). **Not click-tested in a real browser** — same `bun`-install gap noted for CalendarPage/SettingsPage/AnalyticsPage; confirmed instead that the CRA production build compiles clean (`docker compose build react-ui`).
 
+## ProfilePage — what "ported" means here — read this before touching profile again
+
+`components/pages/ProfilePage` ports `friend/.../templates/profile.html` — the last of the 13 legacy pages, and the biggest by far. Unlike `groupDetails.html`, this one is genuinely live: `WebController.profile` (`GET /profile/{id}`) renders it, reachable through `PathPrefixConfig`'s prefixing at `GET /api/friend/profile/{id}` (matches `FriendsTable`'s pre-existing "Profile" link target, now flipped to `navigate(profilePath(id))` since the port is real).
+
+**`nginx/static/profile/profile.js` is dead code — don't port from it.** `profile.html`'s own `<script>` list never includes it; only `profileApp.js` plus 14 files under `modules/` are loaded. Every global function `profile.js` defines (`openMediaModalFromElement`, `setPrimaryPhoto`, `deleteCurrentMedia`, ...) has an exact namespaced twin in `modules/*.js` (`MediaModal.openFromElement`, `PrimaryPhoto.setCurrent`, `MediaDeletion.deleteCurrentMedia`, ...) with an identical body — `profile.js` is the pre-refactor, un-modularized version, left on disk. Ported from the modules, not the flat file. See `communicator-legacy-bugs.md`'s "Dead code" section.
+
+**Module → React mapping** (all 14 files under `modules/` + `profileApp.js`):
+
+| Legacy module(s) | React equivalent |
+|---|---|
+| `utils.js`, `notificationManager.js` | Inlined — `ProfilePage`'s own `Toast` state (fixed top-right, colored border, auto-dismiss) reimplements `NotificationManager.showNotification` exactly; `formatFileSize` lives wherever it's used |
+| `mediaElementFactory.js`, `galleryManager.js`, `mediaModal.js`, `primaryPhoto.js`, `mediaDeletion.js`, `pagination.js` | `organisms/MediaGallery` — gallery grid, click-to-preview modal, primary-photo set/check, delete, pagination, all collapsed into one organism's `useState`/`useEffect` (same collapse `FileUploadPage` did for its 9 `JS_Classes`) |
+| `mediaUpload.js` | `MediaGallery`'s "Add Media" button — `navigate(fileUploadPath(id))` instead of a bare `window.location.href` redirect, since FileUploadPage is real now |
+| `socialLinks.js` | Inlined "Social Media" section in `ProfilePage.tsx` — reuses `friendService.ts`'s `getFriendSocials` (SocialPage's own data source), read-only list, "Add Social" → `navigate(friendSocialPath(id))` |
+| `knowledgeTable.js` | `organisms/KnowledgeSummaryTable` — AI-generated fact table + references modal |
+| `markdownParser.js` | `utils/markdownParser.ts` — ported 1:1, same transform order |
+| `aiChatUI.js`, `aiChat.js` | `organisms/AiChatWidget` — floating chat widget + WebSocket state machine, collapsed into one organism |
+
+**One new backend endpoint, everything else already existed.** `WebController.profile`'s Thymeleaf model assembled `friend.name`/`relationshipType`/`dateMet` plus a server-resolved primary photo *name* (`fileMetaDataReadService.getPhotoById(mainPhotoId)`) — none of that was ever JSON (`getFriend`/`FriendDTO` doesn't carry `relationshipType`/`dateMet`, and there was no client-callable photo id→name lookup). Added `FriendController.getProfileData` (`GET /api/friend/profile/{id}/data`, distinct path from the existing HTML route so they don't collide) returning the new `FriendProfileDTO`. Verified: `curl`'d it directly, confirmed `mainPhotoName` updates correctly after a real `set-primary-photo` call.
+
+Every other endpoint the page needed was already live, unused until now — same "turned out not to need a new endpoint" pattern `SettingsPage`/`AnalyticsPage` started:
+- `FileController.getFileUploadPage` (`GET /api/friend/files/{friendId}/page/{pageId}`) — existed for the never-finished legacy pagination UI (`pagination.js`'s own `loadInitialPage()` was the first real caller, in *this* port).
+- `FriendController.getPrimaryPhoto`/`.setPrimaryPhoto`, `FileController.deleteFiles` — already exercised by `primaryPhoto.js`/`mediaDeletion.js`, no changes.
+- `Photos`/`Videos`/`PersonalResource` entities already carry `@JsonBackReference` on their `friend` field, so the pagination endpoint's JSON serializes cleanly (no infinite-recursion risk verified live: uploaded a real photo, fetched page 1, got a clean non-recursive response).
+- ai_agent's `POST /knowledge/summarize` (`routers/knowledge.py`) and `WS /chat/ws` (`routers/chat.py`) — both pre-existing, both verified live (see below). nginx's `/api/ai/` location already has WebSocket upgrade headers configured (`nginx/nginx.conf`), so the chat widget works through the same origin with no proxy changes.
+
+**A second real, previously-invisible bug found (not fixed — see `communicator-legacy-bugs.md` entry #2):** the media modal's "Size" field always shows "Unknown" in production. `mediaModal.js`'s `fetchMediaInfo()` calls `FILES_BASE/info/{friendId}/{fileName}`, but `resourceRepository/flask-template`'s blueprints only register `/upload`, `/file/<>/<>`, `/delete` — there is no `/info/<>/<>` route anywhere. The fetch always 404s, silently caught, falls back to "Unknown". `MediaGallery.tsx`'s modal still makes the real (failing) call rather than hardcoding the fallback, so a future backend fix picks up automatically — same non-fix-mid-port precedent as the Social `URL`/`url` bug.
+
+**The right column (Relationship Knowledge, Groups, Upcoming Meetings, Recent Interactions, Topics to Discuss) is 100% hardcoded fake demo content in the legacy template** — not Thymeleaf-templated, no controller populates it, literal names like "Sarah Johnson"/"Mike Peterson" baked into the HTML. Ported verbatim as static placeholders (same "Contacts: Coming Soon" precedent `GroupDetailsPage` set) rather than silently dropped or turned into real features mid-migration — flag this for the Claude Design redesign pass, where it should either become real (per-friend relationships/meetings/notes/topics as actual features) or be removed; not a call to make while architecture is still moving.
+
+**AI chat widget** (`organisms/AiChatWidget`) reimplements `aiChat.js`'s WebSocket state machine exactly: `thinking`/`tool_call`/`tool_result`/`trace`/`token`/`ai_response`/`error` frames, client-authoritative transcript persisted to `sessionStorage` (keyed `frm_chat:{friendId}`, dropped when switching friends) and replayed to the stateless server every turn, streaming token-by-token answer rendering via `appendStream`/`finalizeStream` equivalents, exponential-backoff reconnect (same 1s/2s/4s/8s/16s schedule, capped at 5 attempts), and debug trace lines shown as grey text (matches `AiChat.debug = true`'s default). Markdown rendered via `utils/markdownParser.ts`'s `safeParseMarkdown`.
+
+**Media gallery pagination** matches the legacy's own simple/complex threshold (≤5 pages: show all page-number buttons; more: show a "Page X of Y" label instead of the legacy's page-jump `<input>` — simplified, not a page-number regression, since jumping to an arbitrary page deep into a single friend's media is a rare enough action that prev/next + label covers it; this is the one spot this port intentionally simplifies UI behavior rather than reproducing it 1:1, given how rarely a single friend accumulates enough media to hit the >5-page case).
+
+Verified against the live API through real nginx during the port: created a throwaway friend, uploaded a real photo, fetched paginated media (confirmed no `@JsonBackReference` recursion issue), set it as primary and confirmed `profile/{id}/data` picked up the new `mainPhotoName`, added a social link and a knowledge fact, called the AI summarize endpoint and got back a real fact with a reference chunk, deleted the media/social/knowledge/friend. Confirmed `docker compose build react-ui` compiles clean (zero TypeScript errors, zero ESLint warnings) and that `GET /app/friends/{id}/profile` and `/app/friends/{id}/fileUpload` both 200 through nginx's SPA fallback. **Not click-tested in a real browser** — same `bun`-install gap noted for every prior page since CalendarPage; the AI chat widget's WebSocket handshake and streaming render in particular haven't been visually confirmed, only protocol-verified against `ai_agent`'s real implementation.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
 
-**Real today:** everything in `friendService.ts`, `groupService.ts`, and `settingsService.ts`. `connectionService` is still a placeholder that returns empty arrays / logs to console — calling it does nothing real.
+**Real today:** everything in `friendService.ts`, `groupService.ts`, `settingsService.ts`, and `profileAiService.ts`. `connectionService` is still a placeholder that returns empty arrays / logs to console — calling it does nothing real.
 
 ## Gotchas / Technology Notes
 
@@ -415,6 +453,11 @@ Verified against the live API through real nginx during the port: `curl -F "file
 | Per-friend analytics charts / EMA smoothing | `FriendAnalyticsController` (`GET /api/friend/analyticsList`), `FriendController.getShortList`, `utils/analyticsMath.ts`, `components/pages/AnalyticsPage` |
 | Per-friend social/contact links CRUD | `SocialController` (`/api/friend/socials/**` — note lowercase `url` wire key despite the Java field name), `services/api/friendService.ts` social functions, `utils/socialFormat.ts`, `components/pages/SocialPage` |
 | Per-friend file upload | `FileController.uploadFiles` (`POST /api/friend/files/upload`), `services/api/friendService.ts` (`uploadFriendFiles`), `components/pages/FileUploadPage` |
+| Profile header fields (name/relationshipType/dateMet/primary photo name) | `FriendController.getProfileData` (`GET /api/friend/profile/{id}/data`), `types/api.ts` `FriendProfileDTO`/`FriendProfileData`, `services/api/friendService.ts` (`getFriendProfileData`) |
+| Media gallery pagination / primary photo / delete | `FileController.getFileUploadPage`/`.deleteFiles`, `FriendController.getPrimaryPhoto`/`.setPrimaryPhoto`, `services/api/friendService.ts` (`getFriendMediaPage`/`getPrimaryPhoto`/`setPrimaryPhoto`/`deleteFriendMedia`), `components/organisms/MediaGallery` |
+| AI knowledge summary + references modal | `ai_agent/routers/knowledge.py` (`POST /api/ai/knowledge/summarize`), `services/api/profileAiService.ts` (`summarizeFriendKnowledge`), `components/organisms/KnowledgeSummaryTable` |
+| AI chat widget / WebSocket protocol | `ai_agent/routers/chat.py` (`WS /api/ai/chat/ws`), `services/api/profileAiService.ts` (`buildAiChatWsUrl`), `utils/markdownParser.ts`, `components/organisms/AiChatWidget` |
+| Profile page route / static demo sections | `components/pages/ProfilePage/ProfilePage.tsx` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

@@ -12,6 +12,7 @@ export const ROUTES = {
   ANALYTICS: '/analytics',
   VALIDATION: '/validation',
   FILE_UPLOAD: '/friends/:id/fileUpload',
+  PROFILE: '/friends/:id/profile',
 };
 
 // ROUTES.TALKED is a react-router pattern (:id) — this fills it in for
@@ -37,6 +38,12 @@ export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;
 // manually in UploadController.js) — repointed to a named :id param for
 // consistency with every other per-entity route in this SPA.
 export const fileUploadPath = (friendId: number) => `/friends/${friendId}/fileUpload`;
+
+// Same pattern as talkedPath — fills in ROUTES.PROFILE's :id. Legacy reached
+// this at /profile/{friendId} (WebController.profile, Thymeleaf-rendered,
+// live via /api/friend/profile/{id} — see PathPrefixConfig) — repointed to
+// the SPA's own route for consistency with every other per-entity page.
+export const profilePath = (friendId: number) => `/friends/${friendId}/profile`;
 
 export const TIMEOUTS = {
   API_REQUEST: 5000, // 5 seconds

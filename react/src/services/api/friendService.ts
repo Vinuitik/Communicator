@@ -1,4 +1,4 @@
-import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord, Social, SocialPayload } from '../../types/api';
+import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord, Social, SocialPayload, FriendProfileData, MediaPageResponse, PrimaryPhotoResponse, MediaType } from '../../types/api';
 import { API_BASE } from './config';
 
 const API_URL = API_BASE.FRIEND;
@@ -173,6 +173,67 @@ export const deleteFriendSocial = async (socialId: number): Promise<void> => {
     const response = await fetch(`${API_URL}/socials/delete/${socialId}`, { method: 'DELETE' });
     if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
+    }
+};
+
+// Added for the profile.html SPA port — the JSON twin of WebController.profile's
+// Thymeleaf model (FriendController.getProfileData). Distinct from getFriend:
+// this one carries relationshipType/dateMet/mainPhotoName, which FriendDTO
+// doesn't expose (and every other page's getFriend call doesn't need).
+export const getFriendProfileData = async (friendId: number): Promise<FriendProfileData> => {
+    const response = await fetch(`${API_URL}/profile/${friendId}/data`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+// Mirrors profile's pagination.js fetch to FRIEND_BASE/files/{friendId}/page/{pageNumber}
+// (FileController.getFileUploadPage — already existed for the never-finished
+// legacy pagination UI). pageNumber is 1-indexed, matching the backend directly.
+export const getFriendMediaPage = async (friendId: number, pageNumber: number): Promise<MediaPageResponse> => {
+    const response = await fetch(`${API_URL}/files/${friendId}/page/${pageNumber}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+// Mirrors profile's primaryPhoto.js — FriendController.getPrimaryPhoto already existed.
+export const getPrimaryPhoto = async (friendId: number): Promise<PrimaryPhotoResponse> => {
+    const response = await fetch(`${API_URL}/${friendId}/primary-photo`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+// Mirrors profile's primaryPhoto.js's setCurrent() — FriendController.setPrimaryPhoto
+// already existed (multipart form, not JSON, hence FormData here too).
+export const setPrimaryPhoto = async (friendId: number, photoId: number): Promise<void> => {
+    const formData = new FormData();
+    formData.append('friendId', String(friendId));
+    formData.append('photoId', String(photoId));
+    const response = await fetch(`${API_URL}/set-primary-photo`, { method: 'POST', body: formData });
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+};
+
+// Mirrors profile's mediaDeletion.js's performDeletion() — FileController.deleteFiles
+// already existed (used by the JS_Classes fileUpload delete path too, though that one's
+// unreachable from the UI). Only the id list for the deleted media's own type is
+// ever non-empty here — Spring's List<Integer> @RequestParam binds a single-element
+// form value directly, same as the legacy multi-id case would with a comma-joined list.
+export const deleteFriendMedia = async (friendId: number, mediaType: MediaType, mediaId: number): Promise<void> => {
+    const formData = new FormData();
+    formData.append('photos', mediaType === 'photo' ? String(mediaId) : '');
+    formData.append('videos', mediaType === 'video' ? String(mediaId) : '');
+    formData.append('resources', mediaType === 'resource' ? String(mediaId) : '');
+    formData.append('friendId', String(friendId));
+    const response = await fetch(`${API_URL}/files/delete`, { method: 'POST', body: formData });
+    if (!response.ok) {
+        throw new Error(await response.text());
     }
 };
 

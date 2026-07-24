@@ -13,6 +13,7 @@ import SettingsPage from './components/pages/SettingsPage';
 import AnalyticsPage from './components/pages/AnalyticsPage';
 import SocialPage from './components/pages/SocialPage';
 import FileUploadPage from './components/pages/FileUploadPage';
+import ProfilePage from './components/pages/ProfilePage';
 import { ROUTES } from './utils/constants';
 
 const App: React.FC = () => {
@@ -32,6 +33,7 @@ const App: React.FC = () => {
           <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
           <Route path={ROUTES.FRIEND_SOCIAL} element={<SocialPage />} />
           <Route path={ROUTES.FILE_UPLOAD} element={<FileUploadPage />} />
+          <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         </Routes>
       </PageLayout>
     </Router>

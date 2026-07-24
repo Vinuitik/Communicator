@@ -8,3 +8,6 @@ export * from './GroupsTable';
 export * from './CalendarBoard';
 export * from './TalkedForm';
 export * from './KnowledgeCrudPanel';
+export * from './MediaGallery';
+export * from './AiChatWidget';
+export * from './KnowledgeSummaryTable';
