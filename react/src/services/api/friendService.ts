@@ -254,3 +254,39 @@ export const uploadFriendFiles = async (friendId: number, files: File[]): Promis
         throw new Error(errorData.error || `Error: ${response.statusText}`);
     }
 };
+
+// GroupMemberController (friend module, mapped at /groupMember, so
+// /api/friend/groupMember/** via PathPrefixConfig) — full friend<->group
+// membership CRUD that already existed server-side but was never called
+// from the SPA (confirmed via full-repo grep). Wired for the redesign's
+// Profile "Groups" panel and the Friends table's real membership actions —
+// see design_handoff_friends_tracker/README.md backlog item 5, which this
+// supersedes (the doc assumed no backend existed for this).
+const GROUP_MEMBER_URL = `${API_URL}/groupMember`;
+
+export const getFriendGroupIds = async (friendId: number): Promise<number[]> => {
+    const response = await fetch(`${GROUP_MEMBER_URL}/groups/friend/${friendId}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const getGroupFriends = async (groupId: number): Promise<Friend[]> => {
+    const response = await fetch(`${GROUP_MEMBER_URL}/friends/group/${groupId}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+export const addFriendToGroups = async (friendId: number, groupIds: number[]): Promise<void> => {
+    const response = await fetch(`${GROUP_MEMBER_URL}/addFriendToGroups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendId, groupIds }),
+    });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+};

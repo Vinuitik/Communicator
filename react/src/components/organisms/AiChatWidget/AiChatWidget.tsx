@@ -276,95 +276,91 @@ const AiChatWidget: React.FC<AiChatWidgetProps> = ({ friendId, friendName }) => 
   };
 
   const statusText: Record<ConnectionStatus, string> = {
-    connecting: 'Connecting...', connected: 'Online', disconnected: 'Disconnected', error: 'Connection Error', failed: 'Connection Failed',
+    connecting: 'Connecting…', connected: 'local model', disconnected: 'Disconnected', error: 'Connection error', failed: 'Connection failed',
   };
-  const statusColor: Record<ConnectionStatus, string> = {
-    connecting: 'text-amber-300', connected: 'text-emerald-300', disconnected: 'text-gray-300', error: 'text-red-300', failed: 'text-red-300',
+  const statusDot: Record<ConnectionStatus, string> = {
+    connecting: 'bg-soon', connected: 'bg-good', disconnected: 'bg-text-faint', error: 'bg-bad', failed: 'bg-bad',
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 font-sans">
-      {!isExpanded && (
-        <button
-          type="button"
-          onClick={toggleWidget}
-          className="relative w-14 h-14 rounded-full bg-brand text-white text-2xl shadow-lg hover:bg-brand-dark transition-colors flex items-center justify-center"
-        >
-          🤖
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-600 text-xs flex items-center justify-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
-      )}
+    <div className="font-sans">
+      <button
+        type="button"
+        onClick={toggleWidget}
+        title="Ask AI about this friend"
+        className="fixed bottom-[26px] right-[26px] z-[80] w-14 h-14 rounded-full border-none bg-accent-gradient text-white text-[22px] shadow-[0_14px_34px_-8px_rgba(139,92,246,.75),inset_0_1px_0_rgba(255,255,255,.25)] flex items-center justify-center hover:brightness-110 transition-all"
+      >
+        ✦
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-bad text-white text-xs flex items-center justify-center">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
 
       {isExpanded && (
-        <div className="w-[350px] h-[500px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-brand text-white">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="text-xl">🤖</div>
-              <div className="min-w-0">
-                <div className="font-medium text-sm">AI Assistant</div>
-                <div className={`text-xs ${statusColor[status]}`}>{statusText[status]}</div>
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <button type="button" onClick={toggleWidget} title="Minimize" className="w-6 h-6 hover:bg-white/20 rounded flex items-center justify-center">─</button>
-            </div>
+        <div className="fixed bottom-[94px] right-[26px] z-[80] w-[380px] max-w-[92vw] h-[480px] bg-surface border border-white/[.12] rounded-[18px] overflow-hidden flex flex-col shadow-popup animate-ftpop">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-hairline bg-[#1B1330]">
+            <span className={`w-[9px] h-[9px] rounded-full ${statusDot[status]}`} />
+            <span className="text-[13px] font-bold text-text-primary">Ask about {friendName}</span>
+            <span className="ml-auto text-[11px] text-text-faint">{statusText[status]}</span>
+            <button type="button" onClick={toggleWidget} title="Close" className="w-[26px] h-[26px] rounded-lg border-none bg-input-2 text-text-muted text-[13px] hover:text-text-emphasis transition-colors">✕</button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-[18px] flex flex-col gap-3">
             {messages.length === 0 && streamText === null && (
-              <div className="text-center text-gray-500 p-4">
-                <div className="text-3xl mb-2">👋</div>
-                <p className="text-sm">{status === 'connected' ? <>Hello! Would you like to chat about <strong>{friendName}</strong>?</> : 'Connecting to AI assistant...'}</p>
+              <div className="self-start max-w-[82%] bg-surface-2 px-3.5 py-2.5 rounded-[12px_12px_12px_3px] text-[13px] text-text-secondary leading-relaxed">
+                {status === 'connected' ? <>Hi! Ask me anything about <strong className="text-text-emphasis">{friendName}</strong> — I answer from their knowledge base.</> : 'Connecting to AI assistant…'}
               </div>
             )}
             {messages.map((m, i) => (
               m.role === 'trace' ? (
-                <div key={i} className="text-xs text-gray-400 italic px-2">{m.text}</div>
+                <div key={i} className="text-xs text-text-faint italic px-1">{m.text}</div>
               ) : m.role === 'system' ? (
-                <div key={i} className="text-xs text-gray-500 text-center px-2">{m.text}</div>
+                <div key={i} className="text-xs text-text-faint text-center px-1">{m.text}</div>
               ) : (
-                <div key={i} className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === 'user' ? 'self-end bg-brand text-white' : 'self-start bg-white border border-gray-200'}`}>
+                <div
+                  key={i}
+                  className={`max-w-[82%] px-3.5 py-2.5 text-[13px] ${
+                    m.role === 'user'
+                      ? 'self-end bg-accent text-white rounded-[12px_12px_3px_12px]'
+                      : 'self-start bg-surface-2 text-text-secondary rounded-[12px_12px_12px_3px] leading-relaxed'
+                  }`}
+                >
                   {m.role === 'assistant' ? <div dangerouslySetInnerHTML={{ __html: m.html || '' }} /> : m.text}
-                  <div className={`text-[10px] mt-1 ${m.role === 'user' ? 'text-white/70' : 'text-gray-400'}`}>{m.time}</div>
+                  <div className={`text-[10px] mt-1 ${m.role === 'user' ? 'text-white/70' : 'text-text-faint'}`}>{m.time}</div>
                 </div>
               )
             ))}
             {streamText !== null && (
-              <div className="max-w-[85%] self-start rounded-lg px-3 py-2 text-sm bg-white border border-gray-200">
+              <div className="max-w-[82%] self-start bg-surface-2 text-text-secondary px-3.5 py-2.5 rounded-[12px_12px_12px_3px] text-[13px] leading-relaxed">
                 <div dangerouslySetInnerHTML={{ __html: safeParseMarkdown(streamText) }} />
               </div>
             )}
             {isTyping && (
-              <div className="text-xs text-gray-500 italic px-2">AI is typing...</div>
+              <div className="text-xs text-text-faint italic px-1">AI is typing…</div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-gray-200 p-2">
-            <div className="flex gap-2 items-end">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                maxLength={1000}
-                placeholder="Type your message..."
-                className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand max-h-28"
-              />
-              <button
-                type="button"
-                onClick={sendMessage}
-                title="Send message"
-                className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center hover:bg-brand-dark flex-shrink-0"
-              >
-                ➤
-              </button>
-            </div>
-            <div className="text-right text-[10px] text-gray-400 mt-1">{input.length}/1000</div>
+          <div className="border-t border-hairline p-3.5 flex gap-2.5 items-end">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              maxLength={1000}
+              placeholder="Type a message…"
+              className="flex-1 resize-none bg-input border border-white/10 rounded-input px-3.5 py-2.5 text-[13px] text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40 max-h-28"
+            />
+            <button
+              type="button"
+              onClick={sendMessage}
+              title="Send message"
+              className="w-9 h-9 rounded-input border-none bg-accent-gradient text-white flex items-center justify-center hover:brightness-110 flex-shrink-0 transition-all"
+            >
+              →
+            </button>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Textarea from '../../atoms/Textarea';
 import Input from '../../atoms/Input';
-import Button from '../../atoms/Button';
+import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { KnowledgeCrudItem } from '../../../types/api';
 
 interface KnowledgeCrudPanelProps {
@@ -14,21 +14,25 @@ interface KnowledgeCrudPanelProps {
   error: string | null;
   onAdd: (fact: string, importance: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  /** Compact row-list styling (no card wrapper/heading) — used inside the
+   * Profile hub's Raw knowledge tab, which already has its own card. */
+  compact?: boolean;
 }
 
 // API-backed sibling of KnowledgeEditor (which is local-only, for the
 // no-entity-yet add-friend case). GroupKnowledge.java ("Notes") and
 // GroupPermission.java ("Settings") share this exact shape and controller
 // pattern (add/get/delete), so this one panel drives both sections of
-// GroupDetailsPage — parameterized rather than duplicated, same way the
-// legacy KnowledgeManager class configured itself per entity type.
+// GroupDetailsPage — parameterized rather than duplicated. Also reused by
+// the Profile hub's Raw knowledge tab (compact mode).
 const KnowledgeCrudPanel: React.FC<KnowledgeCrudPanelProps> = ({
-  title, factLabel, importanceLabel, addButtonLabel, items, loading, error, onAdd, onDelete,
+  title, factLabel, importanceLabel, addButtonLabel, items, loading, error, onAdd, onDelete, compact,
 }) => {
   const [fact, setFact] = useState('');
   const [importance, setImportance] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +49,7 @@ const KnowledgeCrudPanel: React.FC<KnowledgeCrudPanelProps> = ({
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm(`Are you sure you want to delete this ${factLabel.toLowerCase()}?`)) return;
+    setConfirmId(null);
     setDeletingId(id);
     try {
       await onDelete(id);
@@ -54,57 +58,76 @@ const KnowledgeCrudPanel: React.FC<KnowledgeCrudPanelProps> = ({
     }
   };
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-medium text-gray-700">{title}</h2>
-        <span className="text-sm text-gray-500">{items.length}</span>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-5">
+  const body = (
+    <>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 mb-4">
         <Textarea
           label={factLabel} rows={2} value={fact}
           onChange={(e) => setFact(e.target.value)}
         />
-        <Input
-          label={importanceLabel} type="number" value={importance}
-          onChange={(e) => setImportance(e.target.value)}
-        />
-        <Button type="submit" className="self-start" disabled={submitting}>
-          {submitting ? 'Adding...' : addButtonLabel}
-        </Button>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <Input
+              label={importanceLabel} type="number" value={importance}
+              onChange={(e) => setImportance(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-4 py-2.5 rounded-input border-none bg-accent-gradient text-white font-bold text-sm shadow-button-sm hover:brightness-110 disabled:opacity-50 transition-all"
+          >
+            {submitting ? 'Adding…' : addButtonLabel}
+          </button>
+        </div>
       </form>
 
-      {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
+      {error && <div className="text-bad text-sm mb-3">{error}</div>}
 
       {loading ? (
-        <div className="text-center p-4 text-gray-500">Loading...</div>
+        <div className="text-center p-4 text-text-muted text-sm">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="text-center p-4 text-gray-500">None yet.</div>
+        <div className="text-center p-4 text-text-muted text-sm">None yet.</div>
       ) : (
-        <table className="w-full border-collapse rounded-lg overflow-hidden shadow-sm">
-          <thead>
-            <tr>
-              <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">{factLabel}</th>
-              <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">{importanceLabel}</th>
-              <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td className="p-2.5 border-b border-gray-200">{item.fact}</td>
-                <td className="p-2.5 border-b border-gray-200">{item.importance}</td>
-                <td className="p-2.5 border-b border-gray-200">
-                  <Button type="button" onClick={() => handleDelete(item.id)} disabled={deletingId === item.id}>
-                    {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="flex flex-col gap-1.5">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 px-3.5 py-2.5 bg-surface-2 rounded-lg">
+              <span className="flex-1 text-[13px] text-text-secondary">{item.fact}</span>
+              <span className="text-[10.5px] font-bold text-text-faint bg-white/[.06] px-2 py-0.5 rounded-pill">
+                {importanceLabel} {item.importance}
+              </span>
+              <button
+                type="button"
+                onClick={() => setConfirmId(item.id)}
+                disabled={deletingId === item.id}
+                className="text-text-faint hover:text-bad text-xs disabled:opacity-50 transition-colors"
+              >
+                {deletingId === item.id ? '…' : '✕'}
+              </button>
+            </div>
+          ))}
+        </div>
       )}
+      <ConfirmDialog
+        open={confirmId !== null}
+        title={`Delete this ${factLabel.toLowerCase()}?`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => confirmId !== null && handleDelete(confirmId)}
+        onCancel={() => setConfirmId(null)}
+      />
+    </>
+  );
+
+  if (compact) return body;
+
+  return (
+    <div className="bg-surface border border-hairline rounded-card p-5 mt-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[15px] font-bold text-text-primary">{title}</h2>
+        <span className="text-xs text-text-faint">{items.length}</span>
+      </div>
+      {body}
     </div>
   );
 };

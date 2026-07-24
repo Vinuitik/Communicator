@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="px-[30px] py-[26px] animate-ftfade">
-      <div className="flex justify-between items-end mb-4.5 flex-wrap gap-3">
+      <div className="flex justify-between items-end mb-4 flex-wrap gap-3">
         <div>
           <h1 className="m-0 font-display font-bold text-[26px] tracking-tight text-text-primary">This week</h1>
           <p className="mt-1 text-[13px] text-text-muted">

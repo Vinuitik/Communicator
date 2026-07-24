@@ -15,31 +15,14 @@ export const ROUTES = {
   PROFILE: '/friends/:id/profile',
 };
 
-// ROUTES.TALKED is a react-router pattern (:id) — this fills it in for
-// building an actual link/navigate target, the first internal per-entity
-// route in the SPA.
-export const talkedPath = (friendId: number) => `/friends/${friendId}/talked`;
+// ROUTES.TALKED/FRIEND_KNOWLEDGE/FRIEND_SOCIAL/FILE_UPLOAD stay registered in
+// App.tsx (redirecting old per-friend links into the Profile hub — see
+// RedirectToProfile) but nothing builds links to them anymore, so their old
+// path-builder functions were removed along with the standalone pages.
 
-// Same pattern as talkedPath — fills in ROUTES.FRIEND_KNOWLEDGE's :id.
-export const friendKnowledgePath = (friendId: number) => `/friends/${friendId}/knowledge`;
-
-// Same pattern as talkedPath — fills in ROUTES.FRIEND_SOCIAL's :id. Legacy
-// reached this page via `/social?friendId=X` (a query param, not a path
-// segment) — repointed to a path param for consistency with every other
-// per-entity route in this SPA (talkedPath, friendKnowledgePath,
-// groupDetailsPath all use one).
-export const friendSocialPath = (friendId: number) => `/friends/${friendId}/social`;
-
-// Same pattern as talkedPath — fills in ROUTES.GROUP_DETAILS' :id.
 export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;
 
-// Same pattern as talkedPath — fills in ROUTES.FILE_UPLOAD's :id. Legacy
-// reached this at /fileUpload/{friendId} (the path's last segment, parsed
-// manually in UploadController.js) — repointed to a named :id param for
-// consistency with every other per-entity route in this SPA.
-export const fileUploadPath = (friendId: number) => `/friends/${friendId}/fileUpload`;
-
-// Same pattern as talkedPath — fills in ROUTES.PROFILE's :id. Legacy reached
+// Fills in ROUTES.PROFILE's :id. Legacy reached
 // this at /profile/{friendId} (WebController.profile, Thymeleaf-rendered,
 // live via /api/friend/profile/{id} — see PathPrefixConfig) — repointed to
 // the SPA's own route for consistency with every other per-entity page.
