@@ -1,5 +1,15 @@
 import { AnalyticsRecord } from '../types/api';
 
+// Shared timeline range defs — TrendsPanel (per-friend) and InsightsPage
+// (cross-friend) both drive the same range pills off this one list.
+export const ANALYTICS_RANGES = [
+  { value: '1M', label: '1M', days: 30 },
+  { value: '3M', label: '3M', days: 90 },
+  { value: '6M', label: '6M', days: 180 },
+  { value: '1Y', label: '1Y', days: 365 },
+  { value: 'All', label: 'All', days: 3650 },
+];
+
 // Ported 1:1 from nginx/static/analytics/analytics.js's updateCharts() data
 // pipeline — same per-day bucketing, same asymmetric EMA (fast on days with
 // new data, slow decay on days without), same alpha-per-experience-level

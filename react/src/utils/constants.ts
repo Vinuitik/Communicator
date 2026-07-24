@@ -10,7 +10,7 @@ export const ROUTES = {
   CREATE_GROUP: '/groups/create',
   GROUP_DETAILS: '/groups/:id',
   SETTINGS: '/settings',
-  ANALYTICS: '/analytics',
+  INSIGHTS: '/insights',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',
 };

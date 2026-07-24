@@ -16,7 +16,7 @@ const NAV_ITEMS: { label: string; to: string; match: (pathname: string) => boole
     match: (p) => (p === ROUTES.FRIENDS || p.startsWith('/friends/')) && !p.startsWith(ROUTES.ADD_FRIEND),
   },
   { label: 'Groups', to: ROUTES.GROUPS, match: (p) => p.startsWith('/groups') },
-  { label: 'Insights', to: ROUTES.ANALYTICS, match: (p) => p.startsWith(ROUTES.ANALYTICS) },
+  { label: 'Insights', to: ROUTES.INSIGHTS, match: (p) => p.startsWith(ROUTES.INSIGHTS) },
 ];
 
 const SearchIcon: React.FC = () => (

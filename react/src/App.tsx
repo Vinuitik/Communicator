@@ -9,7 +9,7 @@ import AddFriendPage from './components/pages/AddFriendPage';
 import CreateGroupPage from './components/pages/CreateGroupPage';
 import GroupDetailsPage from './components/pages/GroupDetailsPage';
 import SettingsPage from './components/pages/SettingsPage';
-import AnalyticsPage from './components/pages/AnalyticsPage';
+import InsightsPage from './components/pages/InsightsPage';
 import ProfilePage from './components/pages/ProfilePage';
 import { ROUTES, profilePath } from './utils/constants';
 
@@ -42,7 +42,9 @@ const App: React.FC = () => {
             <Route path={ROUTES.CREATE_GROUP} element={<CreateGroupPage />} />
             <Route path={ROUTES.GROUP_DETAILS} element={<GroupDetailsPage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
-            <Route path={ROUTES.ANALYTICS} element={<AnalyticsPage />} />
+            {/* Old "Analytics" bookmarks still land somewhere real. */}
+            <Route path="/analytics" element={<Navigate to={ROUTES.INSIGHTS} replace />} />
+            <Route path={ROUTES.INSIGHTS} element={<InsightsPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
           </Routes>
         </PageLayout>

@@ -337,7 +337,7 @@ const ProfilePage: React.FC = () => {
         {tab === 'socials' && <SocialsPanel friendId={friendId} friendName={friend.name} />}
 
         {tab === 'trends' && (
-          <TrendsPanel friendId={friendId} friendName={friend.name} onOpenInsights={() => navigate(ROUTES.ANALYTICS)} />
+          <TrendsPanel friendId={friendId} friendName={friend.name} onOpenInsights={() => navigate(ROUTES.INSIGHTS)} />
         )}
       </div>
 

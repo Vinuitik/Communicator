@@ -1,16 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SegmentedControl from '../../molecules/SegmentedControl';
 import { getFriendAnalytics } from '../../../services/api/friendService';
-import { computeAnalyticsSeries } from '../../../utils/analyticsMath';
+import { computeAnalyticsSeries, ANALYTICS_RANGES as RANGES } from '../../../utils/analyticsMath';
 import { AnalyticsRecord } from '../../../types/api';
-
-const RANGES = [
-  { value: '1M', label: '1M', days: 30 },
-  { value: '3M', label: '3M', days: 90 },
-  { value: '6M', label: '6M', days: 180 },
-  { value: '1Y', label: '1Y', days: 365 },
-  { value: 'All', label: 'All', days: 3650 },
-];
 
 const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 

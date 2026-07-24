@@ -36,7 +36,12 @@ export const getIntensityGradientColor = (intensityScore: number): string => {
     return interpolateRedYellowGreen(clamped / max);
 };
 
-export const calculateIntensityScore = (friend: Friend): number => {
+// Narrowed to the 3 fields actually read (rather than the full Friend shape)
+// so Insights (Stage 5) can score ShortFriend entries from the lightweight
+// /shortList endpoint without an unnecessary full Friend fetch per friend.
+export const calculateIntensityScore = (
+    friend: Pick<Friend, 'averageFrequency' | 'averageDuration' | 'averageExcitement'>
+): number => {
     return (friend.averageFrequency || 0) + (friend.averageDuration || 0) + (friend.averageExcitement || 0);
 };
 
