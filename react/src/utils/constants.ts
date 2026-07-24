@@ -7,6 +7,7 @@ export const ROUTES = {
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
   GROUP_DETAILS: '/groups/:id',
+  SETTINGS: '/settings',
   VALIDATION: '/validation',
   // Not yet ported to the SPA — still served by the legacy MPA.
   SOCIAL: '/social',

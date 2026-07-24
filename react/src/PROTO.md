@@ -1,11 +1,11 @@
-# React UI — Proto `[PARTIALLY REAL — 8 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 9 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
 > the visual redesign is a deliberately separate later pass. See the "Two
 > frontends" gotcha in [nginx/PROTO.md](../../nginx/PROTO.md).
 
-Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,connectionService}.ts, hooks/useApi.ts, utils/{constants,friendMetrics}.ts, components/{atoms,molecules,organisms,templates,pages}/*
+Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,connectionService,settingsService}.ts, hooks/useApi.ts, utils/{constants,friendMetrics}.ts, components/{atoms,molecules,organisms,templates,pages}/*
 
 ## Role
 
@@ -25,11 +25,12 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
   /groups/:id    → GroupDetailsPage [REAL — single group, notes, settings]
+  /settings      → SettingsPage     [REAL — AI mode/keys, Drive backup/restore]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
 <Link> or an honest external <a> to a genuinely-unported legacy page
-(Stats, Settings) — flip each link as its destination page is ported (see
+(Stats) — flip each link as its destination page is ported (see
 AddFriendForm/CreateGroupForm Cancel buttons and AddFriendPage/
 CreateGroupPage post-submit redirects, all now navigate(), for the pattern).
 NavigationBar's "Home" deliberately does NOT match the legacy nav (there,
@@ -40,6 +41,7 @@ reproduced; Calendar got its own nav item instead.
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend, getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
+services/api/settingsService.ts — REAL: getLlmSettings, setLlmMode, saveProviderKey, removeProviderKey, checkHostWrapperStatus, getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup
 services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
@@ -209,11 +211,49 @@ Verified against the live API through real nginx during the port: created a
 throwaway friend, added and deleted a knowledge item via the new page's
 calls, confirmed it round-tripped, then deleted the friend.
 
+## SettingsPage — what "ported" means here
+
+`components/pages/SettingsPage` reimplements `nginx/static/settings/settings.html`
++ `settings.js` — the odd-one-out page in this migration: it's a control
+panel over **two separate backend services**, not the Friend/Group entity
+CRUD every prior page has been. No new backend code was needed for either
+half — same pattern as GroupDetailsPage/FactsPage, this page's whole job was
+adding a UI over already-working services:
+
+- **AI mode + cloud provider keys** — `ai_agent`'s `routers/settings.py`
+  (`GET/PUT /api/ai/settings/llm`, `PUT/DELETE .../providers/{provider}`,
+  `GET .../host-wrapper-status`). This is the same service [[communicator-llm-settings]]
+  built the UI-switchable local/cloud toggle for originally — this port just
+  moves that existing legacy-JS UI into the SPA verbatim, no new capability.
+- **Google Drive backup/restore** — the `backup` Java package, folded into
+  the `communicator-app` JVM monolith (`BackupController`, mounted at
+  `/backup/**`) — not a separate container despite `backup/` looking like
+  its own service on disk; see [[communicator-jvm-monolith]].
+
+`services/api/settingsService.ts` talks to both under one file since the
+legacy page did too — `LLM_API` (`/api/ai/settings/llm`) and `BACKUP_API`
+(`/backup`) are two different `API_BASE` prefixes, not a typo.
+
+No shared organism reuse here — the mode-radio cards, provider-key rows, and
+backup status cards are all one-off layouts specific to this page (unlike
+`KnowledgeCrudPanel`'s three call sites elsewhere), so they're inline in
+`SettingsPage.tsx` behind a small local `Card` wrapper rather than factored
+into new atoms/molecules that would only ever have one caller.
+
+Verified against the live API through real nginx: `curl`'d all three
+real endpoints directly (`/api/ai/settings/llm`, `.../host-wrapper-status`,
+`/backup/status`) and confirmed the JSON shapes match `types/api.ts` exactly
+before wiring the component to them. **Not click-tested in a real browser**
+— same gap as CalendarPage: the sandbox's `browse`/gstack tooling needs a
+one-time `bun` install this environment doesn't have. Confirmed instead that
+`GET /app/settings` 200s through nginx's SPA fallback and that the CRA
+production build compiles clean (`docker compose build react-ui`).
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
 
-**Real today:** everything in `friendService.ts` and `groupService.ts`. `connectionService` is still a placeholder that returns empty arrays / logs to console — calling it does nothing real.
+**Real today:** everything in `friendService.ts`, `groupService.ts`, and `settingsService.ts`. `connectionService` is still a placeholder that returns empty arrays / logs to console — calling it does nothing real.
 
 ## Gotchas / Technology Notes
 
@@ -223,7 +263,8 @@ calls, confirmed it round-tripped, then deleted the friend.
 - **CRA detects the `/app/` mount from `package.json`'s `homepage` field** and prefixes built asset URLs accordingly (`/app/static/js/main.*.js`). Don't remove that field.
 - **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — `useApi` exists but neither real page uses it; each manages its own `useState`/`useEffect` fetch instead. Revisit once pages need to share server state (e.g. a friend count badge in the nav).
 - **`window.confirm`/`window.alert` used for delete confirmation and error reporting** (HomePage, GroupsPage), matching the legacy page's UX exactly. Not blocked from being replaced with a nicer in-app modal — just not done yet, to keep this port behavior-preserving.
-- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed `GET /api/groups/list`, TalkedPage needed `GET /api/friend/{id}`. Two for two so far — expect this on every remaining Thymeleaf-backed page (settings, groupDetails, groupKnowledge, facts, analytics, social, profile).
+- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed `GET /api/groups/list`, TalkedPage needed `GET /api/friend/{id}`. **SettingsPage broke this streak** — it's not Thymeleaf-backed at all, both `ai_agent` (FastAPI) and `backup` (Spring, folded into `communicator-app`) already had full JSON APIs with zero UI; no backend changes needed. Still check each remaining page rather than assuming either pattern.
+- **A page can span more than one backend service.** SettingsPage is the first page to call two unrelated services (`ai_agent` for LLM settings, the JVM monolith's `backup` package for Drive backup) from one component — `services/api/settingsService.ts` mirrors that by importing both `API_BASE.AI` and `API_BASE.BACKUP` rather than picking one, unlike every prior `*Service.ts` file which only ever touched one prefix.
 - **`FriendService.findById` returns a blank `new Friend()` (id == null) for a missing id, not null.** Bit `FriendController.getFriend`'s first draft (returned 200 with an all-null body instead of 404) — check `.getId() == null`, not `== null`, when using this method to decide "found vs not."
 
 ## Change Index
@@ -241,6 +282,8 @@ calls, confirmed it round-tripped, then deleted the friend.
 | Single-friend fetch / talked-to update | `FriendController.getFriend` (`GET /api/friend/{id}`) + `.updateFriend` (`PUT /api/friend/talkedToFriend/{id}`), `services/api/friendService.ts` |
 | Group notes / settings CRUD | `GroupApiController` knowledge endpoints + `GroupPermissionController`, `services/api/groupService.ts`, `components/organisms/KnowledgeCrudPanel` |
 | Per-friend knowledge CRUD | `FriendKnowledgeController`, `services/api/friendService.ts` (`getFriendKnowledge`/`addFriendKnowledgeItem`/`deleteFriendKnowledgeItem`), `components/pages/FactsPage` |
+| AI mode / cloud provider keys | `ai_agent/routers/settings.py`, `services/api/settingsService.ts` (`getLlmSettings`/`setLlmMode`/`saveProviderKey`/`removeProviderKey`/`checkHostWrapperStatus`), `components/pages/SettingsPage` |
+| Google Drive backup/restore | `backup/.../BackupController.java` (mounted in `communicator-app`), `services/api/settingsService.ts` (`getBackupStatus`/`disconnectDrive`/`setBackupEnabled`/`runBackup`/`restoreBackup`), `components/pages/SettingsPage` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

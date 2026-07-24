@@ -135,3 +135,38 @@ export interface ErrorResponse {
     error: string;
     status: number;
 }
+
+// ── Settings (settings.html port) ──────────────────────────────────────────
+
+export const KNOWN_PROVIDERS = ['gemini', 'github', 'mistral', 'groq', 'deepseek', 'anthropic'] as const;
+export type LlmProvider = typeof KNOWN_PROVIDERS[number];
+
+// Response shape from ai_agent's GET /settings/llm (routers/settings.py).
+export interface LlmSettings {
+    mode: 'ollama' | 'cloud';
+    providers: Record<string, boolean>;
+}
+
+// Response shape from GET /settings/llm/host-wrapper-status.
+export interface HostWrapperStatus {
+    reachable: boolean;
+    error?: string;
+    providers?: Record<string, { configured: boolean }>;
+}
+
+// Response shape from backup service's GET /backup/status
+// (BackupController.status) — fields are only meaningful once clientConfigured
+// && connected are both true; see SettingsPage for the gating logic.
+export interface BackupStatus {
+    clientConfigured: boolean;
+    connected: boolean;
+    accountEmail?: string | null;
+    enabled: boolean;
+    running?: boolean;
+    phase?: string;
+    lastRunAt?: string | null;
+    lastResult?: string;
+    db?: { exists: boolean };
+    quota?: { usage: number; limit?: number };
+    quotaError?: string;
+}

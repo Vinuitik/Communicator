@@ -9,6 +9,7 @@ import TalkedPage from './components/pages/TalkedPage';
 import FactsPage from './components/pages/FactsPage';
 import CreateGroupPage from './components/pages/CreateGroupPage';
 import GroupDetailsPage from './components/pages/GroupDetailsPage';
+import SettingsPage from './components/pages/SettingsPage';
 import { ROUTES } from './utils/constants';
 
 const App: React.FC = () => {
@@ -24,6 +25,7 @@ const App: React.FC = () => {
           <Route path={ROUTES.GROUPS} element={<GroupsPage />} />
           <Route path={ROUTES.CREATE_GROUP} element={<CreateGroupPage />} />
           <Route path={ROUTES.GROUP_DETAILS} element={<GroupDetailsPage />} />
+          <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
         </Routes>
       </PageLayout>
     </Router>

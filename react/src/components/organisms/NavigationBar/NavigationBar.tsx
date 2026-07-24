@@ -23,7 +23,7 @@ const NavigationBar: React.FC = () => {
                 <li><Link to={ROUTES.GROUPS} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Groups</Link></li>
                 <li><Link to={ROUTES.CREATE_GROUP} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Create Group</Link></li>
                 <li><a href="/stats" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Stats</a></li>
-                <li><a href="/settings/settings.html" className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Settings</a></li>
+                <li><Link to={ROUTES.SETTINGS} className="block text-white no-underline px-3 py-2 rounded hover:bg-white/10 transition-colors">Settings</Link></li>
             </ul>
         </nav>
     );
