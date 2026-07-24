@@ -49,10 +49,26 @@ export interface NewFriendPayload {
     knowledge: FriendKnowledge[];
 }
 
+// Mirrors group/.../GroupEntities/SocialGroup.java (only the fields the
+// SPA currently reads/writes — the entity has more: permissions, socials).
 export interface Group {
-    id: string;
+    id: number;
     name: string;
-    members: Friend[];
+    description?: string;
+    primaryPhotoId?: number;
+}
+
+// Body for POST /api/groups/create.
+export interface CreateGroupPayload {
+    name: string;
+}
+
+// Response shape from GroupApiController.createGroup — {success, message,
+// group} on both success (201) and failure (400), not a bare Group.
+export interface CreateGroupResponse {
+    success: boolean;
+    message: string;
+    group?: Group;
 }
 
 export interface Connection {
