@@ -68,7 +68,7 @@ function isModalVisible() {
 
 function generateMediaPreview(fileName, type, friendId, mimeType) {
     const previewContainer = document.getElementById('mediaPreviewContainer');
-    const fileUrl = `/api/fileRepository/file/${friendId}/${fileName}`;
+    const fileUrl = `${window.APP_CONFIG.FILES_BASE}/file/${friendId}/${fileName}`;
     let previewHTML = '';
 
     switch (type) {
@@ -151,7 +151,7 @@ function updatePrimaryPhotoButton(mediaType) {
 // Check if current photo is already primary
 async function checkIfPrimaryPhoto() {
     try {
-        const response = await fetch(`/api/friend/${currentFriendId}/primary-photo`);
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/${currentFriendId}/primary-photo`);
         if (response.ok) {
             const result = await response.json();
             const primaryPhotoBtn = document.getElementById('setPrimaryPhotoBtn');
@@ -194,7 +194,7 @@ async function setPrimaryPhoto() {
 
         console.log(formData)
 
-        const response = await fetch('/api/friend/set-primary-photo', {
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/set-primary-photo`, {
             method: 'POST',
             body: formData
         });
@@ -235,7 +235,7 @@ async function setPrimaryPhoto() {
 function updateProfileHeaderImage() {
     const profileHeaderImg = document.querySelector('.profile-header img');
     if (profileHeaderImg && currentMediaName) {
-        const newImageUrl = `/api/fileRepository/file/${currentFriendId}/${currentMediaName}`;
+        const newImageUrl = `${window.APP_CONFIG.FILES_BASE}/file/${currentFriendId}/${currentMediaName}`;
         profileHeaderImg.src = newImageUrl;
         
         // Add a subtle animation to indicate change
@@ -250,7 +250,7 @@ function updateProfileHeaderImage() {
 // Fetch media file information
 async function fetchMediaInfo(fileName, friendId) {
     try {
-        const response = await fetch(`/api/fileRepository/info/${friendId}/${fileName}`);
+        const response = await fetch(`${window.APP_CONFIG.FILES_BASE}/info/${friendId}/${fileName}`);
         if (response.ok) {
             const info = await response.json();
             const mediaSize = document.getElementById('modalMediaSize');
@@ -401,7 +401,7 @@ async function deleteCurrentMedia() {
 
         console.log("formData being sent:", formData);
 
-        const response = await fetch('/api/friend/files/delete', {
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/files/delete`, {
             method: 'POST',
             body: formData
         });

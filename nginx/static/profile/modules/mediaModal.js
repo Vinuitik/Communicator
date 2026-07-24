@@ -116,7 +116,7 @@ const MediaModal = {
      */
     generatePreview() {
         const previewContainer = document.getElementById('mediaPreviewContainer');
-        const fileUrl = `/api/fileRepository/file/${this.currentFriendId}/${this.currentMediaName}`;
+        const fileUrl = `${window.APP_CONFIG.FILES_BASE}/file/${this.currentFriendId}/${this.currentMediaName}`;
         let previewHTML = '';
 
         switch (this.currentMediaType) {
@@ -213,7 +213,7 @@ const MediaModal = {
      */
     async fetchMediaInfo() {
         try {
-            const response = await fetch(`/api/fileRepository/info/${this.currentFriendId}/${this.currentMediaName}`);
+            const response = await fetch(`${window.APP_CONFIG.FILES_BASE}/info/${this.currentFriendId}/${this.currentMediaName}`);
             if (response.ok) {
                 const info = await response.json();
                 const mediaSize = document.getElementById('modalMediaSize');

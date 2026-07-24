@@ -15,7 +15,7 @@ const MediaElementFactory = {
         div.className = 'media-item';
         
         const img = document.createElement('img');
-        img.src = `/api/fileRepository/file/${friendId}/${photo.photoName}`;
+        img.src = `${window.APP_CONFIG.FILES_BASE}/file/${friendId}/${photo.photoName}`;
         img.alt = photo.photoName;
         img.setAttribute('data-photo-name', photo.photoName);
         img.setAttribute('data-media-name', photo.photoName);

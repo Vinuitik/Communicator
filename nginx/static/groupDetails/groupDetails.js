@@ -60,7 +60,7 @@ function getGroupIdFromUrl() {
  */
 async function loadGroupDetails(groupId) {
     try {
-        const response = await fetch(`/api/groups/${groupId}`, {
+        const response = await fetch(`${window.APP_CONFIG.GROUPS_BASE}/${groupId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -152,7 +152,7 @@ async function addKnowledge(groupId) {
             priority: 1
         }];
         
-        const response = await fetch(`/api/groups/addKnowledge/${groupId}`, {
+        const response = await fetch(`${window.APP_CONFIG.GROUPS_BASE}/addKnowledge/${groupId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -221,7 +221,7 @@ async function deleteKnowledge(knowledgeId) {
     }
     
     try {
-        const response = await fetch(`/api/groups/deleteKnowledge/${knowledgeId}`, {
+        const response = await fetch(`${window.APP_CONFIG.GROUPS_BASE}/deleteKnowledge/${knowledgeId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'

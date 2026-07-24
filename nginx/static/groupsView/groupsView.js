@@ -114,7 +114,7 @@ function initializeGroupLinks() {
  * @param {number} groupId - The ID of the group
  */
 function navigateToGroupDetails(groupId) {
-    window.location.href = `/api/groups/${groupId}`;
+    window.location.href = `${window.APP_CONFIG.GROUPS_BASE}/${groupId}`;
 }
 
 /**
@@ -122,14 +122,14 @@ function navigateToGroupDetails(groupId) {
  * @param {number} groupId - The ID of the group
  */
 function navigateToGroupKnowledge(groupId) {
-    window.location.href = `/api/groups/${groupId}/knowledge`;
+    window.location.href = `${window.APP_CONFIG.GROUPS_BASE}/${groupId}/knowledge`;
 }
 
 /**
  * Navigate to create group page
  */
 function navigateToCreateGroup() {
-    window.location.href = '/api/groups/create';
+    window.location.href = `${window.APP_CONFIG.GROUPS_BASE}/create`;
 }
 
 /**
@@ -138,14 +138,14 @@ function navigateToCreateGroup() {
  */
 function navigateToEditGroup(groupId) {
     // Since there's no edit endpoint in GroupController, redirect to group details
-    window.location.href = `/api/groups/${groupId}`;
+    window.location.href = `${window.APP_CONFIG.GROUPS_BASE}/${groupId}`;
 }
 
 /**
  * Navigate to groups list page
  */
 function navigateToGroups() {
-    window.location.href = '/api/groups';
+    window.location.href = window.APP_CONFIG.GROUPS_BASE;
 }
 
 /**
@@ -168,7 +168,7 @@ function deleteGroup(groupId) {
         deleteButton.disabled = true;
 
         // Make API call to delete the group with better error handling
-        fetch(`/api/groups/${groupId}`, {
+        fetch(`${window.APP_CONFIG.GROUPS_BASE}/${groupId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',

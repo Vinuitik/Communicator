@@ -53,7 +53,7 @@ class ProfileSocialManager {
     async loadSocialLinks() {
         try {
             console.log('Loading social links for friend ID:', this.friendId);
-            const response = await fetch(`/api/friend/socials/${this.friendId}`);
+            const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/socials/${this.friendId}`);
             console.log('Response status:', response.status);
             
             if (response.ok) {

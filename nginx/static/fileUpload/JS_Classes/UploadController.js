@@ -28,7 +28,7 @@ class UploadController {
 
             console.log('Uploading files:', formData, 'to friendId:', this.friendId);
             
-            const response = await fetch('/api/friend/files/upload', {
+            const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/files/upload`, {
                 method: 'POST',
                 body: formData
             });

@@ -115,7 +115,7 @@ const AiChat = {
             // Get the current protocol and host
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
-            const wsUrl = `${protocol}//${host}/api/ai/chat/ws`;
+            const wsUrl = `${protocol}//${host}${window.APP_CONFIG.AI_BASE}/chat/ws`;
             
             console.log('AiChat: Connecting to', wsUrl);
             

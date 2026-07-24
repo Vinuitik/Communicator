@@ -30,7 +30,7 @@ const PrimaryPhoto = {
         const currentMedia = MediaModal.getCurrentMedia();
         
         try {
-            const response = await fetch(`/api/friend/${currentMedia.friendId}/primary-photo`);
+            const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/${currentMedia.friendId}/primary-photo`);
             if (response.ok) {
                 const result = await response.json();
                 const primaryPhotoBtn = document.getElementById('setPrimaryPhotoBtn');
@@ -81,7 +81,7 @@ const PrimaryPhoto = {
             formData.append('friendId', currentMedia.friendId);
             formData.append('photoId', currentMedia.id);
 
-            const response = await fetch('/api/friend/set-primary-photo', {
+            const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/set-primary-photo`, {
                 method: 'POST',
                 body: formData
             });
@@ -123,7 +123,7 @@ const PrimaryPhoto = {
     updateProfileHeaderImage(mediaData) {
         const profileHeaderImg = document.querySelector('.profile-header img');
         if (profileHeaderImg && mediaData.name) {
-            const newImageUrl = `/api/fileRepository/file/${mediaData.friendId}/${mediaData.name}`;
+            const newImageUrl = `${window.APP_CONFIG.FILES_BASE}/file/${mediaData.friendId}/${mediaData.name}`;
             profileHeaderImg.src = newImageUrl;
             
             // Add a subtle animation to indicate change

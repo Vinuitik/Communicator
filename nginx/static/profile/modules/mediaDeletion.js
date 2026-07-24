@@ -86,7 +86,7 @@ const MediaDeletion = {
         formData.append('resources', resourceIds);
         formData.append('friendId', mediaData.friendId);
 
-        const response = await fetch('/api/friend/files/delete', {
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/files/delete`, {
             method: 'POST',
             body: formData
         });

@@ -127,14 +127,14 @@ async function viewRequest(endpoint, page = 1) {
         
         if (endpoint === 'allFriends') {
             // Use paginated endpoint for all friends
-            response = await fetch(`/api/friend/friends/ui/page/${page - 1}/size/${pageSize}`);
+            response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/friends/ui/page/${page - 1}/size/${pageSize}`);
             if (!response.ok) {
                 throw new Error(`Error: ${response.statusText}`);
             }
             data = await response.json();
             
             // For paginated response, we need to get total count separately
-            const countResponse = await fetch('/api/friend/friends/count');
+            const countResponse = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/friends/count`);
             if (countResponse.ok) {
                 const totalCount = await countResponse.json();
                 totalPages = Math.ceil(totalCount / pageSize);
@@ -146,7 +146,7 @@ async function viewRequest(endpoint, page = 1) {
             }
         } else {
             // For thisWeek, use the existing non-paginated endpoint
-            response = await fetch(`/api/friend/${endpoint}`);
+            response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/${endpoint}`);
             if (!response.ok) {
                 throw new Error(`Error: ${response.statusText}`);
             }
@@ -204,11 +204,11 @@ async function viewRequest(endpoint, page = 1) {
                         <div class="dropdown">
                             <button class="dropdown-button" type="button">⋮</button>
                             <div class="dropdown-content">
-                                <a href="/api/friend/talked/${friend.id}" class="dropdown-item">Talked</a>
-                                <a href="/api/friend/profile/${friend.id}" class="dropdown-item">Profile</a>
-                                <a href="/api/friend/knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
-                                <a href="/api/groups" class="dropdown-item">Groups</a>
-                                <a href="/api/connections/${friend.id}" class="dropdown-item">Connections</a>
+                                <a href="${window.APP_CONFIG.FRIEND_BASE}/talked/${friend.id}" class="dropdown-item">Talked</a>
+                                <a href="${window.APP_CONFIG.FRIEND_BASE}/profile/${friend.id}" class="dropdown-item">Profile</a>
+                                <a href="${window.APP_CONFIG.FRIEND_BASE}/knowledge/${friend.id}" class="dropdown-item">Knowledge</a>
+                                <a href="${window.APP_CONFIG.GROUPS_BASE}" class="dropdown-item">Groups</a>
+                                <a href="${window.APP_CONFIG.CONNECTIONS_BASE}/${friend.id}" class="dropdown-item">Connections</a>
                                 <a href="#" class="dropdown-item delete-button">Delete</a>
                             </div>
                         </div>
@@ -249,7 +249,7 @@ async function viewRequest(endpoint, page = 1) {
                         }
                         
                         try {
-                            const deleteResponse = await fetch(`/api/friend/deleteFriend/${friendId}`, {
+                            const deleteResponse = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/deleteFriend/${friendId}`, {
                                 method: 'DELETE'
                             });
                             if (!deleteResponse.ok) {

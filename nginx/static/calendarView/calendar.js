@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadWeeklyCalendar() {
     try {
         // Fetch friends data from API
-        const response = await fetch('/api/friend/thisWeek');
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/thisWeek`);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }

@@ -87,7 +87,7 @@ const Pagination = {
         try {
             LoadingState.show();
             
-            const response = await fetch(`/api/friend/files/${this.friendId}/page/${pageNumber}`);
+            const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/files/${this.friendId}/page/${pageNumber}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

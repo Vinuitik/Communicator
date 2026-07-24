@@ -7,7 +7,7 @@ import { KnowledgeManager } from '/shared/knowledgeManager.js';
 document.addEventListener('DOMContentLoaded', () => {
     // Configure the knowledge manager for friends
     const friendKnowledgeConfig = {
-        apiBaseUrl: '/api/friend',
+        apiBaseUrl: window.APP_CONFIG.FRIEND_BASE,
         entityType: 'friend',
         entityIdKey: 'friendId',
         textFieldName: 'fact',        // JSON property name for friend facts
@@ -48,7 +48,7 @@ export const sendKnowledgeData = (knowledgeData) => {
     
     console.log('Sending data:', knowledgeData);
     
-    return fetch(`/api/friend/addKnowledge/${id}`, {
+    return fetch(`${window.APP_CONFIG.FRIEND_BASE}/addKnowledge/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(knowledgeData)

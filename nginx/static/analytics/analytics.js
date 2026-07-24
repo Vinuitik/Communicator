@@ -215,7 +215,7 @@ function updateCharts(data) {
 async function fetchFriendList() {
     try {
         // Sending GET request to /shortList endpoint
-        const response = await fetch('/api/friend/shortList');
+        const response = await fetch(`${window.APP_CONFIG.FRIEND_BASE}/shortList`);
         const friends = await response.json();
         friends.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -266,7 +266,7 @@ document.getElementById("apply-filters").addEventListener("click", function() {
     }
 
     // Construct the URL with query parameters
-    const url = `/api/friend/analyticsList?friendId=${friendId}&left=${startDate}&right=${endDate}`;
+    const url = `${window.APP_CONFIG.FRIEND_BASE}/analyticsList?friendId=${friendId}&left=${startDate}&right=${endDate}`;
 
     // Make the GET request
     fetch(url)

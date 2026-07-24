@@ -1,4 +1,4 @@
-const API_BASE = '/api/ai/settings/llm';
+const API_BASE = `${window.APP_CONFIG.AI_BASE}/settings/llm`;
 const PROVIDER_LABELS = {
     gemini: 'Gemini',
     github: 'GitHub Models',
@@ -136,7 +136,7 @@ checkHostWrapperStatus();
 
 // ── Backup (Google Drive) ──────────────────────────────────────────────────
 
-const BACKUP_BASE = '/backup';
+const BACKUP_BASE = window.APP_CONFIG.BACKUP_BASE;
 const driveDot = document.getElementById('drive-dot');
 const driveText = document.getElementById('drive-text');
 const driveActions = document.getElementById('drive-actions');

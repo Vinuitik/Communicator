@@ -46,7 +46,7 @@ document.getElementById('friendForm').addEventListener('submit', function(event)
     console.log('Form data ready to send:', requestData);
 
     // Example of sending data to backend using fetch
-    fetch('/api/friend/addFriend', {
+    fetch(`${window.APP_CONFIG.FRIEND_BASE}/addFriend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)

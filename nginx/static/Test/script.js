@@ -10,7 +10,7 @@ const loadingDiv = document.getElementById('loading');
 const knowledgeResults = document.getElementById('knowledge-results');
 
 // Establish WebSocket connection
-const socket = new WebSocket('ws://localhost:8090/api/ai/ws');
+const socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${window.APP_CONFIG.AI_BASE}/ws`);
 
 socket.onopen = () => {
     console.log('WebSocket connection established');
@@ -107,7 +107,7 @@ async function fetchKnowledgeSummary(userId) {
         showLoading(true);
         clearResults();
         
-        const response = await fetch(`http://localhost:8090/api/ai/summarize-knowledge`, {
+        const response = await fetch(`${window.APP_CONFIG.AI_BASE}/summarize-knowledge`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

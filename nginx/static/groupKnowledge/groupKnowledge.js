@@ -7,7 +7,7 @@ import { KnowledgeManager } from '/shared/knowledgeManager.js';
 document.addEventListener('DOMContentLoaded', () => {
     // Configure the knowledge manager for groups
     const groupKnowledgeConfig = {
-        apiBaseUrl: '/api/groups',
+        apiBaseUrl: window.APP_CONFIG.GROUPS_BASE,
         entityType: 'group',
         entityIdKey: 'groupId',
         textFieldName: 'fact',        // JSON property name
