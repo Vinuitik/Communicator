@@ -28,11 +28,34 @@ export const getFriendsThisWeek = async (): Promise<Friend[]> => {
     return response.json();
 };
 
+// Added for the talkedForm SPA port — FriendController.getFriend (GET /api/friend/{id}),
+// mirrors what WebController's Thymeleaf /talked/{id} used to bind into the template.
+export const getFriend = async (friendId: number): Promise<Friend> => {
+    const response = await fetch(`${API_URL}/${friendId}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
 // Mirrors nginx/static/addFriendForm/addForm.js. The endpoint returns plain
 // text on success/failure, not the created Friend — see FriendController.addFriend.
 export const addFriend = async (payload: NewFriendPayload): Promise<void> => {
     const response = await fetch(`${API_URL}/addFriend`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+        throw new Error(await response.text());
+    }
+};
+
+// Mirrors nginx/static/updateForm/talkedForm.js. The endpoint returns plain
+// text, not the updated Friend — see FriendController.updateFriend.
+export const talkedToFriend = async (friendId: number, payload: NewFriendPayload): Promise<void> => {
+    const response = await fetch(`${API_URL}/talkedToFriend/${friendId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
     });

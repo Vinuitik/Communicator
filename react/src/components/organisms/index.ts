@@ -6,3 +6,4 @@ export * from './FriendsTable';
 export * from './CreateGroupForm';
 export * from './GroupsTable';
 export * from './CalendarBoard';
+export * from './TalkedForm';

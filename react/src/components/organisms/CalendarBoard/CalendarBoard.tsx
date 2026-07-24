@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Friend } from '../../../types/api';
-import { API_BASE } from '../../../services/api/config';
-import { ROUTES } from '../../../utils/constants';
+import { ROUTES, talkedPath } from '../../../utils/constants';
 
 interface CalendarBoardProps {
   friends: Friend[];
@@ -85,7 +84,7 @@ const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error }
   const { previousFriends, columns } = useWeekColumns(friends);
 
   const goToFriend = (friend: Friend) => {
-    window.location.href = `${API_BASE.FRIEND}/talked/${friend.id}`;
+    navigate(talkedPath(friend.id));
   };
 
   const friendBox = (friend: Friend) => (

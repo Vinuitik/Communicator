@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 5 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 6 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,7 +11,7 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable, CalendarBoard, TalkedForm) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup, Calendar, Talked).
 
 ## Internal wiring
 
@@ -20,6 +20,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /              → HomePage        [REAL — friends list]
   /calendar      → CalendarPage    [REAL — weekly calendar]
   /friends/add   → AddFriendPage   [REAL]
+  /friends/:id/talked → TalkedPage [REAL — edit friend after talking]
   /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
 
@@ -35,7 +36,7 @@ NavigationBar.tsx for why that's kept as the SPA's own convention rather than
 reproduced; Calendar got its own nav item instead.
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
-services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, removeFriend
+services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup
 services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
@@ -76,13 +77,52 @@ column, entirely client-side, matching the legacy date math exactly (including
 its loop-index-to-`Date#getDay()` conversion). Friend-box category coloring
 (birthday > family > work > personal, by keyword match on `experience`) and
 the birthday pulse animation (`tailwind.config.js` `birthday-pulse` keyframe)
-are ported 1:1. Clicking a friend box still navigates to the legacy Thymeleaf
-`talkedForm` page (`${API_BASE.FRIEND}/talked/{id}`, same pattern as
-FriendsTable's "Talked" link) — not ported yet, next up per the migration
-plan. "+ Add Friend" now uses internal `navigate()` since AddFriendPage is
+are ported 1:1. Clicking a friend box now navigates internally to TalkedPage
+(`utils/constants.ts` `talkedPath(id)`, same pattern FriendsTable's "Talked"
+item uses). "+ Add Friend" uses internal `navigate()` since AddFriendPage is
 real; "+ Add Context" still just alerts "not implemented yet", matching
 legacy — that's a real unimplemented feature there too, not a stub introduced
 by this port.
+
+## TalkedPage — what "ported" means here
+
+`components/pages/TalkedPage` + `organisms/TalkedForm` reimplement
+`friend/.../templates/talkedForm.html` + `updateForm/talkedForm.js` — the
+"log that you talked to this friend" edit form, reached at
+`/friends/:id/talked` (react-router's first internal per-entity route; see
+`ROUTES.TALKED` + `talkedPath()` in `utils/constants.ts`).
+
+**This page didn't have a JSON API to read from either.** The legacy version
+was server-rendered — Thymeleaf bound the `Friend` into the template
+(`WebController.showFriendForm`). Added `GET /api/friend/{id}`
+(`FriendController.getFriend`) returning the same `FriendDTO` `allFriends`/
+`thisWeek` already use. Watch for this: `FriendService.findById` returns a
+**blank `new Friend()` (id == null), not null**, when nothing matches — a
+pre-existing quirk of that method, not something this port introduced; the
+new endpoint checks `friend.getId() == null` to turn that into a real 404,
+verified with both a real id and `/api/friend/999`.
+
+`TalkedForm` is `AddFriendForm`'s twin (same `FormField`/`Button` composition)
+minus "Last Time Spoken" — the legacy JS always sends *today's* date for this
+form, not a user-editable one — and pre-populated from the fetched friend
+instead of starting blank. Submits `PUT /api/friend/talkedToFriend/{id}`
+(`friendService.talkedToFriend`, already existed server-side, just never had
+a JSON caller before this port).
+
+The knowledge section reuses `KnowledgeEditor` completely unchanged (local-only,
+no API calls) — not a shortcut, that's what the legacy page actually does
+here too: the shared `KnowledgeManager` class it instantiates derives its
+entity id by looking for a `"knowledge"` path segment in the URL, which
+`/talked/{id}` never has, so its "load existing knowledge" / pagination /
+committed-table logic is dead code on this specific legacy page. The only
+part that actually runs is the plain `collectKnowledgeData()` export reading
+a local staging table — exactly what `KnowledgeEditor` already does. (The
+*real* API-backed knowledge editing in `KnowledgeManager` will matter once
+`facts.html` itself is ported — that's a separate, still-unported page.)
+
+Verified against the live API through real nginx during the port: created a
+throwaway friend, fetched it via the new endpoint, updated it via
+`talkedToFriend`, confirmed the changes round-tripped, then deleted it.
 
 ## Seams (intended vs actual)
 
@@ -98,7 +138,8 @@ by this port.
 - **CRA detects the `/app/` mount from `package.json`'s `homepage` field** and prefixes built asset URLs accordingly (`/app/static/js/main.*.js`). Don't remove that field.
 - **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — `useApi` exists but neither real page uses it; each manages its own `useState`/`useEffect` fetch instead. Revisit once pages need to share server state (e.g. a friend count badge in the nav).
 - **`window.confirm`/`window.alert` used for delete confirmation and error reporting** (HomePage, GroupsPage), matching the legacy page's UX exactly. Not blocked from being replaced with a nicer in-app modal — just not done yet, to keep this port behavior-preserving.
-- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed a new backend endpoint (`GET /api/groups/list`).
+- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed `GET /api/groups/list`, TalkedPage needed `GET /api/friend/{id}`. Two for two so far — expect this on every remaining Thymeleaf-backed page (settings, groupDetails, groupKnowledge, facts, analytics, social, profile).
+- **`FriendService.findById` returns a blank `new Friend()` (id == null) for a missing id, not null.** Bit `FriendController.getFriend`'s first draft (returned 200 with an all-null body instead of 404) — check `.getId() == null`, not `== null`, when using this method to decide "found vs not."
 
 ## Change Index
 
@@ -112,6 +153,7 @@ by this port.
 | Group-name validation rules | `components/organisms/CreateGroupForm/CreateGroupForm.tsx` (keep in sync with `SocialGroup` backend validation if that ever gains `@Valid` constraints) |
 | Group list JSON shape | `GroupApiController.listGroups` (`GET /api/groups/list`) + `types/api.ts` `GroupListResponse` |
 | Calendar week bucketing / friend-box coloring | `components/organisms/CalendarBoard/CalendarBoard.tsx` |
+| Single-friend fetch / talked-to update | `FriendController.getFriend` (`GET /api/friend/{id}`) + `.updateFriend` (`PUT /api/friend/talkedToFriend/{id}`), `services/api/friendService.ts` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

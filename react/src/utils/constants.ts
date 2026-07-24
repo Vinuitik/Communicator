@@ -2,6 +2,7 @@ export const ROUTES = {
   HOME: '/',
   CALENDAR: '/calendar',
   ADD_FRIEND: '/friends/add',
+  TALKED: '/friends/:id/talked',
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
   VALIDATION: '/validation',
@@ -9,6 +10,11 @@ export const ROUTES = {
   SOCIAL: '/social',
   FILE_UPLOAD: '/fileUpload',
 };
+
+// ROUTES.TALKED is a react-router pattern (:id) — this fills it in for
+// building an actual link/navigate target, the first internal per-entity
+// route in the SPA.
+export const talkedPath = (friendId: number) => `/friends/${friendId}/talked`;
 
 export const TIMEOUTS = {
   API_REQUEST: 5000, // 5 seconds

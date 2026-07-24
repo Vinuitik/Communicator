@@ -61,6 +61,26 @@ public class FriendController {
         return result;
     }
 
+    // Added for the talkedForm SPA port — the Thymeleaf /talked/{id} page
+    // (WebController) had a model-bound Friend to prefill the edit form from;
+    // the React page needs the same data as JSON. Literal segments
+    // (allFriends, thisWeek, shortList, ...) always win over this {id}
+    // pattern in Spring's route matching, so it can't shadow them.
+    @GetMapping("/{id}")
+    public ResponseEntity<FriendDTO> getFriend(@PathVariable Integer id) {
+        // FriendService.findById returns a blank `new Friend()` (id == null),
+        // not null, when nothing matches — it's a pre-existing quirk of that
+        // method (also relied on elsewhere), not something to fix here.
+        Friend friend = friendService.findById(id);
+        if (friend.getId() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        FriendDTO dto = new FriendDTO(friend.getId(), friend.getName(), friend.getExperience(), friend.getDateOfBirth(),
+                friend.getPlannedSpeakingTime(), friend.getAverageFrequency(), friend.getAverageDuration(),
+                friend.getAverageExcitement(), false);
+        return ResponseEntity.ok(dto);
+    }
+
     @GetMapping("thisWeek")
     public List<FriendDTO> getWeekFriends() {
         List<Friend> friends = friendService.findThisWeek();
