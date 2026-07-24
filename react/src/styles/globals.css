@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Matches the legacy MPA base styles (nginx/static/*/​*.css body rule) so
+/* Matches the legacy MPA's per-page body rule (nginx/static CSS files) so
    ported pages don't visibly shift until the redesign changes these. */
 body {
     @apply bg-surface text-gray-800 font-sans;
