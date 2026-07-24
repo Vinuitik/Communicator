@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Textarea from '../../atoms/Textarea';
 import Input from '../../atoms/Input';
-import Button from '../../atoms/Button';
 import { FriendKnowledge } from '../../../types/api';
 
 interface KnowledgeEditorProps {
@@ -31,46 +30,54 @@ const KnowledgeEditor: React.FC<KnowledgeEditorProps> = ({ items, onAdd, onRemov
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-6">
-      <h2 className="text-xl font-medium text-gray-700 mb-4">Add New Knowledge</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-5">
+    <div className="bg-surface border border-hairline rounded-card p-5 mt-4">
+      <h2 className="text-[15px] font-bold text-text-primary mb-4">Add knowledge (optional)</h2>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 mb-4">
         <Textarea
           label="Fact"
-          rows={3}
+          rows={2}
           placeholder="Enter your new knowledge here..."
           value={fact}
           onChange={(e) => setFact(e.target.value)}
         />
-        <Input
-          label="Importance"
-          type="number"
-          placeholder="Rate the importance"
-          value={importance}
-          onChange={(e) => setImportance(e.target.value)}
-        />
-        <Button type="submit" className="self-start">Add Knowledge</Button>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <Input
+              label="Importance"
+              type="number"
+              placeholder="Rate the importance"
+              value={importance}
+              onChange={(e) => setImportance(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-4 py-2.5 rounded-input border-none bg-accent-gradient text-white font-bold text-sm shadow-button-sm hover:brightness-110 transition-all"
+          >
+            + Add
+          </button>
+        </div>
       </form>
 
-      <table className="w-full border-collapse rounded-lg overflow-hidden shadow-sm">
-        <thead>
-          <tr>
-            <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">Fact</th>
-            <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">Importance</th>
-            <th className="text-left p-2.5 bg-gray-100 font-medium border-b border-gray-200">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
+      {items.length > 0 && (
+        <div className="flex flex-col gap-1.5">
           {items.map((item, idx) => (
-            <tr key={idx}>
-              <td className="p-2.5 border-b border-gray-200">{item.fact}</td>
-              <td className="p-2.5 border-b border-gray-200">{item.importance}</td>
-              <td className="p-2.5 border-b border-gray-200">
-                <Button type="button" onClick={() => onRemove(idx)}>Remove</Button>
-              </td>
-            </tr>
+            <div key={idx} className="flex items-center gap-3 px-3.5 py-2.5 bg-surface-2 rounded-lg">
+              <span className="flex-1 text-[13px] text-text-secondary">{item.fact}</span>
+              <span className="text-[10.5px] font-bold text-text-faint bg-white/[.06] px-2 py-0.5 rounded-pill">
+                Importance {item.importance}
+              </span>
+              <button
+                type="button"
+                onClick={() => onRemove(idx)}
+                className="text-text-faint hover:text-bad text-xs transition-colors"
+              >
+                ✕
+              </button>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      )}
     </div>
   );
 };

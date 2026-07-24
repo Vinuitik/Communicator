@@ -44,9 +44,9 @@ const AddFriendPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto flex flex-col gap-6">
+    <div className="animate-ftfade max-w-[560px] mx-auto px-[30px] py-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3">{error}</div>
+        <div className="bg-bad/[.12] border border-bad/40 text-bad rounded-input p-3 mb-4 text-sm">{error}</div>
       )}
       <AddFriendForm onSubmit={handleSubmit} submitting={submitting} cancelTo={ROUTES.HOME} />
       <KnowledgeEditor items={knowledge} onAdd={handleAddKnowledge} onRemove={handleRemoveKnowledge} />

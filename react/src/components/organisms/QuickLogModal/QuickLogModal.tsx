@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Avatar from '../../atoms/Avatar';
 import Input from '../../atoms/Input';
 import Textarea from '../../atoms/Textarea';
+import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 import { useToast } from '../../molecules/Toast';
 import { Friend, NewFriendPayload } from '../../../types/api';
 import { talkedToFriend } from '../../../services/api/friendService';
@@ -12,12 +13,6 @@ interface QuickLogModalProps {
   /** Called after a successful save so the caller can refetch/patch its list. */
   onSaved: (friendId: number) => void;
 }
-
-const RATINGS: { value: string; label: string; color: string }[] = [
-  { value: '***', label: 'Great', color: '#46D39A' },
-  { value: '**', label: 'Okay', color: '#F5B544' },
-  { value: '*', label: 'Bad', color: '#F4676E' },
-];
 
 // Replaces the full-page /talked form for the common case (backlog: a
 // lighter-weight log-a-chat flow). There's no dedicated lightweight backend
@@ -84,24 +79,7 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
         </div>
 
         <div className="text-xs text-text-secondary mb-2">How did it go?</div>
-        <div className="flex gap-2 mb-4">
-          {RATINGS.map((r) => {
-            const active = rating === r.value;
-            return (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setRating(r.value)}
-                className="flex-1 py-2.5 rounded-input font-bold text-sm border transition-colors"
-                style={active
-                  ? { borderColor: r.color, background: `${r.color}22`, color: r.color }
-                  : { borderColor: 'rgba(255,255,255,.1)', background: 'transparent', color: '#9A93A8' }}
-              >
-                {r.label}
-              </button>
-            );
-          })}
-        </div>
+        <RatingPicker options={EXPERIENCE_RATINGS} value={rating} onChange={setRating} className="mb-4" />
 
         <div className="flex gap-3 mb-4">
           <div className="flex-1">

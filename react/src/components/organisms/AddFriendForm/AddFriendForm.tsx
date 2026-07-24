@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import FormField from '../../molecules/FormField';
-import Button, { buttonClasses } from '../../atoms/Button';
+import { useNavigate } from 'react-router-dom';
+import Input from '../../atoms/Input';
+import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 
-// Ported from nginx/static/addFriendForm/addForm.html's #friendForm.
+// Ported from nginx/static/addFriendForm/addForm.html's #friendForm —
+// restyled per the redesign handoff (Stage 6): "How was the last chat?"
+// moves from a plain <select> to the same colored rating chips QuickLogModal
+// uses, matching the mock's Great/Okay/Bad buttons exactly. Same fields,
+// same submit shape — visual-only change.
 export interface AddFriendFormValues {
   name: string;
   lastSpoken: string; // yyyy-mm-dd
@@ -12,16 +16,10 @@ export interface AddFriendFormValues {
   dob: string; // yyyy-mm-dd, optional
 }
 
-const EXPERIENCE_OPTIONS = [
-  { value: '***', label: 'Great!' },
-  { value: '**', label: 'Okay' },
-  { value: '*', label: 'Bad' },
-];
-
 const INITIAL_VALUES: AddFriendFormValues = {
   name: '',
   lastSpoken: '',
-  experience: EXPERIENCE_OPTIONS[0].value,
+  experience: EXPERIENCE_RATINGS[0].value,
   hours: '',
   dob: '',
 };
@@ -33,10 +31,11 @@ interface AddFriendFormProps {
 }
 
 const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, cancelTo }) => {
+  const navigate = useNavigate();
   const [values, setValues] = useState<AddFriendFormValues>(INITIAL_VALUES);
 
   const handleChange = (field: keyof AddFriendFormValues) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
@@ -46,35 +45,38 @@ const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, can
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
-      <h2 className="text-xl font-medium text-gray-700 mb-4">Add Friend</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormField
-          label="Name" name="name" value={values.name} onChange={handleChange('name')}
-          placeholder="Enter full name" required
-        />
-        <FormField
-          label="Last Time Spoken" name="lastSpoken" type="date"
-          value={values.lastSpoken} onChange={handleChange('lastSpoken')} required
-        />
-        <FormField
-          label="Experience" name="experience" type="select" options={EXPERIENCE_OPTIONS}
-          value={values.experience} onChange={handleChange('experience')} required
-        />
-        <FormField
-          label="Hours Spoken" name="hours" type="number" min={0} max={24} step={0.01}
-          value={values.hours} onChange={handleChange('hours')} required
-        />
-        <FormField
-          label="Date of Birth" name="dob" type="date"
-          value={values.dob} onChange={handleChange('dob')}
-        />
-        <div className="flex justify-end gap-2.5">
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Adding Friend...' : 'Submit'}
-          </Button>
-          <Link to={cancelTo} className={buttonClasses}>Cancel</Link>
+    <div className="bg-surface border border-hairline rounded-card p-6">
+      <h1 className="m-0 mb-[18px] font-display font-bold text-[22px] text-text-primary">Add a friend</h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        <Input label="Name" name="name" value={values.name} onChange={handleChange('name')} placeholder="Full name" required />
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Input label="Last time spoken" name="lastSpoken" type="date" value={values.lastSpoken} onChange={handleChange('lastSpoken')} required />
+          </div>
+          <div className="flex-1">
+            <Input label="Birthday" name="dob" type="date" value={values.dob} onChange={handleChange('dob')} placeholder="optional" />
+          </div>
         </div>
+        <div>
+          <div className="mb-1.5 text-xs font-semibold text-text-muted">How was the last chat?</div>
+          <RatingPicker options={EXPERIENCE_RATINGS} value={values.experience} onChange={(v) => setValues((prev) => ({ ...prev, experience: v }))} />
+        </div>
+        <Input label="Hours spoken" name="hours" type="number" min={0} max={24} step={0.01} value={values.hours} onChange={handleChange('hours')} required />
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-1.5 border-none bg-accent-gradient text-white font-bold text-sm py-3 rounded-input shadow-button hover:brightness-110 disabled:opacity-50 transition-all"
+        >
+          {submitting ? 'Saving…' : 'Save friend'}
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(cancelTo)}
+          className="border-none bg-transparent text-text-muted text-[12.5px] hover:text-text-emphasis transition-colors"
+        >
+          Cancel
+        </button>
       </form>
     </div>
   );

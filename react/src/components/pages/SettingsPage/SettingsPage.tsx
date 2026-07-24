@@ -4,7 +4,6 @@ import {
   getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup,
 } from '../../../services/api/settingsService';
 import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS } from '../../../types/api';
-import Button from '../../atoms/Button';
 
 const PROVIDER_LABELS: Record<string, string> = {
   gemini: 'Gemini',
@@ -17,8 +16,11 @@ const PROVIDER_LABELS: Record<string, string> = {
 
 const statusDotClass = (state: 'unknown' | 'up' | 'down') =>
   `w-2.5 h-2.5 rounded-full flex-shrink-0 inline-block ${
-    state === 'up' ? 'bg-green-600' : state === 'down' ? 'bg-red-600' : 'bg-gray-300'
+    state === 'up' ? 'bg-good' : state === 'down' ? 'bg-bad' : 'bg-text-faintest'
   }`;
+
+const statusTextClass = (variant?: 'ok' | 'error') =>
+  variant === 'ok' ? 'text-good' : variant === 'error' ? 'text-bad' : 'text-text-muted';
 
 const formatBytes = (n?: number): string => {
   if (!n) return '0 B';
@@ -29,8 +31,18 @@ const formatBytes = (n?: number): string => {
   return `${value.toFixed(1)} ${units[i]}`;
 };
 
-const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <section className="bg-white rounded-xl shadow-sm p-6 mb-5">{children}</section>
+const dangerButtonClasses =
+  'px-4 py-2 rounded-input text-sm font-semibold bg-bad/[.12] text-bad border border-bad/40 hover:bg-bad/[.2] disabled:opacity-50 transition-colors';
+const ghostButtonClasses =
+  'px-4 py-2 rounded-input text-sm font-semibold bg-input-2 text-text-emphasis border border-white/10 hover:bg-input disabled:opacity-50 transition-colors';
+const primaryButtonClasses =
+  'px-4 py-2 rounded-input text-sm font-bold bg-accent-gradient text-white shadow-button-sm hover:brightness-110 disabled:opacity-50 transition-all';
+
+const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <section className="bg-surface border border-hairline rounded-card p-5 mb-4">
+    <h2 className="text-[15px] font-bold text-text-primary m-0 mb-3.5">{title}</h2>
+    {children}
+  </section>
 );
 
 // Ported from nginx/static/settings/settings.js — two independent backend
@@ -176,20 +188,17 @@ const SettingsPage: React.FC = () => {
     : 0;
 
   return (
-    <div className="max-w-3xl mx-auto pb-16">
-      <h1 className="text-2xl font-medium text-gray-800 mb-1">Settings</h1>
+    <div className="animate-ftfade max-w-[680px] mx-auto px-[30px] py-6 pb-16">
+      <h1 className="m-0 mb-[18px] font-display font-bold text-[26px] tracking-tight text-text-primary">Settings</h1>
 
-      <h2 className="text-xl font-medium mt-0 mb-1">AI</h2>
-      <p className="text-gray-500 mb-4">Choose whether chat and knowledge summarization run on your own machine or in the cloud.</p>
-
-      <Card>
-        <h2 className="text-lg font-medium mb-3">Where the AI runs</h2>
-        <div className="flex flex-col gap-3">
+      <Card title="Where the AI runs">
+        <p className="text-xs text-text-muted mb-3.5 -mt-2">Choose whether chat and knowledge summarization run on your own machine or in the cloud.</p>
+        <div className="flex flex-col gap-2.5">
           {(['ollama', 'cloud'] as const).map((value) => (
             <label
               key={value}
-              className={`flex gap-3 items-start p-3.5 border rounded-lg cursor-pointer transition-colors ${
-                mode === value ? 'border-brand bg-brand/5' : 'border-gray-300 hover:border-gray-400'
+              className={`flex gap-3 items-start p-3.5 border rounded-[11px] cursor-pointer transition-colors ${
+                mode === value ? 'border-accent bg-accent/10' : 'border-white/10 hover:border-white/20'
               }`}
             >
               <input
@@ -198,11 +207,11 @@ const SettingsPage: React.FC = () => {
                 value={value}
                 checked={mode === value}
                 onChange={() => handleModeChange(value)}
-                className="mt-1 flex-shrink-0"
+                className="mt-1 flex-shrink-0 accent-accent"
               />
               <div>
-                <strong className="block mb-1">{value === 'ollama' ? 'Local (Ollama)' : 'Cloud'}</strong>
-                <p className="text-sm text-gray-600">
+                <strong className="block mb-0.5 text-[13.5px] text-text-primary">{value === 'ollama' ? 'Local (Ollama)' : 'Cloud'}</strong>
+                <p className="text-xs text-text-muted">
                   {value === 'ollama'
                     ? 'Runs entirely on this machine. Nothing about your friends or conversations leaves the box. Slower, and quality depends on the local model.'
                     : 'Routed through a multi-provider gateway (Gemini, GitHub Models, Mistral, Groq, DeepSeek, Anthropic) with automatic failover. Faster and higher quality, but your messages and friend data are sent to whichever third-party provider handles the request.'}
@@ -212,15 +221,12 @@ const SettingsPage: React.FC = () => {
           ))}
         </div>
         {modeStatus.text && (
-          <div className={`mt-3 text-sm ${modeStatus.variant === 'ok' ? 'text-green-700' : modeStatus.variant === 'error' ? 'text-red-600' : 'text-gray-600'}`}>
-            {modeStatus.text}
-          </div>
+          <div className={`mt-3 text-sm ${statusTextClass(modeStatus.variant)}`}>{modeStatus.text}</div>
         )}
       </Card>
 
-      <Card>
-        <h2 className="text-lg font-medium mb-3">Cloud gateway status</h2>
-        <div className="flex items-center gap-2.5 text-sm">
+      <Card title="Cloud gateway status">
+        <div className="flex items-center gap-2.5 text-sm text-text-secondary">
           <span className={statusDotClass(hostWrapper === null ? 'unknown' : hostWrapper.reachable ? 'up' : 'down')} />
           <span>
             {hostWrapper === null
@@ -230,23 +236,22 @@ const SettingsPage: React.FC = () => {
                 : `Unreachable (${hostWrapper.error || 'unknown error'}) — cloud mode won't work until this is running`}
           </span>
         </div>
-        <p className="text-gray-500 text-sm mt-2">
+        <p className="text-text-faint text-xs mt-2">
           Cloud mode only works while this is reachable. It runs as its own service (host-wrapper) — if it's down, start it or check{' '}
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">docker compose ps host-wrapper</code>.
+          <code className="bg-input-2 text-text-secondary px-1.5 py-0.5 rounded text-[11px]">docker compose ps host-wrapper</code>.
         </p>
       </Card>
 
-      <Card>
-        <h2 className="text-lg font-medium mb-3">Cloud provider keys</h2>
-        <p className="text-gray-500 text-sm mb-3">Keys are encrypted at rest. Only used when mode is set to Cloud — leave any you don't have blank, the gateway skips providers with no key.</p>
+      <Card title="Cloud provider keys">
+        <p className="text-xs text-text-muted mb-3.5 -mt-2">Keys are encrypted at rest. Only used when mode is set to Cloud — leave any you don't have blank, the gateway skips providers with no key.</p>
         <div>
           {KNOWN_PROVIDERS.map((name) => {
             const configured = !!providers[name];
             const busy = !!providerBusy[name];
             return (
-              <div key={name} className="flex items-center gap-2.5 py-2.5 border-b border-gray-100 last:border-b-0">
-                <span className="w-28 flex-shrink-0 font-medium capitalize">{PROVIDER_LABELS[name] || name}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full w-24 text-center flex-shrink-0 ${configured ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+              <div key={name} className="flex items-center gap-2.5 py-2.5 border-b border-hairline last:border-b-0">
+                <span className="w-28 flex-shrink-0 font-semibold text-[13px] text-text-primary capitalize">{PROVIDER_LABELS[name] || name}</span>
+                <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-pill w-24 text-center flex-shrink-0 ${configured ? 'text-good bg-good/[.14]' : 'text-text-faint bg-white/[.06]'}`}>
                   {configured ? 'Configured' : 'Not set'}
                 </span>
                 <input
@@ -255,13 +260,13 @@ const SettingsPage: React.FC = () => {
                   value={providerInputs[name] || ''}
                   onChange={(e) => setProviderInputs((s) => ({ ...s, [name]: e.target.value }))}
                   disabled={busy}
-                  className="flex-1 border border-gray-300 rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  className="flex-1 bg-input border border-white/10 rounded-input px-2.5 py-1.5 text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
                 />
                 <button
                   type="button"
                   onClick={() => handleSaveProviderKey(name)}
                   disabled={busy}
-                  className="px-3.5 py-1.5 rounded-md text-sm bg-brand text-white hover:bg-brand-dark disabled:opacity-50 flex-shrink-0"
+                  className={`${primaryButtonClasses} flex-shrink-0`}
                 >
                   Save
                 </button>
@@ -270,7 +275,7 @@ const SettingsPage: React.FC = () => {
                     type="button"
                     onClick={() => handleRemoveProviderKey(name)}
                     disabled={busy}
-                    className="px-3.5 py-1.5 rounded-md text-sm bg-white text-red-600 border border-red-600 hover:bg-red-50 disabled:opacity-50 flex-shrink-0"
+                    className={`${dangerButtonClasses} flex-shrink-0`}
                   >
                     Remove
                   </button>
@@ -281,12 +286,11 @@ const SettingsPage: React.FC = () => {
         </div>
       </Card>
 
-      <h2 className="text-xl font-medium mt-9 mb-1 pt-3 border-t border-gray-200">Backup</h2>
-      <p className="text-gray-500 mb-4">Nightly copy of your data (database + media) to Google Drive.</p>
+      <h2 className="font-display font-bold text-[19px] text-text-primary mt-9 mb-1 pt-4 border-t border-hairline">Backup</h2>
+      <p className="text-text-muted text-[13px] mb-4">Nightly copy of your data (database + media) to Google Drive.</p>
 
-      <Card>
-        <h2 className="text-lg font-medium mb-3">Google Drive connection</h2>
-        <div className="flex items-center gap-2.5 text-sm">
+      <Card title="Google Drive connection">
+        <div className="flex items-center gap-2.5 text-sm text-text-secondary">
           <span className={statusDotClass(backup === null ? 'unknown' : backup.connected ? 'up' : 'down')} />
           <span>
             {backupError
@@ -305,11 +309,11 @@ const SettingsPage: React.FC = () => {
         {backup && backup.clientConfigured && (
           <div className="flex gap-2.5 mt-3.5">
             {backup.connected ? (
-              <button type="button" onClick={handleDisconnectDrive} className="px-4 py-2 rounded-md text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50">
+              <button type="button" onClick={handleDisconnectDrive} className={ghostButtonClasses}>
                 Disconnect
               </button>
             ) : (
-              <a href={`/backup/oauth/url`} className="inline-block px-4 py-2 rounded-md text-sm bg-brand text-white hover:bg-brand-dark no-underline">
+              <a href={`/backup/oauth/url`} className={`${primaryButtonClasses} inline-block no-underline`}>
                 Connect Google Drive
               </a>
             )}
@@ -319,21 +323,20 @@ const SettingsPage: React.FC = () => {
 
       {backup?.clientConfigured && backup.connected && (
         <>
-          <Card>
-            <h2 className="text-lg font-medium mb-3">Backup schedule</h2>
-            <label className="flex items-center gap-2.5 cursor-pointer text-sm">
-              <input type="checkbox" checked={backup.enabled} onChange={handleToggleBackupEnabled} className="w-4.5 h-4.5" />
+          <Card title="Backup schedule">
+            <label className="flex items-center gap-2.5 cursor-pointer text-sm text-text-secondary">
+              <input type="checkbox" checked={backup.enabled} onChange={handleToggleBackupEnabled} className="w-4 h-4 accent-accent" />
               <span>Nightly automatic backup</span>
             </label>
             {backupRunStatus.text && (
-              <div className={`mt-3 text-sm ${backupRunStatus.variant === 'ok' ? 'text-green-700' : backupRunStatus.variant === 'error' ? 'text-red-600' : 'text-gray-600'}`}>
+              <div className={`mt-3 text-sm ${statusTextClass(backupRunStatus.variant)}`}>
                 {backupRunStatus.text}
               </div>
             )}
             <div className="mt-3.5">
-              <Button onClick={handleRunBackup} disabled={!!backup.running}>Back up now</Button>
+              <button type="button" onClick={handleRunBackup} disabled={!!backup.running} className={primaryButtonClasses}>Back up now</button>
             </div>
-            <p className="text-gray-500 text-sm mt-2">
+            <p className="text-text-faint text-xs mt-2">
               {backup.running
                 ? `Running (${backup.phase})…`
                 : backup.lastRunAt
@@ -342,24 +345,23 @@ const SettingsPage: React.FC = () => {
             </p>
           </Card>
 
-          <Card>
-            <h2 className="text-lg font-medium mb-3">Restore from backup</h2>
-            <p className="text-gray-500 text-sm mb-3">
-              Restores the database (and media) from the most recent Drive backup. <strong>This overwrites current data</strong> — only needed after data loss, not routine use.
+          <Card title="Restore from backup">
+            <p className="text-text-muted text-xs mb-3 -mt-2">
+              Restores the database (and media) from the most recent Drive backup. <strong className="text-text-secondary">This overwrites current data</strong> — only needed after data loss, not routine use.
             </p>
             {restoreStatus.text && (
-              <div className={`mb-3 text-sm ${restoreStatus.variant === 'ok' ? 'text-green-700' : restoreStatus.variant === 'error' ? 'text-red-600' : 'text-gray-600'}`}>
+              <div className={`mb-3 text-sm ${statusTextClass(restoreStatus.variant)}`}>
                 {restoreStatus.text}
               </div>
             )}
             {backup.db && !backup.db.exists && (
-              <div className="mb-3 text-sm text-gray-600">No backup found in Drive yet — run one first.</div>
+              <div className="mb-3 text-xs text-text-faint">No backup found in Drive yet — run one first.</div>
             )}
             <button
               type="button"
               onClick={handleRestore}
               disabled={restoring || !!backup.running || !backup.db?.exists}
-              className="px-4 py-2 rounded-md text-sm bg-white text-red-600 border border-red-600 hover:bg-red-50 disabled:opacity-50"
+              className={dangerButtonClasses}
             >
               Restore from latest backup
             </button>
