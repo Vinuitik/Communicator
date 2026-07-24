@@ -40,6 +40,24 @@ export interface FriendAnalyticsEntry {
     hours: number;
 }
 
+// A stored Analytics row as returned by GET /api/friend/analyticsList
+// (FriendAnalyticsController) — same fields as FriendAnalyticsEntry plus the
+// row's own id, since this is the persisted entity, not a creation payload.
+export interface AnalyticsRecord extends FriendAnalyticsEntry {
+    id: number;
+}
+
+// Response shape from GET /api/friend/shortList (FriendController.getShortList)
+// — mirrors the Java record ShortFriendDTO, used to populate the analytics
+// page's friend picker without pulling full Friend objects.
+export interface ShortFriend {
+    id: number;
+    name: string;
+    averageFrequency?: number;
+    averageDuration?: number;
+    averageExcitement?: number;
+}
+
 // Body for POST /api/friend/addFriend. The endpoint returns plain text
 // ("Friend added successfully!"), not the created Friend — see
 // FriendController.addFriend.

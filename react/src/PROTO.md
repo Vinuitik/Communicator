@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 9 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 10 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -26,6 +26,7 @@ index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
   /groups/create → CreateGroupPage [REAL]
   /groups/:id    → GroupDetailsPage [REAL — single group, notes, settings]
   /settings      → SettingsPage     [REAL — AI mode/keys, Drive backup/restore]
+  /analytics     → AnalyticsPage    [REAL — per-friend EMA-smoothed charts]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
 real nav links). Every top-level nav item is now either a real internal
@@ -42,7 +43,9 @@ services/api/config.ts        — single source of API base paths (mirrors nginx
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, getFriend, talkedToFriend, removeFriend, getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem
 services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup, getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge, getGroupPermissions, addGroupPermission, deleteGroupPermission
 services/api/settingsService.ts — REAL: getLlmSettings, setLlmMode, saveProviderKey, removeProviderKey, checkHostWrapperStatus, getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup
+services/api/friendService.ts — also now REAL: getShortFriendList, getFriendAnalytics (added for AnalyticsPage)
 services/api/connectionService.ts — still stubs, untouched
+utils/analyticsMath.ts         — ported 1:1 from analytics.js's EMA smoothing pipeline (see AnalyticsPage note)
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
 utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL removed — see config.ts; FRIENDS route removed — see HomePage note below; CREATE_GROUP repointed from the legacy nginx static-file path to the real SPA route)
@@ -249,6 +252,55 @@ one-time `bun` install this environment doesn't have. Confirmed instead that
 `GET /app/settings` 200s through nginx's SPA fallback and that the CRA
 production build compiles clean (`docker compose build react-ui`).
 
+## AnalyticsPage — what "ported" means here
+
+`components/pages/AnalyticsPage` reimplements `nginx/static/analytics/analytics.html`
++ `analytics.js` — reached via the legacy **"Stats" nav link**, which was
+never actually broken like `Social`'s was: `nginx.conf`'s `location = /stats`
+serves `analytics.html` directly (`try_files /analytics/analytics.html`).
+`NavigationBar`'s "Stats" `<a>` now points at the internal `/analytics`
+route instead. No other legacy page links here — this and `groupDetails`/`facts`
+are the only ported pages reached solely through nav, not a per-row link.
+
+No `:id` in the route — friend selection is a client-side `<select>`
+(`FriendController.getShortList`, `/api/friend/shortList`, already existed
+and returns exactly the `{id, name, averageFrequency, averageDuration,
+averageExcitement}` shape needed) and the date range is two plain date
+inputs, matching the legacy page's own UX exactly (not entity-scoped like
+Talked/Facts).
+
+`FriendAnalyticsController.getAnalyticsList` (`/api/friend/analyticsList?friendId&left&right`)
+also already existed — **third page in a row that turned out not to need a
+new backend endpoint**, breaking the pattern SettingsPage started (that one
+also had a full API already). Both `left`/`right` bind straight to
+`LocalDate` query params server-side.
+
+The EMA smoothing (`utils/analyticsMath.ts` `computeAnalyticsSeries`) is
+ported byte-for-byte from `updateCharts()`'s per-day-bucket + asymmetric
+decay-alpha logic — the alpha constants (`0.6/0.7/0.8` new-data,
+`0.07/0.2/0.57` decay) aren't derived from anything documented in the legacy
+code, so they're preserved exactly rather than re-tuned or explained.
+
+**New dependency: `chart.js`** (added to `package.json`, no `react-chartjs-2`
+wrapper — a local `LineChart` component in `AnalyticsPage.tsx` drives the
+`<canvas>` via a ref + `useEffect`, matching the legacy page's own
+imperative Chart.js usage instead of adopting a new abstraction layer for a
+single call site). The legacy page loaded Chart.js from an external CDN
+(`cdn.jsdelivr.net`) — the SPA bundles it via npm instead, so the built app
+has no runtime dependency on that CDN being reachable.
+
+"Add Data" is wired to an alert, same honest-stub treatment as
+`CalendarBoard`'s "+ Add Context" — the legacy button had **no click handler
+at all** (checked `analytics.js` for an `add-data-btn` listener; there isn't
+one), so this is arguably more informative than what it replaces, not a
+regression.
+
+Verified against the live API through real nginx: created a throwaway
+friend with an analytics entry via `addFriend`, confirmed it appears in
+`shortList` and that `analyticsList` returns the exact entry with the id
+Jackson assigned, then deleted the friend. Not click-tested in a real
+browser — same `bun`-install gap as CalendarPage/SettingsPage.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
@@ -263,7 +315,7 @@ production build compiles clean (`docker compose build react-ui`).
 - **CRA detects the `/app/` mount from `package.json`'s `homepage` field** and prefixes built asset URLs accordingly (`/app/static/js/main.*.js`). Don't remove that field.
 - **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — `useApi` exists but neither real page uses it; each manages its own `useState`/`useEffect` fetch instead. Revisit once pages need to share server state (e.g. a friend count badge in the nav).
 - **`window.confirm`/`window.alert` used for delete confirmation and error reporting** (HomePage, GroupsPage), matching the legacy page's UX exactly. Not blocked from being replaced with a nicer in-app modal — just not done yet, to keep this port behavior-preserving.
-- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed `GET /api/groups/list`, TalkedPage needed `GET /api/friend/{id}`. **SettingsPage broke this streak** — it's not Thymeleaf-backed at all, both `ai_agent` (FastAPI) and `backup` (Spring, folded into `communicator-app`) already had full JSON APIs with zero UI; no backend changes needed. Still check each remaining page rather than assuming either pattern.
+- **Not every legacy page has a JSON API to port to — but don't assume it's missing either.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route (GroupsPage needed `GET /api/groups/list`, TalkedPage needed `GET /api/friend/{id}`). But **SettingsPage and AnalyticsPage both needed zero backend changes** — every endpoint they call already existed and matched the legacy JS's calls exactly. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling every time rather than assuming either outcome.
 - **A page can span more than one backend service.** SettingsPage is the first page to call two unrelated services (`ai_agent` for LLM settings, the JVM monolith's `backup` package for Drive backup) from one component — `services/api/settingsService.ts` mirrors that by importing both `API_BASE.AI` and `API_BASE.BACKUP` rather than picking one, unlike every prior `*Service.ts` file which only ever touched one prefix.
 - **`FriendService.findById` returns a blank `new Friend()` (id == null) for a missing id, not null.** Bit `FriendController.getFriend`'s first draft (returned 200 with an all-null body instead of 404) — check `.getId() == null`, not `== null`, when using this method to decide "found vs not."
 
@@ -284,6 +336,7 @@ production build compiles clean (`docker compose build react-ui`).
 | Per-friend knowledge CRUD | `FriendKnowledgeController`, `services/api/friendService.ts` (`getFriendKnowledge`/`addFriendKnowledgeItem`/`deleteFriendKnowledgeItem`), `components/pages/FactsPage` |
 | AI mode / cloud provider keys | `ai_agent/routers/settings.py`, `services/api/settingsService.ts` (`getLlmSettings`/`setLlmMode`/`saveProviderKey`/`removeProviderKey`/`checkHostWrapperStatus`), `components/pages/SettingsPage` |
 | Google Drive backup/restore | `backup/.../BackupController.java` (mounted in `communicator-app`), `services/api/settingsService.ts` (`getBackupStatus`/`disconnectDrive`/`setBackupEnabled`/`runBackup`/`restoreBackup`), `components/pages/SettingsPage` |
+| Per-friend analytics charts / EMA smoothing | `FriendAnalyticsController` (`GET /api/friend/analyticsList`), `FriendController.getShortList`, `utils/analyticsMath.ts`, `components/pages/AnalyticsPage` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |

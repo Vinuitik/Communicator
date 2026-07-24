@@ -1,4 +1,4 @@
-import { Friend, NewFriendPayload, KnowledgeCrudItem } from '../../types/api';
+import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord } from '../../types/api';
 import { API_BASE } from './config';
 
 const API_URL = API_BASE.FRIEND;
@@ -101,4 +101,26 @@ export const deleteFriendKnowledgeItem = async (knowledgeId: number): Promise<vo
     if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
     }
+};
+
+// Added for the analytics.html SPA port — populates the friend picker
+// without pulling every field of every Friend. FriendController.getShortList
+// already existed and returns exactly this shape.
+export const getShortFriendList = async (): Promise<ShortFriend[]> => {
+    const response = await fetch(`${API_URL}/shortList`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+// Mirrors nginx/static/analytics/analytics.js's fetch to /analyticsList.
+// FriendAnalyticsController.getAnalyticsList already existed — left/right are
+// LocalDate query params (yyyy-MM-dd), inclusive on both ends server-side.
+export const getFriendAnalytics = async (friendId: number, left: string, right: string): Promise<AnalyticsRecord[]> => {
+    const response = await fetch(`${API_URL}/analyticsList?friendId=${friendId}&left=${left}&right=${right}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
 };
