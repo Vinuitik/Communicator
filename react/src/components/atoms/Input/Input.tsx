@@ -9,7 +9,7 @@ const Input: React.FC<InputProps> = ({ label, ...props }) => {
     <div className="flex flex-col">
       {label && <label className="mb-1 text-sm font-medium">{label}</label>}
       <input
-        className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full border border-gray-300 rounded p-2.5 text-base focus:outline-none focus:ring-2 focus:ring-brand"
         {...props}
       />
     </div>

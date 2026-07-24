@@ -1,8 +1,16 @@
 import React from 'react';
 
-const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, ...props }) => {
+// Matches the legacy `.button` class (nginx/static/*/​*.css) — same visual
+// weight is reused for the react-router <Link> "Cancel" buttons, since a
+// link can't be a <button> element.
+export const buttonClasses =
+    'inline-block px-5 py-2.5 text-base text-white bg-brand rounded text-center ' +
+    'cursor-pointer transition-colors duration-300 hover:bg-brand-dark ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed';
+
+const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, className, ...props }) => {
     return (
-        <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" {...props}>
+        <button className={`${buttonClasses}${className ? ` ${className}` : ''}`} {...props}>
             {children}
         </button>
     );
