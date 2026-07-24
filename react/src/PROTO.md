@@ -1,4 +1,4 @@
-# React UI — Proto `[PARTIALLY REAL — 3 pages ported]`
+# React UI — Proto `[PARTIALLY REAL — 4 pages ported]`
 
 > **Proto, not a flow.** Pages are being ported from the legacy MPA
 > (`nginx/static/`) one at a time, preserving existing behavior/styling —
@@ -11,28 +11,27 @@ Files: App.tsx, index.tsx, services/api/{config,friendService,groupService,conne
 
 The modern SPA meant to replace the legacy MPA. React 18 + TypeScript + react-router-dom v6 + TailwindCSS, built with react-scripts (CRA). Built to static files and served by its **own** nginx (`react-ui:80`, config at `react/nginx.conf`), which the main nginx proxies at **`/app/`** (pure `proxy_pass`; the SPA-fallback `try_files` lives in `react/nginx.conf`, not the main nginx — see nginx/PROTO.md gotcha on why that split matters).
 
-Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup).
+Structured with **atomic design**: `atoms` (Button, Input, Select, Textarea) → `molecules` (FormField, SearchBar, DropdownMenu, Pagination, FlashMessage) → `organisms` (Header, NavigationBar, KnowledgeEditor, AddFriendForm, FriendsTable, CreateGroupForm, GroupsTable) → `templates` (PageLayout) → `pages` (Home, Groups, AddFriend, CreateGroup).
 
 ## Internal wiring
 
 ```
 index.tsx → App.tsx → <Router basename="/app"><PageLayout><Routes>
-  /             → HomePage       [REAL — friends list]
-  /friends/add  → AddFriendPage  [REAL]
-  /groups       → GroupsPage     [STUB — the actual list page, not ported yet]
+  /              → HomePage        [REAL — friends list]
+  /friends/add   → AddFriendPage   [REAL]
+  /groups        → GroupsPage      [REAL — group list]
   /groups/create → CreateGroupPage [REAL]
 
 PageLayout renders NavigationBar (real brand: "Friends Tracker", brand-purple,
-real nav links). Unported nav destinations are plain <a> to the legacy MPA's
-absolute path; ported ones are react-router <Link>. Flip each link as its
-page gets ported — same policy in AddFriendForm's/CreateGroupForm's Cancel
-buttons and AddFriendPage's post-submit redirect (now a real navigate(), not
-a page reload) vs CreateGroupPage's (still window.location.href, since its
-destination — the groups list — isn't ported yet).
+real nav links). Every top-level nav item is now either a real internal
+<Link> or an honest external <a> to a genuinely-unported legacy page
+(Stats, Settings) — flip each link as its destination page is ported (see
+AddFriendForm/CreateGroupForm Cancel buttons and AddFriendPage/
+CreateGroupPage post-submit redirects, all now navigate(), for the pattern).
 
 services/api/config.ts        — single source of API base paths (mirrors nginx/static/shared/config.js)
 services/api/friendService.ts — REAL: addFriend, getFriendsPage, getFriendsCount, getFriendsThisWeek, removeFriend
-services/api/groupService.ts  — REAL: createGroup; getGroups/deleteGroup still stubs, TODO-tagged for the GroupsPage port
+services/api/groupService.ts  — REAL: createGroup, getGroups, deleteGroup
 services/api/connectionService.ts — still stubs, untouched
 utils/friendMetrics.ts        — pure functions for the friends-list days-diff/intensity coloring (ported from mainPage/index.js)
 hooks/useApi.ts               — generic fetch hook, unused so far — every real page manages its own fetch state instead
@@ -55,11 +54,17 @@ utils/constants.ts            — ROUTES, TIMEOUTS, DEFAULTS (API_BASE_URL remov
 
 The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy page uses the brand purple. Ported to `brand`, not copied — this migration is explicitly meant to *stop* carrying forward that kind of mismatch, not preserve it page-for-page.
 
+## GroupsPage — what "ported" means here
+
+`components/pages/GroupsPage` reimplements `allGroups.html` + `groupsView.js`: fetches the group list, `GroupsTable` organism renders name/contacts(placeholder, unimplemented in legacy too — always "0 Coming Soon")/knowledge-count/permission-count/actions-dropdown, row click navigates to group details, delete with confirm + refresh + `FlashMessage`.
+
+**This page didn't have a JSON API to call.** The only existing "list groups" endpoint was `GroupWebController`'s `GET /`, which renders the Thymeleaf view — no REST equivalent existed. Added `GET /api/groups/list` to `GroupApiController` (backend commit, not just frontend) reusing the exact same service calls the Thymeleaf controller already makes, at a distinct path so it doesn't collide with the existing HTML route. **This is a real pattern worth expecting again**: legacy Thymeleaf-rendered pages (anything under `group/.../templates/`) may not have a JSON counterpart at all — check for one before assuming the port is frontend-only. `Profile`/`Knowledge`/`Social` dropdown links still point at the legacy MPA; `Social`'s target (`/group/social/{id}`) was already a dead link in the legacy template (no matching nginx route) — copied as-is, not a regression from this port.
+
 ## Seams (intended vs actual)
 
 **Outbound:** browser → main nginx `/api/friend/...` or `/api/groups/...` → `communicator-app:8080`. Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same nginx origin — see `services/api/config.ts`.
 
-**Real today:** everything in `friendService.ts`; `createGroup` in `groupService.ts`. `getGroups`/`deleteGroup`/`connectionService` are still placeholders that return empty arrays / log to console — calling them does nothing real.
+**Real today:** everything in `friendService.ts` and `groupService.ts`. `connectionService` is still a placeholder that returns empty arrays / logs to console — calling it does nothing real.
 
 ## Gotchas / Technology Notes
 
@@ -68,7 +73,8 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 - **`Router` needs `basename="/app"`.** The browser URL is always `/app/...` (that's what nginx's `location /app/` matches on), but proxy_pass strips the prefix before react-ui ever sees the request — react-ui's own server only ever sees `/`, `/friends/add`, etc. `basename` reconciles this: without it, every route silently fails to match once actually deployed through nginx (this bit the very first page ported — see nginx/PROTO.md's `/app/` gotcha for the matching backend-side bug).
 - **CRA detects the `/app/` mount from `package.json`'s `homepage` field** and prefixes built asset URLs accordingly (`/app/static/js/main.*.js`). Don't remove that field.
 - **No state manager / data-fetching lib** (no Redux/Zustand/React Query) — `useApi` exists but neither real page uses it; each manages its own `useState`/`useEffect` fetch instead. Revisit once pages need to share server state (e.g. a friend count badge in the nav).
-- **`window.confirm`/`window.alert` used for delete confirmation and error reporting** (HomePage), matching the legacy page's UX exactly. Not blocked from being replaced with a nicer in-app modal — just not done yet, to keep this port behavior-preserving.
+- **`window.confirm`/`window.alert` used for delete confirmation and error reporting** (HomePage, GroupsPage), matching the legacy page's UX exactly. Not blocked from being replaced with a nicer in-app modal — just not done yet, to keep this port behavior-preserving.
+- **Not every legacy page has a JSON API to port to.** Thymeleaf-rendered pages (`group/.../templates/`, `friend/.../templates/`) sometimes only expose the server-rendered HTML route. Check the relevant `*Controller.java` for a `@RestController`/JSON-returning sibling before assuming the port is frontend-only — GroupsPage needed a new backend endpoint (`GET /api/groups/list`).
 
 ## Change Index
 
@@ -80,6 +86,7 @@ The legacy page's buttons were `#007bff` (Bootstrap blue) — every other legacy
 | Port the next legacy page | new `components/pages/<Name>Page/`, reuse existing atoms/molecules/organisms first — check `components/{atoms,molecules,organisms}/index.ts` before writing a new one |
 | Friends-list coloring thresholds | `utils/friendMetrics.ts` |
 | Group-name validation rules | `components/organisms/CreateGroupForm/CreateGroupForm.tsx` (keep in sync with `SocialGroup` backend validation if that ever gains `@Valid` constraints) |
+| Group list JSON shape | `GroupApiController.listGroups` (`GET /api/groups/list`) + `types/api.ts` `GroupListResponse` |
 | Brand tokens (color/font) | `tailwind.config.js` `theme.extend` |
 | Nav links / branding | `components/organisms/NavigationBar/NavigationBar.tsx` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |
