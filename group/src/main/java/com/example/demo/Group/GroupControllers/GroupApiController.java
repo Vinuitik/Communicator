@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.demo.Group.GroupEntities.GroupKnowledge;
 import com.example.demo.Group.GroupEntities.SocialGroup;
 import com.example.demo.Group.GroupServices.GroupKnowledgeService;
+import com.example.demo.Group.GroupServices.GroupPermissionService;
 import com.example.demo.Group.GroupServices.SocialGroupService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,25 @@ public class GroupApiController {
 
     private final SocialGroupService socialGroupService;
     private final GroupKnowledgeService groupKnowledgeService;
+    private final GroupPermissionService groupPermissionService;
+
+    // JSON counterpart of GroupWebController.getAllGroups() (which renders the
+    // Thymeleaf view at the same GET / — this is a distinct path specifically
+    // so the React SPA has something to fetch; the HTML page is unchanged).
+    @GetMapping("/list")
+    public ResponseEntity<Map<String, Object>> listGroups() {
+        List<SocialGroup> groups = socialGroupService.getAllGroups();
+        List<Integer> groupIds = groups.stream().map(SocialGroup::getId).collect(Collectors.toList());
+        Map<Integer, Long> knowledgeCounts = groupKnowledgeService.getKnowledgeCountsForGroups(groupIds);
+        Map<Integer, Long> permissionCounts = groupPermissionService.getPermissionCountsForGroups(groupIds);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("groups", groups);
+        response.put("knowledgeCounts", knowledgeCounts);
+        response.put("permissionCounts", permissionCounts);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createGroup(@RequestBody SocialGroup group) {
