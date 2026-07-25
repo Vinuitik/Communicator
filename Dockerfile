@@ -6,6 +6,7 @@ WORKDIR /app
 # Copy every module's pom first so dependency resolution is cached independently
 # of source changes.
 COPY pom.xml .
+COPY knowledge-core/pom.xml knowledge-core/
 COPY friend/pom.xml friend/
 COPY group/pom.xml group/
 COPY connections/pom.xml connections/
@@ -15,6 +16,7 @@ COPY bootstrap/pom.xml bootstrap/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 
 # Copy sources and package
+COPY knowledge-core/src knowledge-core/src
 COPY friend/src friend/src
 COPY group/src group/src
 COPY connections/src connections/src

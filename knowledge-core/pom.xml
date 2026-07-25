@@ -11,54 +11,30 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <!-- Friend domain module (library). Base package: communicate.Friend.* -->
-    <artifactId>friend</artifactId>
-    <name>friend</name>
+    <!-- Shared "fact" (Knowledge/Permission) base entity + service, extracted from the
+         3x-cloned friend/group/connections domain stacks (CODE_REUSE_REPORT.md §2).
+         Base package: com.communicator.knowledgecore.* -->
+    <artifactId>knowledge-core</artifactId>
+    <name>knowledge-core</name>
 
     <dependencies>
-        <dependency>
-            <groupId>com.communicator</groupId>
-            <artifactId>knowledge-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- WebClient for calling other internal services -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- FlatLaf (not Spring-managed; keep explicit version) -->
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf</artifactId>
-            <version>3.3</version>
         </dependency>
 
         <dependency>
