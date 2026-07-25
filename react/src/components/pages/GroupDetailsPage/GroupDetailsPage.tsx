@@ -8,7 +8,7 @@ import {
   getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge,
   getGroupPermissions, addGroupPermission, deleteGroupPermission, deleteGroup,
 } from '../../../services/api/groupService';
-import { getGroupFriends, addFriendsToGroup, getShortFriendList } from '../../../services/api/friendService';
+import { getGroupFriends, addFriendsToGroup, removeFriendFromGroup, getShortFriendList } from '../../../services/api/friendService';
 import { Group, KnowledgeCrudItem, Friend, ShortFriend } from '../../../types/api';
 import { ROUTES, profilePath } from '../../../utils/constants';
 import { avatarColor } from '../../../utils/avatar';
@@ -20,8 +20,7 @@ import { avatarColor } from '../../../utils/avatar';
 // existed server-side and were simply never called from any UI (confirmed via
 // repo grep, same finding that unlocked ProfilePage's Groups panel in Stage
 // 3), so this wires real membership instead of shipping another placeholder.
-// There's no remove/unlink endpoint yet (service only has add + list methods),
-// so membership here is add-only — a real gap, not something to fake.
+// Membership is now full CRUD: add via modal below, remove via each row's ×.
 const GroupDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const groupId = Number(id);
@@ -52,6 +51,9 @@ const GroupDetailsPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+
+  const [removeTarget, setRemoveTarget] = useState<Friend | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +165,21 @@ const GroupDetailsPage: React.FC = () => {
     }
   };
 
+  const handleRemoveMember = async () => {
+    if (!removeTarget) return;
+    setRemovingMember(true);
+    try {
+      await removeFriendFromGroup(groupId, removeTarget.id);
+      showToast(`Removed ${removeTarget.name} from ${group?.name}`);
+      setRemoveTarget(null);
+      await loadMembers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to remove person.', 'error');
+    } finally {
+      setRemovingMember(false);
+    }
+  };
+
   const permissionTag = (value: number): { label: string; color: string } => (
     value >= 3 ? { label: 'High', color: '#46D39A' } : { label: 'Medium', color: '#F5B544' }
   );
@@ -227,6 +244,14 @@ const GroupDetailsPage: React.FC = () => {
               >
                 <Avatar id={friend.id} name={friend.name} size={30} />
                 <span className="flex-1 text-[13px] text-text-secondary">{friend.name}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setRemoveTarget(friend); }}
+                  aria-label={`Remove ${friend.name} from group`}
+                  className="w-6 h-6 flex items-center justify-center rounded-md border-none bg-transparent text-text-faint hover:text-bad hover:bg-bad/[.12] transition-colors"
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
@@ -315,6 +340,16 @@ const GroupDetailsPage: React.FC = () => {
         danger
         onConfirm={handleDeleteGroup}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={removeTarget !== null}
+        title={`Remove ${removeTarget?.name} from ${group.name}?`}
+        message="They can be added back later."
+        confirmLabel={removingMember ? 'Removing…' : 'Remove'}
+        danger
+        onConfirm={handleRemoveMember}
+        onCancel={() => setRemoveTarget(null)}
       />
     </div>
   );

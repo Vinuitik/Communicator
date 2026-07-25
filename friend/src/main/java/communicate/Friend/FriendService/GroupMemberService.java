@@ -77,4 +77,13 @@ public class GroupMemberService {
     public List<GroupMember> getGroupMembersByGroupId(Integer groupId) {
         return groupMemberRepository.findByGroupId(groupId);
     }
+
+    // Remove a friend from a group; returns false if the membership didn't exist
+    public boolean removeFriendFromGroup(Integer groupId, Integer friendId) {
+        if (!groupMemberRepository.existsByGroupIdAndFriend_Id(groupId, friendId)) {
+            return false;
+        }
+        groupMemberRepository.deleteByGroupIdAndFriend_Id(groupId, friendId);
+        return true;
+    }
 }

@@ -38,6 +38,16 @@ def make_entity_blueprint(entity_type: str, id_field: str, url_prefix: str | Non
 
         return send_file(path)
 
+    @bp.route('/info/<entity_id>/<filename>', methods=['GET'])
+    def file_info(entity_id, filename):
+        safe_filename = secure_filename(filename)
+        path = find_file_path(entity_type, entity_id, safe_filename)
+
+        if not path or not os.path.isfile(path):
+            return jsonify({'error': 'File not found'}), 404
+
+        return jsonify({'size': os.path.getsize(path)})
+
     @bp.route('/delete', methods=['POST'])
     def delete_files():
         data = request.get_json()

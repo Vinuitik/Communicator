@@ -24,4 +24,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
     // Find all group IDs for a specific friend
     @Query("SELECT gm.groupId FROM GroupMember gm WHERE gm.friend.id = :friendId")
     List<Integer> findGroupIdsByFriendId(@Param("friendId") Integer friendId);
+
+    boolean existsByGroupIdAndFriend_Id(Integer groupId, Integer friendId);
+
+    void deleteByGroupIdAndFriend_Id(Integer groupId, Integer friendId);
 }
