@@ -95,14 +95,13 @@ public class FriendPermissionController {
     @PutMapping("updatePermission")
     public ResponseEntity<String> updatePermission(@RequestBody FriendPermission permission) {
         try {
-            FriendPermission permissionDb = permissionService.getPermissionById(permission.getId());
-            if (permissionDb == null || permissionDb.getId() == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Permission with the given ID not found.");
-            }
-            permission.setFriend(permissionDb.getFriend());
-            permissionService.updatePermission(permission);
+            // Fetch-and-merge (text/priority only) — see FriendKnowledgeController's
+            // updateKnowledge for why (nulled reviewDate/interval on every edit before).
+            permissionService.update(permission.getId(), permission);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Permission updated successfully!");
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Permission with the given ID not found.");
         } catch (Exception e) {
             System.err.println("Error updating permission: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while updating the permission.");

@@ -3,11 +3,11 @@ package communicate.Friend.FriendService;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
+
+import com.communicator.knowledgecore.service.AbstractFactService;
+
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendPermission;
 import communicate.Friend.FriendRepositories.FriendPermissionRepository;
@@ -16,81 +16,48 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
-public class FriendPermissionService {
+public class FriendPermissionService extends AbstractFactService<FriendPermission, Integer> {
 
     private final FriendPermissionRepository permissionRepository;
 
-    @Modifying
+    @Override
+    protected JpaRepository<FriendPermission, Integer> repository() {
+        return permissionRepository;
+    }
+
     @Transactional
     public void insertPermission(FriendPermission permission, Integer friendId){
         Friend friend = new Friend();
         friend.setId(friendId);
-        permission.setFriend( friend );
-
-        permissionRepository.save(permission);
+        permission.setFriend(friend);
+        save(permission);
     }
 
     @Transactional
     public List<FriendPermission> getPermissionByFriendId(Integer friendId){
         return permissionRepository.findByFriendId(friendId);
     }
-    
+
     @Transactional
     public List<FriendPermission> getPermissionByFriendIdSorted(Integer friendId){
         return permissionRepository.findAllSortedByFriendIdAndPriority(friendId);
     }
 
     @Transactional
-    public List<FriendPermission> saveAll(List<FriendPermission> permission){
-        return permissionRepository.saveAll(permission);
-    }
-
-    @Transactional
-    public void saveAll(List<FriendPermission> permissions, Integer friendId){
-        try {
-            for(FriendPermission p : permissions){
-                Friend f = new Friend();
-                f.setId(friendId);
-                p.setFriend(f);
-                permissionRepository.save(p);
-            }
-        } catch (Exception e) {
-           System.out.print("Error saving permission " + e.toString());
-        }
-    }
-
-    @Transactional
     public void deletePermissionById(Integer id){
-        try {
-            permissionRepository.deleteById(id);
-        } catch (Exception e) {
-           System.out.print("Error deleting permission " + e.toString());
-        }
+        deleteById(id);
     }
 
-    @Transactional
-    public void updatePermission(FriendPermission permission){
-        try {
-            permissionRepository.save(permission);
-        } catch (Exception e) {
-           System.out.print("Error updating permission " + e.toString());
-        }
-    }
-
+    // Kept nullable-sentinel behavior (never throws) — two controller call sites
+    // treat "no such id" as `.getId() == null`, not a caught exception.
     @Transactional
     public FriendPermission getPermissionById(Integer id){
-        try {
-            return permissionRepository.findById(id).orElse(new FriendPermission());
-        } catch (Exception e) {
-           System.out.print("Error getting permission " + e.toString());
-        }
-        return new FriendPermission();
+        return findById(id).orElse(new FriendPermission());
     }
 
     @Transactional
     public Page<FriendPermission> getPermissionByFriendIdPaginated(Integer friendId, int page, int size){
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "priority"));
-        return permissionRepository.findByFriendId(friendId, pageable);
+        return permissionRepository.findByFriendId(friendId, priorityPage(page, size));
     }
 
     // Overloaded method with default size

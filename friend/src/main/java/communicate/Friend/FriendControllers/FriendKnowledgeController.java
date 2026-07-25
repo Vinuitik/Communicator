@@ -97,17 +97,17 @@ public class FriendKnowledgeController {
     @PutMapping("updateKnowledge")
     public ResponseEntity<String> updateKnowledge(@RequestBody FriendKnowledge knowledge) {
         try {
-            FriendKnowledge knowledgeDb = knowledgeService.getKnowledgeById(knowledge.getId());
-            if (knowledgeDb == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Knowledge with the given ID not found.");
-            }
-            knowledge.setFriend(knowledgeDb.getFriend());
-            knowledgeService.updateKnowledge(knowledge);
+            // Fetch-and-merge (text/priority only) — the old path saved the whole
+            // request body as-is, which nulled out reviewDate/interval whenever the
+            // client (correctly) didn't send them. See knowledge-core's AbstractFactService.
+            knowledgeService.update(knowledge.getId(), knowledge);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Knowledge updated successfully!");
+        } catch (jakarta.persistence.EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Knowledge with the given ID not found.");
         } catch (Exception e) {
-            System.err.println("Error deleting knowledge: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while deleting the knowledge.");
+            System.err.println("Error updating knowledge: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while updating the knowledge.");
         }
     }
 
