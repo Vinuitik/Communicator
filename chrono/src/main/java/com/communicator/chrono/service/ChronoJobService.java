@@ -87,9 +87,10 @@ public class ChronoJobService {
         double currentDuration = friend.getAverageDuration() != null ? friend.getAverageDuration() : 0.0;
         double currentExcitement = friend.getAverageExcitement() != null ? friend.getAverageExcitement() : 0.0;
 
-        // Apply decay using configured decay coefficients
-        // For simplicity, using "good" decay rate as default
-        double decayAlpha = chronoProperties.getCoefficients().getDecay().get("good");
+        // Decay rate depends on this friend's last logged experience rating (see
+        // ChronoProperties.getDecayAlpha) — previously this was hardcoded to "good"
+        // for every friend regardless of rating.
+        double decayAlpha = chronoProperties.getDecayAlpha(friend.getExperience());
         
         double newFrequency = currentFrequency * (1 - decayAlpha);
         double newDuration = currentDuration * (1 - decayAlpha);

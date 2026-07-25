@@ -9,4 +9,5 @@ public class FriendSummary {
     private Double averageFrequency;
     private Double averageDuration;
     private Double averageExcitement;
+    private String experience;
 }

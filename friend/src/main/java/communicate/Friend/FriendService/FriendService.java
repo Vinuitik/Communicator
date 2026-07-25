@@ -286,7 +286,8 @@ public class FriendService {
                     friend.getName(),
                     friend.getAverageFrequency(),
                     friend.getAverageDuration(),
-                    friend.getAverageExcitement()
+                    friend.getAverageExcitement(),
+                    friend.getExperience()
                 ))
                 .toList();
     }
