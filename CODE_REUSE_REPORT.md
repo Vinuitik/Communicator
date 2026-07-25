@@ -24,15 +24,13 @@ The "relationship health" algorithm is reimplemented independently in four place
 
 ---
 
-## 2. Three Spring "domain stacks" — friend / group / connections  `[high]`
+## 2. ~~Three Spring "domain stacks" — friend / group / connections~~ RESOLVED (Knowledge/Permission) 2026-07-25  `[high]`
 
-friend, group, and connections are the **same architecture cloned three times**: an aggregate root + `Knowledge`, `Permission`, `Social`, `Photo`/`Video`/`Resource` children, each with Controller → Service → Repository → Entity, the same `@CrossOrigin(origins="http://nginx")`, the same knowledge-pagination-by-priority, the same swallow-and-`System.out.print` error handling, the same media-proxy-to-fileRepository.
+friend, group, and connections were the **same architecture cloned three times**: an aggregate root + `Knowledge`, `Permission`, `Social`, `Photo`/`Video`/`Resource` children, each with Controller → Service → Repository → Entity, the same `@CrossOrigin(origins="http://nginx")`, the same knowledge-pagination-by-priority, the same swallow-and-`System.out.print` error handling, the same media-proxy-to-fileRepository.
 
-Evidence: [group proto §Gotchas](group/src/main/java/com/example/demo/Group/PROTO.md) ("near-clone of friend"), [connections proto](connections/src/main/java/coommunicator/connections/Connections/PROTO.md) (empty clone — controllers/services are stubs). Even the package names betray the copy-paste lineage: `communicate.Friend`, `com.example.demo.Group`, `coommunicator.connections` (note the typo).
+**Resolved for Knowledge/Permission**: extracted a shared Maven module, `knowledge-core` (`AbstractFact` `@MappedSuperclass` + `AbstractFactService<T,ID>`). friend/group's `*Knowledge`/`*Permission` entities+services now extend it; connections — previously an **empty clone** (controllers/services were bare classes) — is now *implemented for real* on the same base, including a proper `ConnectionsController`/`ConnectionsPermissionController` and a full React UI (list/create/details pages). See [knowledge-core/PROTO.md](knowledge-core/src/main/java/com/communicator/knowledgecore/PROTO.md), [connections/PROTO.md](connections/src/main/java/coommunicator/connections/Connections/PROTO.md).
 
-**Why it hurts:** every knowledge/permission/social feature is built 2–3×; connections was started by cloning and abandoned half-done; a fix to (say) the JSON reference-cycle handling must be applied in three places.
-
-**Consolidation:** extract a **shared Maven module** — `communicator-knowledge-core` — holding the generic `Knowledge`/`Permission`/`Social`/media entities + base service/repository (generics or `@MappedSuperclass`). Each service parameterizes the owner (`Friend`/`SocialGroup`/`Connection`). This alone would let connections be *implemented* by wiring, not cloning. Standardize the base package + error handling while you're in there.
+**Not resolved**: Social (`Social`/`GroupSocial`) and media (`Photos`/`Videos`/`PersonalResource` vs `GroupPhoto`/`GroupVideo`/`GroupResource`) are the same shape of duplication, deliberately left out of this pass — see knowledge-core/PROTO.md's "What's deliberately NOT generalized."
 
 ---
 
@@ -44,19 +42,19 @@ Evidence: [group proto §Gotchas](group/src/main/java/com/example/demo/Group/PRO
 
 ---
 
-## 4. Three HTTP clients to the friend service, two routings  `[medium]`
+## 4. Three HTTP clients to the friend service, two routings — chrono leg RESOLVED 2026-07-25  `[medium]`
 
-The friend API is consumed by three hand-rolled clients with **no shared contract**:
+The friend API used to be consumed by three hand-rolled clients with **no shared contract**:
 
 | Client | Lib | Routing to friend |
 |---|---|---|
-| `chrono/…/FriendServiceClient` | `java.net.http` | via **nginx** (`http://nginx/api/friend`) |
+| ~~`chrono/…/FriendServiceClient`~~ | ~~`java.net.http`~~ | **now a direct Spring bean injection — no HTTP at all** (chrono+friend share a JVM since the monolith merge; `FriendServiceClient` deleted) |
 | `ai_agent/services/friend_api_service.py` | `aiohttp` | **direct** (`http://friend:8085`) |
 | `knowledgeMCP.py` (each tool) | `requests` | via **nginx** |
 
-**Why it hurts:** the same endpoints are reached two different ways (one more variable when debugging a failed call), and each client re-implements timeout/error handling (all three just swallow errors → empty results). Endpoint drift in friend breaks callers silently.
+**Why it hurts (still, for the remaining two):** the same endpoints are reached two different ways, and each client re-implements timeout/error handling (both swallow errors → empty results). Endpoint drift in friend breaks callers silently.
 
-**Consolidation:** (a) **pick one routing convention** — recommend **direct `friend:8085`** for internal service-to-service (nginx is for browser ingress, not east-west traffic), and update chrono + MCP. (b) Publish the friend knowledge/analytics API as a tiny typed client per language, or better, let the MCP server be the *single* friend-knowledge gateway that ai_agent and chrono both call (MCP already wraps most of it).
+**Consolidation done:** chrono no longer needs a routing decision — it's in-process now (see [bootstrap FLOWS §Technology Notes](bootstrap/FLOWS.md), [chrono/PROTO.md](chrono/src/main/java/com/communicator/chrono/PROTO.md)). **Still open:** ai_agent (direct) vs knowledgeMCP (nginx) still disagree — pick one convention for those two (recommend direct `friend:8085`, nginx is for browser ingress).
 
 ---
 
@@ -79,18 +77,18 @@ Used to run **pgvector** (Postgres image, provisioned but unused by the Spring s
 ## 7. Repeated anti-patterns (not code you can extract, but worth standardizing)  `[low]`
 
 - **Swallow-and-print error handling** in nearly every Java service method (`try { … } catch (Exception e) { System.out.print(...) }` → return empty/null). A failed read is indistinguishable from "no data." Standardize on a shared exception handler + real logging (chrono/ai_agent already use SLF4J; friend/group use `System.out`).
-- **Field-merge-on-update** reimplemented differently per service (friend null-guards, group blind-overwrites). Pick one semantic.
-- **Knowledge pagination (priority DESC, size 10)** duplicated in friend + group knowledge services → falls out of §2 if that's done.
+- ~~**Field-merge-on-update** reimplemented differently per service~~ RESOLVED for Knowledge/Permission 2026-07-25 — standardized on fetch-and-merge (text/priority only) via `AbstractFactService.update()`. Fixed a real bug along the way: friend's old blind-overwrite nulled `reviewDate`/`interval` on every edit.
+- ~~**Knowledge pagination (priority DESC, size 10)** duplicated in friend + group~~ RESOLVED — `AbstractFactService.priorityPage()`.
 
 ---
 
 ## Suggested order of attack
 
-1. **§1 EMA** — highest correctness risk, self-contained; make friend the sole owner, gut chrono's copies.
-2. **§5 credentials** — quick + security win.
-3. **§3 Flask factory** — cheap, low risk, satisfying.
-4. **§2 Spring shared module** — biggest structural win; also *unblocks implementing connections* instead of cloning it.
-5. **§4 friend-client unification** — do alongside §2.
+1. ~~**§1 EMA**~~ DONE (scoped down — see [[communicator-code-reuse-progress]] memory for what changed vs. the original ask).
+2. ~~**§5 credentials**~~ DONE (consolidated, not rotated — real rotation still needs a live `ALTER ROLE` + restarts, explicit go-ahead required).
+3. ~~**§3 Flask factory**~~ DONE.
+4. ~~**§2 Spring shared module**~~ DONE for Knowledge/Permission, including implementing connections for real. Social/media duplication remains, deliberately out of scope.
+5. ~~**§4 friend-client unification**~~ DONE for the chrono leg (eliminated, not just re-routed). ai_agent vs knowledgeMCP routing still open.
 6. **§6 vectors** — revisit once the AI pipeline stabilizes.
 
 Every claim here is anchored in a `PROTO.md`; open the linked proto for the exact method/line before refactoring.

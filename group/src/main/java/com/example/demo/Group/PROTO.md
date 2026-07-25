@@ -8,6 +8,8 @@ Files: GroupApiController.java, GroupWebController.java, GroupFileController.jav
 
 Manages **social groups** — a named bucket (`SocialGroup`: name, description, primaryPhotoId) with its own child rows mirroring the friend service: `GroupKnowledge` (facts), `GroupSocial`, `GroupPermission`, `GroupPhoto`/`GroupVideo`/`GroupResource` (media metadata). Spring Boot / Java 21 / shared Postgres. Internal port **8086** (container `groupService`), reached via nginx `/api/groups/`. Base path here is `@RequestMapping("/")` so `/api/groups/create` → `groupService:8086/create`.
 
+`GroupKnowledge`/`GroupPermission` extend `knowledge-core`'s `AbstractFact` (shared with friend's/connections' equivalents — see knowledge-core/PROTO.md, 2026-07-25); `GroupKnowledgeService`/`GroupPermissionService` extend its `AbstractFactService`. Pure de-dup here — group's update semantics were already fetch-and-merge, so no behavior changed.
+
 **The friend↔group membership link (`GroupMember`) lives in the FRIEND service**, not here — this service owns the group and its content, friend owns the join rows. That split is a seam (see below).
 
 ---
@@ -53,7 +55,7 @@ Key endpoints (`GroupApiController`): `POST /create`, `GET /{id}`, `DELETE /{id}
 
 ## Gotchas / Technology Notes
 
-- **This is a near-clone of the friend service** minus EMA/analytics/scheduling. Same controller/service/repository/entity layout, same `@CrossOrigin(origins="http://nginx")`, same knowledge-pagination-by-priority, same media-proxy-to-fileRepository pattern, same swallow-and-print error handling. Package is `com.example.demo.Group` (the Spring Initializr default was never renamed) vs friend's `communicate.Friend`. **This is the #1 code-reuse target** — see the consolidation report.
+- **This is a near-clone of the friend service** minus EMA/analytics/scheduling. Same controller layout, same `@CrossOrigin(origins="http://nginx")`, same media-proxy-to-fileRepository pattern, same swallow-and-print error handling (in `SocialGroupService`/`GroupFileService` — not in Knowledge/Permission anymore, see above). Package is `com.example.demo.Group` (the Spring Initializr default was never renamed) vs friend's `communicate.Friend`. Knowledge/Permission's duplication is resolved (`knowledge-core`); Social/media (`GroupSocial`/`GroupPhoto`/`GroupVideo`/`GroupResource` vs friend's equivalents) are the same shape of duplication, not yet touched.
 - **Split ownership of "membership."** A group's members are `GroupMember` rows in the **friend** DB tables, keyed by a bare `groupId` int with no FK to `SocialGroup`. Deleting a `SocialGroup` here does NOT cascade to those membership rows (different service, no FK) — they orphan. Reconciliation is manual/none.
 - **`createGroup` returns the saved entity in JSON** including lazy collections — serialization depends on `@JsonManagedReference`/`@JsonBackReference` being set on every child, same fragility as friend.
 - **`updateGroup` blindly `setId(id)` + save** — full overwrite, no field-merge, will null any field omitted from the request body (differs from friend's null-guarding merge).

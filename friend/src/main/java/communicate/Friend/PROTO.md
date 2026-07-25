@@ -8,6 +8,8 @@ Files: FriendController.java, FriendService.java, EmaUpdateService.java, Analyti
 
 The **core of the CRM**. Owns the `Friend` aggregate (name, birthday, next-contact date, interaction quality) plus its child rows: `FriendKnowledge` (facts), `Analytics` (interaction log), `Social`, `Photos`/`Videos`/`PersonalResource` (media metadata), `FriendPermission`, `GroupMember`. Spring Boot 3 / Java 21 / JPA-Hibernate on shared Postgres. Internal port **8085**, reached only through nginx `/api/friend/` (strips the prefix — see [nginx/FLOWS.md](../../../../../../nginx/FLOWS.md)).
 
+`FriendKnowledge`/`FriendPermission` extend `knowledge-core`'s `AbstractFact` (shared with group's/connections' equivalents — see knowledge-core/PROTO.md); `FriendKnowledgeService`/`FriendPermissionService` extend its `AbstractFactService`.
+
 Sibling controllers not expanded here (same pattern): `FriendKnowledgeController`, `FriendAnalyticsController`, `SocialController`, `FileController`, `GroupMemberController`, `FriendPermissionController`. Media write/read lives in `FileWriteService` / `FileMetaDataReadService` and proxies to `fileRepository` (env `FILE_REPOSITORY_SERVICE_URL`).
 
 ---
@@ -142,7 +144,8 @@ Legacy multi-page UI still served by this service (the React app is replacing it
 
 ## Technology Notes
 
-- **Swallowed exceptions everywhere.** Most `FriendService`/`AnalyticsService`/`FriendKnowledgeService` methods wrap the body in `try/catch` and `System.out.print` the error, then return empty/null. A failed DB read looks identical to "no data" to the caller — there is no error propagation to the HTTP layer for reads. `EmaUpdateService` is the deliberate exception: it re-throws to force rollback. Debugging a "missing friend" starts with the container **stdout logs**, not an HTTP status.
+- **Swallowed exceptions everywhere** in `FriendService`/`AnalyticsService` — most methods wrap the body in `try/catch` and `System.out.print` the error, then return empty/null. A failed DB read looks identical to "no data" to the caller. `EmaUpdateService` is the deliberate exception: it re-throws to force rollback. **`FriendKnowledgeService`/`FriendPermissionService` no longer do this** (2026-07-25) — they extend `knowledge-core`'s `AbstractFactService`, which lets exceptions propagate; only `getKnowledgeById`/`getPermissionById` still return a sentinel empty object on missing-id (kept deliberately, for the two controller call sites that check `.getId() == null`).
+- **`updateKnowledge`/`updatePermission` are fetch-and-merge (text/priority only), not a whole-row save** — fixed 2026-07-25. The old blind-save nulled `reviewDate`/`interval` whenever the client only sent `{fact, importance}` (which the real frontend always does). See `knowledge-core`'s `AbstractFactService.update()`.
 - **EMA is synchronous inside the request.** Logging an interaction does N `findById`+`save` round-trips (one per analytics row) before returning. Fine at personal scale; a bulk import of analytics would be O(rows) writes on the request thread.
 - **`updateFriend` cannot null-out a field** and re-saves on every call (dirty or not) — see the merge quirk above. Any "why did my edit not clear X" bug lives there.
 - **`findThisWeek` loads every friend into memory** and filters in Java (no WHERE clause). Fine for a personal contact list (hundreds); would need a query at thousands.

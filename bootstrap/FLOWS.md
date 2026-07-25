@@ -6,14 +6,15 @@ The five former JVM microservices (**friend, group, connections, chrono, backup*
 ## Module layout
 ```
 communicator-parent (root pom.xml, packaging=pom, inherits spring-boot-starter-parent 3.2.1, java 21)
-├── friend        (library jar) — base pkg communicate.*        (JPA)
-├── group         (library jar) — base pkg com.example.demo.*   (JPA + app-wide security)
-├── connections   (library jar) — base pkg coommunicator.connections.* (JPA; controllers are a stub)
-├── chrono        (library jar) — base pkg com.communicator.chrono.*  (scheduled jobs, no JPA)
+├── knowledge-core (library jar) — base pkg com.communicator.knowledgecore.* (no beans of its own — see its PROTO.md)
+├── friend        (library jar) — base pkg communicate.*        (JPA; depends on knowledge-core)
+├── group         (library jar) — base pkg com.example.demo.*   (JPA + app-wide security; depends on knowledge-core)
+├── connections   (library jar) — base pkg coommunicator.connections.* (JPA; depends on knowledge-core)
+├── chrono        (library jar) — base pkg com.communicator.chrono.*  (scheduled jobs, no JPA; depends on friend)
 ├── backup        (library jar) — base pkg communicate.backup.* (JPA; Drive OAuth)
 └── bootstrap     (the ONLY executable: @SpringBootApplication + fat jar `app.jar`)
 ```
-Only `bootstrap` has `spring-boot-maven-plugin` (repackage). Every other module is a plain library jar with no `main`. To add/refold a module: add its dep in `bootstrap/pom.xml` + its base package to the scan lists in `CommunicatorApplication`.
+Only `bootstrap` has `spring-boot-maven-plugin` (repackage). Every other module is a plain library jar with no `main`. To add/refold a module: add its dep in `bootstrap/pom.xml` + its base package to the scan lists in `CommunicatorApplication`. `knowledge-core` needs neither — it has no `@Component`/`@Entity` of its own, only a `@MappedSuperclass` + an abstract service base that friend/group/connections extend; nothing to scan directly.
 
 ## Boot / component wiring
 `CommunicatorApplication` (single `@SpringBootApplication`) drives everything:
@@ -60,7 +61,7 @@ One file: `bootstrap/src/main/resources/application.yml`. The six former per-mod
 - **`open-in-view` left at default (true).** friend/group Thymeleaf views lazy-load associations during render; setting it false (backup's old value) would throw `LazyInitializationException` in those views. Do not globalize `open-in-view: false`.
 - **App-wide Spring Security = group's `groupSecurityConfig`.** One `SecurityFilterChain`: stateless, CSRF disabled, `permitAll`. It governs *every* module now, not just group. Any auth requirement must be added there, and it applies to all.
 - **chrono calls friend as plain Spring beans** (`ChronoJobService` injects `FriendService`/`AnalyticsService` directly, `chrono` module depends on `friend` in its pom) — no HTTP hop. `ai_agent`/`knowledgeMCP` (separate Python container) still reach friend over real HTTP.
-- **nginx east-west coupling.** All five upstreams (`friend_service`, `group_service`, …) point at `communicator-app:8080`; names kept only so location blocks read unchanged. `connections`/`backup`/`chrono` bare-root paths return 404 by design (they only map deeper paths; connections' controller is a stub).
+- **nginx east-west coupling.** All five upstreams (`friend_service`, `group_service`, …) point at `communicator-app:8080`; names kept only so location blocks read unchanged. `backup`/`chrono` bare-root paths return 404 by design (they only map deeper paths). `connections` is a real implemented API now (see connections/PROTO.md) — no longer a stub.
 - **Build context.** Root `Dockerfile` builds the whole reactor; `.dockerignore` excludes react/python/`.git`/`target` so the JVM image doesn't ship them.
 
 ## Change Index
