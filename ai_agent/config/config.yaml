@@ -80,6 +80,8 @@ databases:
   # PostgreSQL/ParadeDB Configuration (from docker-compose: postgres service).
   # Backs knowledge_chunks + chunk_embeddings (hybrid vector+BM25 search) —
   # separate from the JVM app's own datasource, same database/instance.
+  # Fallback only — docker-compose's POSTGRES_DSN env var overrides this (see
+  # Settings.postgres_dsn / .env.example) so the real credentials live in one place.
   postgres:
     dsn: "postgresql://myapp_user:example@postgresDB:5432/my_database"
 

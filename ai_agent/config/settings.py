@@ -48,7 +48,9 @@ class Settings:
         self.redis_retry_on_timeout = self.config["databases"]["redis"]["retry_on_timeout"]
         self.redis_max_connections = self.config["databases"]["redis"]["max_connections"]
 
-        self.postgres_dsn = self.config["databases"]["postgres"]["dsn"]
+        # POSTGRES_DSN (set via docker-compose, see .env.example) overrides config.yaml's
+        # dsn — single source of truth for the Postgres credentials, matches host-wrapper.
+        self.postgres_dsn = os.getenv("POSTGRES_DSN", self.config["databases"]["postgres"]["dsn"])
         
         # Cache settings
         self.cache_default_ttl = self.config["cache"]["default_ttl"]

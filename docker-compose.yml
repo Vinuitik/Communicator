@@ -8,9 +8,9 @@ services:
     ports:
       - "5433:5432"  # Expose PostgreSQL on local port 5433
     environment:
-      POSTGRES_USER: myapp_user
-      POSTGRES_PASSWORD: example
-      POSTGRES_DB: my_database
+      POSTGRES_USER: ${POSTGRES_USER:-myapp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-example}
+      POSTGRES_DB: ${POSTGRES_DB:-my_database}
       TZ: ${HOST_TIMEZONE:-UTC}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -38,9 +38,9 @@ services:
     expose:
       - "8080"  # Internal only; nginx fronts every /api/* and /backup/ path
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/my_database
-      SPRING_DATASOURCE_USERNAME: myapp_user
-      SPRING_DATASOURCE_PASSWORD: example
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresDB:5432/${POSTGRES_DB:-my_database}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-myapp_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-example}
       FILE_REPOSITORY_SERVICE_URL: http://fileRepository:5000
       RESOURCE_REPOSITORY_URL: http://fileRepository:5000
       FILE_REPOSITORY_URL: http://fileRepository:5000
@@ -143,6 +143,8 @@ services:
       - ./host-wrapper/.env
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
+      # Overrides .env's hardcoded copy (single source of truth, see .env.example)
+      POSTGRES_DSN: postgresql://${POSTGRES_USER:-myapp_user}:${POSTGRES_PASSWORD:-example}@postgresDB:5432/${POSTGRES_DB:-my_database}
     depends_on:
       - postgres
     restart: unless-stopped
@@ -191,6 +193,8 @@ services:
      environment:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1
+       # Overrides config.yaml's dsn (single source of truth, see .env.example)
+       POSTGRES_DSN: postgresql://${POSTGRES_USER:-myapp_user}:${POSTGRES_PASSWORD:-example}@postgresDB:5432/${POSTGRES_DB:-my_database}
      depends_on:
        - postgres      # knowledge_chunks / chunk_embeddings hybrid search + llm_settings
        - embedder      # ONNX EmbeddingGemma (replaces Ollama for embeddings)
