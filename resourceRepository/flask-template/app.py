@@ -175,12 +175,12 @@ def delete_files_transactional(file_names, entity_type, entity_id):
     }), 200
 
 # --- Blueprints Registration ---
-from blueprints.friends_files import friends_bp
-from blueprints.groups_files import groups_bp
-from blueprints.connections_files import connections_bp
+# friends/groups/connections were three copy-pasted blueprints differing only in
+# entity_type + id field name — now one factory, registered three times.
+from blueprints.factory import make_entity_blueprint
 from blueprints.backup import backup_bp
 
-app.register_blueprint(friends_bp)
-app.register_blueprint(groups_bp)
-app.register_blueprint(connections_bp)
+app.register_blueprint(make_entity_blueprint('friends', 'friendId'))
+app.register_blueprint(make_entity_blueprint('groups', 'groupId', url_prefix='/groups'))
+app.register_blueprint(make_entity_blueprint('connections', 'connectionId', url_prefix='/connections'))
 app.register_blueprint(backup_bp)
