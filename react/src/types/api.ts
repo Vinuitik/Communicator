@@ -161,10 +161,64 @@ export interface GetGroupPermissionResponse {
     message?: string;
 }
 
+// Mirrors coommunicator.connections.Connections.ConnectionsEntities.Connection —
+// a pairwise relationship link between two friends. The backend always
+// normalizes friend1Id/friend2Id to (min, max) order, so {A,B} and {B,A}
+// refer to the same connection (ConnectionService.idFor).
+export interface ConnectionId {
+    friend1Id: number;
+    friend2Id: number;
+}
+
 export interface Connection {
-    id: string;
-    userId: string;
-    friendId: string;
+    id: ConnectionId;
+    description?: string;
+    knowledge?: KnowledgeCrudItem[];
+    permission?: KnowledgeCrudItem[];
+}
+
+// Body for POST /api/connections/create.
+export interface CreateConnectionPayload {
+    friend1Id: number;
+    friend2Id: number;
+    description?: string;
+}
+
+// Response shape from ConnectionsController.createConnection/getConnection —
+// {success, message, connection} on both success and failure.
+export interface ConnectionResponse {
+    success: boolean;
+    connection?: Connection;
+    message?: string;
+}
+
+// Response shape from ConnectionsController.listConnections /
+// listConnectionsForFriend (GET /api/connections/list, /friend/{id}).
+export interface ConnectionListResponse {
+    success: boolean;
+    connections: Connection[];
+    message?: string;
+}
+
+export interface DeleteConnectionResponse {
+    success: boolean;
+    message: string;
+}
+
+// Response shape from ConnectionsController.getAllKnowledge
+// (GET /api/connections/getKnowledge/{friend1Id}/{friend2Id}).
+export interface GetConnectionKnowledgeResponse {
+    success: boolean;
+    knowledge: KnowledgeCrudItem[];
+    message?: string;
+}
+
+// Response shape from ConnectionsPermissionController.getAllPermission
+// (GET /api/connections/permission/getPermission/{friend1Id}/{friend2Id}).
+export interface GetConnectionPermissionResponse {
+    success: boolean;
+    permission: KnowledgeCrudItem[];
+    message?: string;
 }
 
 export interface ErrorResponse {

@@ -9,6 +9,9 @@ export const ROUTES = {
   GROUPS: '/groups',
   CREATE_GROUP: '/groups/create',
   GROUP_DETAILS: '/groups/:id',
+  CONNECTIONS: '/connections',
+  CREATE_CONNECTION: '/connections/create',
+  CONNECTION_DETAILS: '/connections/:friend1Id/:friend2Id',
   SETTINGS: '/settings',
   INSIGHTS: '/insights',
   FILE_UPLOAD: '/friends/:id/fileUpload',
@@ -21,6 +24,12 @@ export const ROUTES = {
 // path-builder functions were removed along with the standalone pages.
 
 export const groupDetailsPath = (groupId: number) => `/groups/${groupId}`;
+
+// Friend order doesn't matter server-side (ConnectionService normalizes to
+// min/max) but the URL needs a canonical form to avoid two links to the
+// "same" connection — always build it with the smaller id first.
+export const connectionDetailsPath = (friend1Id: number, friend2Id: number) =>
+  `/connections/${Math.min(friend1Id, friend2Id)}/${Math.max(friend1Id, friend2Id)}`;
 
 // Fills in ROUTES.PROFILE's :id. Legacy reached
 // this at /profile/{friendId} (WebController.profile, Thymeleaf-rendered,
