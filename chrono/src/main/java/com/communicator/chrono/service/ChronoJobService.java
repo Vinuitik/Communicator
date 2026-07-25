@@ -1,8 +1,9 @@
 package com.communicator.chrono.service;
 
 import com.communicator.chrono.config.ChronoProperties;
-import com.communicator.chrono.dto.FriendSummary;
-import com.communicator.chrono.dto.FriendUpdateRequest;
+import communicate.Friend.DTOs.ShortFriendDTO;
+import communicate.Friend.FriendService.AnalyticsService;
+import communicate.Friend.FriendService.FriendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,7 +18,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChronoJobService {
 
-    private final FriendServiceClient friendServiceClient;
+    // Same JVM as friend now (see PathPrefixConfig) — called as plain Spring
+    // beans instead of over HTTP, which used to round-trip through nginx.
+    private final FriendService friendService;
+    private final AnalyticsService analyticsService;
     private final ChronoProperties chronoProperties;
 
     /**
@@ -30,46 +34,46 @@ public class ChronoJobService {
         
         try {
             // Get total friend count to calculate total pages
-            long totalFriends = friendServiceClient.getFriendsCount();
+            long totalFriends = friendService.getFriendsCount();
             int pageSize = chronoProperties.getFriendService().getFriendPageSize();
             int totalPages = (int) Math.ceil((double) totalFriends / pageSize);
-            
-            log.info("Processing {} friends across {} pages (page size: {})", 
+
+            log.info("Processing {} friends across {} pages (page size: {})",
                     totalFriends, totalPages, pageSize);
-            
+
             int processedFriends = 0;
             int decayedFriends = 0;
-            
+
             // Process each page of friends
             for (int page = 0; page < totalPages; page++) {
                 log.debug("Processing page {} of {}", page + 1, totalPages);
-                
+
                 // Get this page of friends
-                List<FriendSummary> friends = friendServiceClient.getFriendsPaginated(page, pageSize);
-                
+                List<ShortFriendDTO> friends = friendService.getFriendsPaginatedForChrono(page, pageSize);
+
                 if (friends.isEmpty()) {
                     log.debug("No friends found on page {}, ending pagination", page);
                     break;
                 }
-                
+
                 // Extract friend IDs for batch interaction check
                 List<Integer> friendIds = friends.stream()
-                        .map(FriendSummary::getId)
+                        .map(ShortFriendDTO::id)
                         .collect(Collectors.toList());
-                
+
                 // Batch check: which friends had interactions yesterday
-                List<Integer> friendsWithInteractions = friendServiceClient
+                List<Integer> friendsWithInteractions = analyticsService
                         .getFriendsWithInteractionsOnDate(friendIds, yesterday);
-                
+
                 // Apply decay to friends who didn't have interactions
-                for (FriendSummary friend : friends) {
-                    if (!friendsWithInteractions.contains(friend.getId())) {
+                for (ShortFriendDTO friend : friends) {
+                    if (!friendsWithInteractions.contains(friend.id())) {
                         applyDecayToFriend(friend, yesterday);
                         decayedFriends++;
                     }
                     processedFriends++;
                 }
-                
+
                 log.debug("Page {} complete: {} friends processed", page + 1, friends.size());
             }
             
@@ -81,37 +85,28 @@ public class ChronoJobService {
         }
     }
 
-    private void applyDecayToFriend(FriendSummary friend, LocalDate decayDate) {
+    private void applyDecayToFriend(ShortFriendDTO friend, LocalDate decayDate) {
         // Get current EMA values
-        double currentFrequency = friend.getAverageFrequency() != null ? friend.getAverageFrequency() : 0.0;
-        double currentDuration = friend.getAverageDuration() != null ? friend.getAverageDuration() : 0.0;
-        double currentExcitement = friend.getAverageExcitement() != null ? friend.getAverageExcitement() : 0.0;
+        double currentFrequency = friend.averageFrequency() != null ? friend.averageFrequency() : 0.0;
+        double currentDuration = friend.averageDuration() != null ? friend.averageDuration() : 0.0;
+        double currentExcitement = friend.averageExcitement() != null ? friend.averageExcitement() : 0.0;
 
         // Decay rate depends on this friend's last logged experience rating (see
         // ChronoProperties.getDecayAlpha) — previously this was hardcoded to "good"
         // for every friend regardless of rating.
-        double decayAlpha = chronoProperties.getDecayAlpha(friend.getExperience());
-        
+        double decayAlpha = chronoProperties.getDecayAlpha(friend.experience());
+
         double newFrequency = currentFrequency * (1 - decayAlpha);
         double newDuration = currentDuration * (1 - decayAlpha);
         double newExcitement = currentExcitement * (1 - decayAlpha);
 
-        // Update the friend's averages
-        FriendUpdateRequest updateRequest = new FriendUpdateRequest(
-                friend.getId(), 
-                newFrequency, 
-                newDuration, 
-                newExcitement
-        );
-
-        boolean success = friendServiceClient.updateFriendAverages(updateRequest);
-        
-        if (success) {
+        try {
+            friendService.updateMovingAverages(friend.id(), newFrequency, newDuration, newExcitement);
             log.debug("Applied decay to friend {}: freq {:.3f}→{:.3f}, dur {:.3f}→{:.3f}, exc {:.3f}→{:.3f}",
-                    friend.getId(), currentFrequency, newFrequency, 
+                    friend.id(), currentFrequency, newFrequency,
                     currentDuration, newDuration, currentExcitement, newExcitement);
-        } else {
-            log.warn("Failed to apply decay to friend {}", friend.getId());
+        } catch (Exception e) {
+            log.warn("Failed to apply decay to friend {}", friend.id(), e);
         }
     }
 

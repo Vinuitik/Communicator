@@ -84,10 +84,8 @@ chrono:
       poor: 0.57        # * rating - faster decay
   schedule: "0 0 0 * * ?"     # daily at midnight
   friendService:
-    # In-process now, but still reached over HTTP via nginx (loopback). Could be
-    # pointed straight at the friend controllers later to drop the round-trip.
-    baseUrl: ${CHRONO_FRIEND_BASE_URL:http://nginx/api/friend}
-    timeout: 30000
+    # Same JVM — chrono calls FriendService/AnalyticsService beans directly,
+    # no HTTP hop.
     batchSize: 200
     friendPageSize: 500
 

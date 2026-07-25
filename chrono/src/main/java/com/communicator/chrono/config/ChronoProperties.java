@@ -32,8 +32,6 @@ public class ChronoProperties {
 
     @Data
     public static class FriendService {
-        private String baseUrl;
-        private int timeout;
         private int batchSize = 200; // Default batch size for interaction checks
         private int friendPageSize = 500; // Default page size for friend pagination
     }
