@@ -47,6 +47,32 @@ Entry: `mcp.run(transport="streamable-http", host=0.0.0.0, port=8000, path="/kno
 - **No auth on the tools.** Anything that can reach the MCP endpoint (internally, or via nginx `/api/mcp/knowledge/`) can read/write a friend's knowledge. nginx adds permissive CORS but no token.
 - **The MCP path matters.** `/knowledgeMCP/` is the MCP mount; nginx maps `/api/mcp/knowledge/` → `mcp-knowledge-server:8000/` (root). A client must hit the right path or get 404 — verify `ai_agent`'s `mcp.server_url` includes `/knowledgeMCP/`.
 
+## Tool Surface Audit
+
+All 6 tools operate on **friend** data only — none call `connections` or `group`.
+
+| Tool | Single friend_id scoped? |
+|---|---|
+| `get_friend_knowledge(friend_id,...)` | Yes |
+| `create_friend_knowledge(friend_id,...)` | Yes |
+| `update_friend_knowledge(knowledge_id,...)` | Indirect — takes `knowledge_id`, not `friend_id`, but the row belongs to exactly one friend |
+| `get_friend_analytics(friend_id,...)` | Yes |
+| `calculate_friend_moving_averages(friend_id,...)` | Yes (pulls friend's own `shortList` entry) |
+| `get_friends_list(page,size)` | **No** — returns all friends, not scoped to one |
+
+**Group data the agent cannot reach at all** (no tool calls the `group` service):
+- Group existence/listing — no way to list groups or fetch a `SocialGroup` (`GET /list`, `GET /{id}`)
+- Group membership — `GroupPermission` rows (which friends belong to a group, and their permission level) are the group's member list; no tool exposes this
+- Group knowledge — `GroupKnowledge` (group-level facts, analogous to friend knowledge but scoped to the whole group)
+- Group socials/files — `GroupSocial`, `GroupResource`/`GroupPhoto`/`GroupVideo`, primary photo
+
+**Connection data the agent cannot reach at all** (no tool calls the `connections` service):
+- Person↔person relationships — `Connection` (friend1Id, friend2Id, description) is never listed or fetched, so the agent has no way to know two friends are connected or how
+- Connection knowledge — `ConnectionsKnowledge`, facts specific to a *pair* of friends (distinct from single-friend knowledge)
+- Connection permissions — `ConnectionPermission`, visibility/permission level on a connection
+
+Net effect: the agent can answer "what do I know about friend X" but not "who is friend X connected to," "what group is friend X in," or "what do I know about the group/relationship itself."
+
 ## Change Index
 
 | Thing to change | Where |
