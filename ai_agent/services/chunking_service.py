@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 
 from config.settings import settings
-from models.schemas import ChunkDocument, EmbeddingDocument
+from models.schemas import ChunkDocument, EmbeddingDocument, KnowledgeRegenerationTrigger
 from .embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
@@ -174,9 +174,12 @@ class ChunkingService:
                 logger.info("=" * 80)
                 return chunk_ids
         
-        # Delete old chunks and embeddings
-        await self._delete_chunks(knowledge_id)
-        
+        # Delete old chunks and embeddings, keeping the pre-delete rows around
+        # so we can tell a genuine content change (old rows existed under a
+        # different text_hash) apart from first-time chunking.
+        previous_chunks = await self._delete_chunks(knowledge_id)
+        content_changed = bool(previous_chunks) and previous_chunks[0]["text_hash"] != text_hash
+
         # Split text into chunks
         logger.info(f"Splitting text into chunks...")
         chunk_tuples = self._split_into_chunks(knowledge_text)
@@ -252,54 +255,119 @@ class ChunkingService:
         logger.info(f"Total chunks created: {len(chunk_ids)}")
         logger.info(f"Chunk IDs: {chunk_ids[:3]}..." if len(chunk_ids) > 3 else f"Chunk IDs: {chunk_ids}")
         logger.info("=" * 80)
-        
+
+        if content_changed:
+            old_chunk_ids = [chunk["chunk_id"] for chunk in previous_chunks]
+            await self._detect_and_emit_stale_facts(knowledge_id, old_chunk_ids)
+
         return chunk_ids
 
-    async def _delete_chunks(self, knowledge_id: int) -> None:
+    async def _delete_chunks(self, knowledge_id: int) -> List[Dict]:
         """Delete all chunks and embeddings for a knowledge item.
-        
+
         Args:
             knowledge_id: ID of the knowledge item
+
+        Returns:
+            The chunk rows that existed before deletion (empty if none did).
         """
         if not self.chunk_repo:
-            return
-        
+            return []
+
         # Get all chunk IDs for this knowledge
         chunks = await self.chunk_repo.find_many(
             "knowledge_chunks",
             {"knowledge_id": knowledge_id}
         )
         chunk_ids = [chunk["chunk_id"] for chunk in chunks]
-        
+
         if not chunk_ids:
             logger.debug(f"No existing chunks found for knowledge {knowledge_id}")
-            return
-        
+            return []
+
         logger.info(f"Deleting {len(chunk_ids)} chunks for knowledge {knowledge_id}")
-        
+
         # Delete chunks
         await self.chunk_repo.delete_many(
             "knowledge_chunks",
             {"knowledge_id": knowledge_id}
         )
-        
+
         # Delete embeddings
         await self.chunk_repo.delete_many(
             "chunk_embeddings",
             {"chunk_id": {"$in": chunk_ids}}
         )
-        
+
         logger.debug(f"Deleted chunks and embeddings for knowledge {knowledge_id}")
+
+        return chunks
 
     async def delete_knowledge_chunks(self, knowledge_id: int) -> None:
         """Public method to delete all chunks for a knowledge item.
-        
+
         Called when knowledge is deleted.
-        
+
         Args:
             knowledge_id: ID of the knowledge item
         """
         await self._delete_chunks(knowledge_id)
+
+    async def _detect_and_emit_stale_facts(
+        self, knowledge_id: int, old_chunk_ids: List[str]
+    ) -> None:
+        """Find facts that referenced this knowledge item's now-replaced chunks
+        and emit a regeneration trigger for them.
+
+        Staleness is read directly off the existing fact_references table
+        (FactService's chunk-level reference mapping, one row per
+        fact_id/chunk_id pair) - a fact is stale exactly when it has a
+        reference row pointing at a chunk_id that just got deleted.
+
+        Args:
+            knowledge_id: ID of the knowledge item whose text changed
+            old_chunk_ids: chunk_ids that were just deleted for this knowledge item
+        """
+        if not old_chunk_ids or not self.chunk_repo:
+            return
+
+        stale_refs = await self.chunk_repo.find_many(
+            "fact_references",
+            {"chunk_id": {"$in": old_chunk_ids}}
+        )
+
+        if not stale_refs:
+            logger.info(
+                f"Knowledge {knowledge_id} changed but no facts referenced its old chunks"
+            )
+            return
+
+        stale_fact_ids = sorted({ref["fact_id"] for ref in stale_refs})
+        stale_friend_ids = sorted({ref["friend_id"] for ref in stale_refs})
+
+        trigger = KnowledgeRegenerationTrigger(
+            knowledge_id=knowledge_id,
+            changed_chunk_ids=old_chunk_ids,
+            stale_fact_ids=stale_fact_ids,
+            stale_friend_ids=stale_friend_ids,
+            detected_at=datetime.now(timezone.utc)
+        )
+
+        await self._emit_regeneration_trigger(trigger)
+
+    async def _emit_regeneration_trigger(self, trigger: KnowledgeRegenerationTrigger) -> None:
+        """Hand off a staleness trigger for downstream regeneration.
+
+        Direct in-process call for now, not a queue publish - see the
+        KnowledgeRegenerationTrigger docstring for why. The "Trigger Knowledge
+        Regeneration" card replaces this body with the actual regeneration
+        call (e.g. FactService.re_evaluate_fact per stale fact_id).
+        """
+        logger.warning(
+            f"KNOWLEDGE REGENERATION TRIGGER: knowledge_id={trigger.knowledge_id}, "
+            f"{len(trigger.stale_fact_ids)} stale fact(s) for friend(s) {trigger.stale_friend_ids}: "
+            f"{trigger.stale_fact_ids}"
+        )
 
     async def ensure_embeddings_exist(self, chunk_ids: List[str], knowledge_texts: Dict[int, str]) -> int:
         """Ensure embeddings exist for given chunks (lazy embedding generation).

@@ -95,6 +95,22 @@ class FactReferenceDocument(BaseModel):
     created_at: datetime
     rank: int  # 1=strongest, 2=second, 3=third
 
+class KnowledgeRegenerationTrigger(BaseModel):
+    """Emitted when a knowledge item's text changes and invalidates facts that
+    referenced its old chunks.
+
+    Consumed by the "Trigger Knowledge Regeneration" flow (not yet built).
+    Emission is a direct in-process call today (see ChunkingService.
+    _emit_regeneration_trigger) rather than a queue publish - RabbitMQ is
+    provisioned in docker-compose but nothing in this codebase consumes from
+    it yet, so there's no established pattern to plug a single trigger into.
+    """
+    knowledge_id: int
+    changed_chunk_ids: List[str]  # old chunk_ids invalidated by the text change
+    stale_fact_ids: List[str]
+    stale_friend_ids: List[int]
+    detected_at: datetime
+
 class FactDocument(BaseModel):
     """Schema for individual fact stored in friend_summaries.facts array"""
     fact_id: str  # Unique identifier (ObjectId as string)

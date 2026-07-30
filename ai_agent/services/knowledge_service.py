@@ -262,81 +262,48 @@ class KnowledgeService:
         
         chunk_stats = {}
         knowledge_texts = {}
-        items_needing_chunking = []
-        items_already_chunked = []
-        
-        # Check which items need chunking
+
+        # Route every item through process_knowledge rather than skipping
+        # ones that already have some chunk rows: process_knowledge does its
+        # own text_hash comparison, so this is what actually detects a
+        # knowledge item whose text changed since it was last chunked
+        # (existence-only skip here would silently keep serving stale chunks
+        # forever). Unchanged items are a cheap hash-match read inside it.
         for item in knowledge_items:
             knowledge_id = item["id"]
-            
-            # Fetch full knowledge text using FriendApiService
+
             logger.debug(f"  Fetching text for knowledge {knowledge_id}...")
             knowledge_text = await self.friend_api_service.fetch_knowledge_text(knowledge_id)
-            
-            if knowledge_text:
-                knowledge_texts[knowledge_id] = knowledge_text
-            else:
+
+            if not knowledge_text:
                 logger.warning(f"  ❌ Failed to fetch text for knowledge {knowledge_id}")
-            
-            # Check if chunks exist for this knowledge item
-            existing_chunks = await self.postgres_repo.find_many(
-                "knowledge_chunks",
-                {"knowledge_id": knowledge_id}
-            )
-            
-            if existing_chunks:
-                items_already_chunked.append(knowledge_id)
-                chunk_stats[knowledge_id] = len(existing_chunks)
-                logger.debug(f"  ✓ Knowledge {knowledge_id}: {len(existing_chunks)} chunks already exist")
-            else:
-                # Needs chunking
-                logger.debug(f"  🔨 Knowledge {knowledge_id}: needs chunking")
-                
-                if knowledge_text:
-                    items_needing_chunking.append({
-                        "id": knowledge_id,
-                        "text": knowledge_text
-                    })
-                else:
-                    chunk_stats[knowledge_id] = 0
-        
-        logger.info(f"Chunk status: {len(items_already_chunked)} cached, {len(items_needing_chunking)} need chunking")
-        
-        # Chunk items that need it
-        if items_needing_chunking:
-            logger.info(f"Starting chunking for {len(items_needing_chunking)} knowledge items...")
-            
-            for idx, item in enumerate(items_needing_chunking, 1):
-                knowledge_id = item["id"]
-                knowledge_text = item["text"]
-                
-                logger.info(f"Chunking {idx}/{len(items_needing_chunking)}: knowledge_id={knowledge_id}")
-                logger.debug(f"  Text preview: '{knowledge_text[:100]}...'")
-                
-                try:
-                    chunk_ids = await self.chunking_service.process_knowledge(
-                        knowledge_id=knowledge_id,
-                        knowledge_text=knowledge_text,
-                        force_regenerate=False
-                    )
-                    
-                    chunk_stats[knowledge_id] = len(chunk_ids)
-                    logger.info(f"  ✓ Created {len(chunk_ids)} chunks for knowledge {knowledge_id}")
-                    
-                except Exception as e:
-                    logger.error(f"  ❌ Failed to chunk knowledge {knowledge_id}: {e}", exc_info=True)
-                    chunk_stats[knowledge_id] = 0
-        
+                chunk_stats[knowledge_id] = 0
+                continue
+
+            knowledge_texts[knowledge_id] = knowledge_text
+
+            try:
+                chunk_ids = await self.chunking_service.process_knowledge(
+                    knowledge_id=knowledge_id,
+                    knowledge_text=knowledge_text,
+                    force_regenerate=False
+                )
+
+                chunk_stats[knowledge_id] = len(chunk_ids)
+                logger.debug(f"  ✓ Knowledge {knowledge_id}: {len(chunk_ids)} chunks")
+
+            except Exception as e:
+                logger.error(f"  ❌ Failed to chunk knowledge {knowledge_id}: {e}", exc_info=True)
+                chunk_stats[knowledge_id] = 0
+
         logger.info("=" * 80)
         logger.info("LAZY CHUNKING COMPLETED")
         logger.info("=" * 80)
         logger.info(f"Total knowledge items: {len(knowledge_items)}")
-        logger.info(f"Already chunked: {len(items_already_chunked)}")
-        logger.info(f"Newly chunked: {len(items_needing_chunking)}")
-        logger.info(f"Total chunks created: {sum(chunk_stats.values())}")
+        logger.info(f"Total chunks tracked: {sum(chunk_stats.values())}")
         logger.info(f"Knowledge texts fetched: {len(knowledge_texts)}")
         logger.info("=" * 80)
-        
+
         return chunk_stats, knowledge_texts
     
     async def get_friend_facts_with_references(self, friend_id: int) -> Dict[str, Any]:
