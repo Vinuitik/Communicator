@@ -7,50 +7,38 @@
 <body>
   <header class="head">
     <span class="logo">◆</span>
-    <span class="title">Send to Learn</span>
+    <span class="title">Communicator</span>
     <button id="tab-settings-btn" class="gear" title="Settings">⚙</button>
   </header>
 
   <!-- Capture --------------------------------------------------------------- -->
   <section class="panel active" data-panel="capture">
-    <!-- One-click smart capture of the current tab -->
-    <button id="cap-page" class="btn">📄 Capture this page</button>
-    <p id="cap-page-hint" class="hint">Grabs this tab: scrape an article, download a YouTube video or PDF — the agent takes over if that fails.</p>
+    <label class="lbl" for="friend-select">Friend</label>
+    <select id="friend-select" class="in"></select>
+
+    <label class="lbl" for="cap-input">Note</label>
+    <textarea id="cap-input" class="in area" rows="5"
+      placeholder="Selected text, a link, or anything worth remembering about them…"></textarea>
+    <button id="cap-send" class="btn">Save note</button>
 
     <div class="or"><span>or</span></div>
 
-    <label class="lbl" for="cap-input">Paste text / a link, or drop a file</label>
-    <textarea id="cap-input" class="in area" rows="5"
-      placeholder="Paste anything — notes, an article link, a YouTube video, a PDF link… or drop a PDF / audio / video file here."></textarea>
-    <p id="cap-hint" class="hint"></p>
+    <label class="lbl">Attach a file</label>
+    <div id="drop-zone" class="dropzone">
+      Drop a file here, or <label class="filelink">choose one<input id="file-input" type="file" hidden /></label>
+    </div>
 
-    <button id="cap-send" class="btn ghost">Add to Learn queue</button>
     <p id="cap-status" class="status"></p>
-
-    <!-- Agent activity: what the escalation agent is doing when an extraction fails -->
-    <details id="agent-panel" class="agent" hidden>
-      <summary>🤖 Agent activity <span id="agent-badge" class="agent-badge"></span></summary>
-      <ul id="agent-feed" class="agent-feed"></ul>
-    </details>
   </section>
 
   <!-- Settings -------------------------------------------------------------- -->
   <section class="panel" data-panel="settings">
-    <label class="lbl">ObsidianOptimizer API base</label>
-    <input id="cfg-obsidian" class="in" type="text" placeholder="https://obsidianoptimizer.uk/api" />
-    <label class="lbl">Agent WS token (optional — enables the escalation agent)</label>
-    <input id="cfg-agent-token" class="in" type="password" placeholder="AGENT_WS_TOKEN" autocomplete="off" />
+    <label class="lbl">Communicator API base</label>
+    <input id="cfg-api" class="in" type="text" placeholder="https://communicator.work/api" />
     <button id="cfg-save" class="btn ghost">Save settings</button>
-
-    <hr class="sep" />
-
-    <p class="lbl" id="auth-line">Sign in to ObsidianOptimizer</p>
-    <input id="login-user" class="in" type="text" placeholder="Username" autocomplete="username" />
-    <input id="login-pass" class="in" type="password" placeholder="Password" autocomplete="current-password" />
-    <label class="remember"><input id="login-remember" type="checkbox" checked /> Remember me (stay signed in)</label>
-    <button id="login-btn" class="btn">Sign in</button>
     <p id="settings-status" class="status"></p>
 
+    <hr class="sep" />
     <button id="back-btn" class="btn ghost">← Back to capture</button>
   </section>
 

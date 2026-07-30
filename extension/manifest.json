@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Obsidian Optimizer — Send to Learn",
-  "version": "0.2.0",
-  "description": "Capture anything — text, a link, a YouTube video, a PDF — into your Learn queue to review later.",
+  "name": "Communicator — Quick Capture",
+  "version": "0.1.0",
+  "description": "Save a page, link, image, or selected text as a note on a friend's profile — right from the browser.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -10,7 +10,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "Send to Learn queue",
+    "default_title": "Add note to a friend",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -23,7 +23,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "storage", "tabs", "contextMenus", "scripting"],
+  "permissions": ["activeTab", "storage", "contextMenus"],
   "host_permissions": [
     "http://localhost:8090/*",
     "https://communicator.work/*",
