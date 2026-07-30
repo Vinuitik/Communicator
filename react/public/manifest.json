@@ -1,0 +1,15 @@
+{
+  "short_name": "Communicator",
+  "name": "Communicator — Friends Tracker",
+  "id": ".",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0E0B14",
+  "theme_color": "#0E0B14",
+  "icons": [
+    { "src": "logo192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "logo512.png", "type": "image/png", "sizes": "512x512" }
+  ]
+}

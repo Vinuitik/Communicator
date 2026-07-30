@@ -12,6 +12,7 @@ import ConnectionsPage from './components/pages/ConnectionsPage';
 import CreateConnectionPage from './components/pages/CreateConnectionPage';
 import ConnectionDetailsPage from './components/pages/ConnectionDetailsPage';
 import SettingsPage from './components/pages/SettingsPage';
+import GetAppPage from './components/pages/GetAppPage';
 import InsightsPage from './components/pages/InsightsPage';
 import ProfilePage from './components/pages/ProfilePage';
 import { ROUTES, profilePath } from './utils/constants';
@@ -48,6 +49,7 @@ const App: React.FC = () => {
             <Route path={ROUTES.CREATE_CONNECTION} element={<CreateConnectionPage />} />
             <Route path={ROUTES.CONNECTION_DETAILS} element={<ConnectionDetailsPage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+            <Route path={ROUTES.GET_APP} element={<GetAppPage />} />
             {/* Old "Analytics" bookmarks still land somewhere real. */}
             <Route path="/analytics" element={<Navigate to={ROUTES.INSIGHTS} replace />} />
             <Route path={ROUTES.INSIGHTS} element={<InsightsPage />} />

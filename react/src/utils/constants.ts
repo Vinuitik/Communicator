@@ -13,6 +13,7 @@ export const ROUTES = {
   CREATE_CONNECTION: '/connections/create',
   CONNECTION_DETAILS: '/connections/:friend1Id/:friend2Id',
   SETTINGS: '/settings',
+  GET_APP: '/get-app',
   INSIGHTS: '/insights',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',

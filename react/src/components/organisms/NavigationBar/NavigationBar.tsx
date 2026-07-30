@@ -33,6 +33,12 @@ const PlusIcon: React.FC = () => (
   </svg>
 );
 
+const DownloadIcon: React.FC = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </svg>
+);
+
 const NavigationBar: React.FC = () => {
   const { pathname } = useLocation();
 
@@ -73,6 +79,13 @@ const NavigationBar: React.FC = () => {
           className="flex items-center gap-1.5 bg-accent-gradient text-white font-bold text-sm px-3.5 py-2 rounded-input shadow-button-sm hover:brightness-110 transition-all"
         >
           <PlusIcon /> Add friend
+        </Link>
+        <Link
+          to={ROUTES.GET_APP}
+          title="Get the app"
+          className="w-[38px] h-[38px] flex items-center justify-center rounded-input border border-white/10 bg-input text-text-muted hover:text-text-emphasis transition-colors"
+        >
+          <DownloadIcon />
         </Link>
         <Link
           to={ROUTES.SETTINGS}
