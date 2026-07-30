@@ -48,6 +48,7 @@ Note the upstream names use the **compose `container_name`** (e.g. `groupService
 | `/api/chrono/` | `chronoService:8087/chrono/` | **manual test only** — chrono normally self-triggers |
 | `/api/ai/` | `ai-agent:8001/` | **WebSocket upgrade headers** + CORS |
 | `/app/` | `react-ui:80/` | SPA, pure proxy_pass, no-cache, security headers. SPA fallback for client-side routes lives in `react-ui`'s *own* nginx (`react/nginx.conf`), not here — see Gotchas. |
+| `/downloads/` | `nginx/static/downloads/` (baked into this image, `root`, not proxied) | Extension zip + any future PWA-adjacent downloads. `Content-Disposition: attachment` forces a save-as instead of an in-browser render. See [extension/PROTO.md](../extension/PROTO.md). |
 
 **Everything else** (no static MPA left as of 2026-07-24 — see Role):
 
@@ -108,6 +109,7 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 - **Shared Postgres schema across 3 services.** friend/group/connections generate tables into one DB via Hibernate. No migration tool (Flyway/Liquibase). An entity change in one service can conflict with another's tables; startup order + `ddl-auto` decide who wins. Backups are the only safety net (see [backup proto](../backup/PROTO.md)).
 - **Kafka auto-creates topics** (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=true`) — a typo in a producer topic name silently creates a new topic instead of erroring. 3 default partitions, replication 1 (single broker), 7-day retention.
 - **`/api/chrono/` is exposed but shouldn't be used** — it's labeled "manual testing only". chrono runs itself on a schedule; hitting this endpoint fires jobs out of band.
+- **`/downloads/` is the one route that's a real filesystem `root`, not a `proxy_pass`.** Everything else in this file forwards to a service; this one serves `nginx/static/downloads/*` straight off the baked image, same COPY-baked caveat as above — a new/updated file there needs an nginx image rebuild, not just a `git commit`. The extension zip specifically also needs `extension/package.sh` re-run first (see [extension/PROTO.md](../extension/PROTO.md)) since the zip itself is a checked-in artifact, not generated at build time.
 
 ---
 
@@ -121,6 +123,7 @@ To change any public path: edit `nginx/nginx.conf` and rebuild the nginx image (
 | Upstream target (service moved/renamed) | `nginx.conf` `upstream {}` block (uses `container_name`) |
 | Upload size / timeouts | `nginx.conf` `client_max_body_size` (100M), `proxy_*_timeout` (300s) |
 | React SPA mount path | `nginx.conf` `location /app/` |
+| Downloadable files (extension zip, etc.) | `nginx/static/downloads/` + `nginx.conf` `location /downloads/`, rebuild nginx image |
 | Timezone for all services | `.env` `HOST_TIMEZONE` |
 | DB credentials/URL (all Spring services) | `docker-compose.yml` `SPRING_DATASOURCE_*` |
 | AI agent secrets/model | `ai_agent/.env` |

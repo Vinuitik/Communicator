@@ -30,6 +30,7 @@ index.tsx → App.tsx → <Router basename="/app"><ToastProvider><PageLayout><Ro
   /groups/:id          → GroupDetailsPage (People/Notes/Settings)
   /insights            → InsightsPage    (KPIs, compare chart, needs-attention, AI placeholder)
   /settings            → SettingsPage
+  /get-app             → GetAppPage      (install as PWA + browser extension download)
 ```
 
 Old routes still registered as redirects (bookmarks land somewhere real, nothing links to them anymore): `/calendar`→`/`, `/analytics`→`/insights`, `/friends/:id/talked|knowledge|social`→Profile, `/friends/:id/fileUpload`→Profile (`RedirectToProfile` in App.tsx). To retire a redirect entirely: delete its `<Route>` in App.tsx + the matching `ROUTES.*` key in `utils/constants.ts`.
@@ -121,6 +122,27 @@ Control panel over **two unrelated backend services** — not touched by the red
 
 No shared organism reuse here — mode-radio cards, provider-key rows, backup cards are one-off layouts local to `SettingsPage.tsx` behind a small local `Card` wrapper.
 
+## Get the app — PWA + extension (added 2026-07-30)
+
+Files: public/manifest.json, public/service-worker.js, src/pwa/{registerSW,installPrompt}.ts, pages/GetAppPage.tsx, ../../extension/ (separate module, see [extension/PROTO.md](../../extension/PROTO.md))
+
+```
+index.tsx → registerServiceWorker() (registerSW.ts) + import './pwa/installPrompt' (side-effect:
+            captures the browser's beforeinstallprompt event before GetAppPage ever mounts)
+GetAppPage → "Install as app" card    → installPrompt.promptInstall() → native browser install
+           → "Browser extension" card → <a href="/downloads/communicator-extension.zip" download>
+                                          (absolute path — nginx `root`, not a react-router route;
+                                          see nginx/PROTO.md's /downloads/ entry)
+```
+
+No offline write queue, no share-target, no IndexedDB outbox — this is a
+straight install-ability + shell-caching PWA, not the full offline-sync port
+some other projects have. `service-worker.js` is hand-written (no Workbox/CRA
+PWA template): app-shell (`/app/`, `/app/index.html`, `/app/manifest.json`)
+cached on install; CRA's hashed `static/js`/`static/css` stale-while-revalidate
+at runtime; `/api/fileRepository/...` (friend photos/files) cache-first since
+uploaded media doesn't change in place.
+
 ## Seams
 
 **Outbound:** browser → main nginx `/api/friend/...`, `/api/groups/...`, `/api/ai/...`, `/backup/...` → `communicator-app:8080` (Friend/Groups/Backup) or `ai_agent` (AI). Relative `/api/...` is correct since the SPA is always reached through `/app/` on the same origin — see `services/api/config.ts`.
@@ -142,6 +164,8 @@ No shared organism reuse here — mode-radio cards, provider-key rows, backup ca
 - **No state manager / data-fetching lib** — each page manages its own `useState`/`useEffect` fetch. Revisit if pages ever need to share server state (e.g. a friend-count badge in the nav).
 - **`FriendService.findById` (Java) returns a blank `new Friend()` (id == null) for a missing id, not null.** Check `.getId() == null`, not `== null`, anywhere this method is used to decide "found vs not."
 - **Insights' "Talked this month" is N+1 network calls** (one `getFriendAnalytics` per friend, scoped to the current month) — no aggregate backend endpoint exists. Acceptable at this app's personal-CRM scale (dozens of friends, one page load); would need a real aggregate endpoint before this app could ever support more than that.
+- **Service workers require a secure context** (real HTTPS or `localhost`) — `registerServiceWorker()` no-ops silently on the plain-http `:8090` Cloudflare-tunnel-less origin everywhere except `localhost`. Install/offline-caching only actually works over the tunnel domain (real cert) or local dev.
+- **The SW's scope and cache paths are hardcoded to `/app/`**, matching `homepage`/`basename` above — if that prefix is ever dropped (see the nginx PROTO's "interim cutover" note), `service-worker.js`'s `SHELL_URLS` and `isAppIcon`/`isBuildAsset` path checks need updating in lockstep, not just the router.
 - **`avatarColor(id)`** (`utils/avatar.ts`) is the one deterministic-color source reused everywhere a per-entity color is needed without real data (friend initials tiles, Insights compare-chart lines, Groups' color tiles) — a fixed 8-color palette keyed by `id % 8`, not a design field on any entity.
 
 ## Change Index
@@ -167,5 +191,9 @@ No shared organism reuse here — mode-radio cards, provider-key rows, backup ca
 | Social/contact links CRUD | `SocialController` (note lowercase `url` wire key despite Java field `URL`), `services/api/friendService.ts` social functions, `components/organisms/SocialsPanel` |
 | Confirm/Toast UI | `components/molecules/{ConfirmDialog,Toast}` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |
+| PWA installability (manifest, icons, theme color) | `public/manifest.json`, `public/index.html` `<link rel="manifest">` |
+| Service worker caching rules | `public/service-worker.js` (`SHELL_URLS`, `isMedia`/`isBuildAsset`/`isAppIcon`) |
+| Install-prompt button behavior | `src/pwa/installPrompt.ts`, `components/pages/GetAppPage.tsx` |
+| Extension download link/zip | `components/pages/GetAppPage.tsx` (`EXTENSION_ZIP`), [extension/PROTO.md](../../extension/PROTO.md) |
 | SPA client-route fallback | `react/nginx.conf` (react-ui's own nginx) |
 | Build/serve | `react/Dockerfile` (CRA build → nginx:alpine), rebuild `react-ui` image to deploy |
