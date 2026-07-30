@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import coommunicator.connections.Connections.ConnectionsEntities.Connection;
+import coommunicator.connections.Connections.ConnectionsEntities.ConnectionType;
 import coommunicator.connections.Connections.ConnectionsEntities.ConnectionsKnowledge;
 import coommunicator.connections.Connections.ConnectionService.ConnectionKnowledgeService;
 import coommunicator.connections.Connections.ConnectionService.ConnectionPermissionService;
@@ -56,6 +57,21 @@ public class ConnectionsController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/type/{type}")
+    public ResponseEntity<Map<String, Object>> listConnectionsByType(@PathVariable String type) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            ConnectionType connectionType = ConnectionType.valueOf(type.toUpperCase());
+            response.put("success", true);
+            response.put("connections", connectionService.getByType(connectionType));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            response.put("success", false);
+            response.put("message", "Unknown connection type: " + type);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createConnection(@RequestBody Map<String, Object> body) {
         Map<String, Object> response = new HashMap<>();
@@ -63,8 +79,12 @@ public class ConnectionsController {
             Long friend1Id = Long.valueOf(String.valueOf(body.get("friend1Id")));
             Long friend2Id = Long.valueOf(String.valueOf(body.get("friend2Id")));
             String description = (String) body.get("description");
+            Object typeValue = body.get("type");
+            ConnectionType type = typeValue == null
+                    ? null
+                    : ConnectionType.valueOf(String.valueOf(typeValue).toUpperCase());
 
-            Connection saved = connectionService.create(friend1Id, friend2Id, description);
+            Connection saved = connectionService.create(friend1Id, friend2Id, description, type);
             response.put("success", true);
             response.put("message", "Connection created successfully!");
             response.put("connection", saved);

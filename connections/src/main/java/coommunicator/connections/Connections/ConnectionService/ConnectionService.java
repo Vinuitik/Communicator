@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import coommunicator.connections.Connections.ConnectionsEntities.Connection;
 import coommunicator.connections.Connections.ConnectionsEntities.ConnectionId;
+import coommunicator.connections.Connections.ConnectionsEntities.ConnectionType;
 import coommunicator.connections.Connections.ConnectionsRepositories.ConnectionRepository;
 
 import jakarta.transaction.Transactional;
@@ -42,8 +43,12 @@ public class ConnectionService {
         return connectionRepository.findById(idFor(friendAId, friendBId));
     }
 
+    public List<Connection> getByType(ConnectionType type) {
+        return connectionRepository.findByType(type);
+    }
+
     @Transactional
-    public Connection create(Long friendAId, Long friendBId, String description) {
+    public Connection create(Long friendAId, Long friendBId, String description, ConnectionType type) {
         if (friendAId.equals(friendBId)) {
             throw new IllegalArgumentException("A connection needs two different friends.");
         }
@@ -53,6 +58,7 @@ public class ConnectionService {
         }
         Connection connection = new Connection(friendAId, friendBId);
         connection.setDescription(description);
+        connection.setType(type);
         return connectionRepository.save(connection);
     }
 

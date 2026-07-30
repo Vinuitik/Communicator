@@ -21,8 +21,12 @@ public class Connection {
 
     @EmbeddedId
     private ConnectionId id;
-    
+
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private ConnectionType type;
 
     @OneToMany(mappedBy = "connection",cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
