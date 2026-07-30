@@ -2,7 +2,7 @@
 
 > **Proto, not a flow.** The user-facing "generate a friend's knowledge summary" and "chat about a friend" pipelines are in [flows/](../flows/). This maps the internals + the many external seams (host-wrapper/Ollama, embedder, Postgres/ParadeDB, Redis, MCP, friend).
 
-Files: main.py, routers/{chat,knowledge,settings}.py, services/{agent,knowledge,fact,fact_validation,chunking,embedding,search,friend_api,knowledge_cache,mcp,encryption}_service.py, services/host_wrapper_chat_model.py, repositories/{postgres,redis,fact,llm_settings}_repository.py, db/schema.sql, prompts/{prompt_manager,summary_prompt_service}.py, config/settings.py (+ config/config.yaml), dependencies/deps.py
+Files: main.py, routers/{chat,knowledge,settings}.py, services/{agent,knowledge,fact,fact_validation,chunking,embedding,search,friend_api,knowledge_cache,mcp,encryption}_service.py, services/host_wrapper_chat_model.py, services/planners/base.py, repositories/{postgres,redis,fact,llm_settings}_repository.py, db/schema.sql, prompts/{prompt_manager,summary_prompt_service}.py, config/settings.py (+ config/config.yaml), dependencies/deps.py
 
 ## Role
 
@@ -109,3 +109,4 @@ The **AI brain**. FastAPI service, internal port **8001** (container `ai-agent`)
 | Chat agent behaviour / tool-call prompt | `AgentService._create_agent` (`_SYSTEM_PROMPT`/`_HUMAN_PROMPT`, `max_iterations`) |
 | Chat WS streaming/states/traces | `AgentService.stream_message` (astream_events v2) + `routers/chat.py _build_messages` |
 | Public route (+WebSocket) | `nginx/nginx.conf location /api/ai/` |
+| Planner harness (extract→solve for restaurant/gift/cost-split planners) | [services/planners/PROTO.md](services/planners/PROTO.md) |
