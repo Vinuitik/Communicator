@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Obsidian Optimizer — Send to Learn</title>
+  <style>
+    :root {
+      --page: #08070c; --surface: #0e0d15; --card: #16141f;
+      --text: #eceaf3; --text-2: #9a93ad; --muted: #5c5670;
+      --accent: #7c5cff; --accent-soft: #a68dff;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--page); color: var(--text);
+      font-family: system-ui, 'DM Sans', sans-serif; line-height: 1.6;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 56px 24px 80px; }
+    .logo { font-size: 40px; color: var(--accent); }
+    h1 { font-size: 28px; margin: 12px 0 4px; }
+    .sub { color: var(--text-2); margin: 0 0 32px; font-size: 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 22px; margin: 16px 0;
+    }
+    .card h2 { font-size: 17px; margin: 0 0 8px; }
+    .card p, .card li { color: var(--text-2); margin: 4px 0; }
+    ol { padding-left: 20px; } li { margin: 6px 0; }
+    kbd {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 1px 7px; font-size: 13px; color: var(--text);
+    }
+    .accent { color: var(--accent-soft); }
+    .pin { font-size: 14px; }
+    code { color: var(--accent-soft); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">◆</div>
+    <h1>Send to Learn</h1>
+    <p class="sub">Capture anything worth reviewing — without opening the app.</p>
+
+    <div class="card">
+      <h2>1 · Pin the icon so it's always one click away</h2>
+      <p class="pin">Browsers can't pin it for you, so:</p>
+      <ol>
+        <li><strong>Chrome / Edge / Brave:</strong> click the puzzle-piece 🧩 in the toolbar → find <span class="accent">Obsidian Optimizer</span> → click the pin 📌.</li>
+        <li><strong>Firefox:</strong> right-click the toolbar → Customize, or click the extensions icon and pin it.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>2 · Sign in</h2>
+      <p>Click the ◆ icon → the gear <span class="accent">⚙</span> → sign in with your ObsidianOptimizer credentials. The API base is already set to <code>https://obsidianoptimizer.uk/api</code>.</p>
+    </div>
+
+    <div class="card">
+      <h2>3 · Capture anything</h2>
+      <p>Open the popup and paste — or right-click any selection, link, or page and choose <span class="accent">“Send to Learn”</span>. The extension figures out the rest:</p>
+      <ul>
+        <li>📝 <strong>Plain text / markdown</strong> → saved as a note for review</li>
+        <li>🔗 <strong>A web page link</strong> → read &amp; turned into notes</li>
+        <li>🎬 <strong>A YouTube / video link</strong> → downloaded to watch offline + notes</li>
+        <li>📎 <strong>A PDF / audio / video link, or a dropped file</strong> → saved to your workspace + notes</li>
+      </ul>
+      <p>Everything lands in the <span class="accent">Learn</span> page — media to watch/read, and generated notes in your Inbox to review, file, and edit.</p>
+    </div>
+  </div>
+</body>
+</html>
