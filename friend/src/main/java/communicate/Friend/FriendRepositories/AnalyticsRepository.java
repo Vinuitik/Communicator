@@ -20,4 +20,16 @@ public interface AnalyticsRepository extends JpaRepository<Analytics, Integer> {
      */
     @Query("SELECT DISTINCT a.friend.id FROM Analytics a WHERE a.friend.id IN :friendIds AND a.date = :date")
     List<Integer> findFriendIdsWithInteractionsOnDate(@Param("friendIds") List<Integer> friendIds, @Param("date") LocalDate date);
+
+    /**
+     * Global bounds for duration minmax normalization (GradeComputationService).
+     * Duration is unbounded/continuous, unlike the closed 3-value star scale,
+     * so its normalization range must come from logged data rather than a
+     * fixed constant.
+     */
+    @Query("SELECT MIN(a.hours) FROM Analytics a WHERE a.hours IS NOT NULL")
+    Double findMinHours();
+
+    @Query("SELECT MAX(a.hours) FROM Analytics a WHERE a.hours IS NOT NULL")
+    Double findMaxHours();
 }
