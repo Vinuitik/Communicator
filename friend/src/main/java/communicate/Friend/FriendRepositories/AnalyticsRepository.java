@@ -32,4 +32,7 @@ public interface AnalyticsRepository extends JpaRepository<Analytics, Integer> {
 
     @Query("SELECT MAX(a.hours) FROM Analytics a WHERE a.hours IS NOT NULL")
     Double findMaxHours();
+
+    /** Full interaction history for one friend, oldest first — FsrsBackfillService's source data. */
+    List<Analytics> findByFriendIdOrderByDateAsc(Integer friendId);
 }
