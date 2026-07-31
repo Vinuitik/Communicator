@@ -20,6 +20,7 @@ export interface Friend {
     averageFrequency?: number;
     averageDuration?: number;
     averageExcitement?: number;
+    averageProximity?: number;
     // Only populated by GET /api/friend/thisWeek (FriendController.getWeekFriends) —
     // computed server-side against the current week's Mon-Sun window, not a stored field.
     isBirthdayThisWeek?: boolean;
@@ -38,6 +39,10 @@ export interface FriendAnalyticsEntry {
     date: string; // ISO date
     experience: string;
     hours: number;
+    // In-person vs remote/online — the 4th EMA visualization signal
+    // (proximity). Omitted/undefined is treated server-side as unknown,
+    // not as remote (see EmaMathService.proximityToNumber).
+    inPerson?: boolean;
 }
 
 // A stored Analytics row as returned by GET /api/friend/analyticsList
@@ -56,6 +61,18 @@ export interface ShortFriend {
     averageFrequency?: number;
     averageDuration?: number;
     averageExcitement?: number;
+    averageProximity?: number;
+}
+
+// Response shape from GET /api/friend/analyticsSeries (FriendAnalyticsController) —
+// server-computed day-by-day EMA walk (AnalyticsService.computeSeries), replacing
+// the client-side recompute utils/analyticsMath.ts used to do from raw analyticsList rows.
+export interface AnalyticsSeries {
+    labels: string[];
+    duration: number[];
+    frequency: number[];
+    intensity: number[];
+    proximity: number[];
 }
 
 // A friend's social/contact link. Mirrors SocialController's responses —

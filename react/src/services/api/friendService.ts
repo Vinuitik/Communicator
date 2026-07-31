@@ -1,4 +1,4 @@
-import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord, Social, SocialPayload, FriendProfileData, MediaPageResponse, PrimaryPhotoResponse, MediaType } from '../../types/api';
+import { Friend, NewFriendPayload, KnowledgeCrudItem, ShortFriend, AnalyticsRecord, AnalyticsSeries, Social, SocialPayload, FriendProfileData, MediaPageResponse, PrimaryPhotoResponse, MediaType } from '../../types/api';
 import { API_BASE } from './config';
 
 const API_URL = API_BASE.FRIEND;
@@ -119,6 +119,17 @@ export const getShortFriendList = async (): Promise<ShortFriend[]> => {
 // LocalDate query params (yyyy-MM-dd), inclusive on both ends server-side.
 export const getFriendAnalytics = async (friendId: number, left: string, right: string): Promise<AnalyticsRecord[]> => {
     const response = await fetch(`${API_URL}/analyticsList?friendId=${friendId}&left=${left}&right=${right}`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
+};
+
+// Server-computed day-by-day EMA series for charts — FriendAnalyticsController.getAnalyticsSeries
+// (AnalyticsService.computeSeries). Replaces the old pattern of fetching raw analyticsList rows
+// and recomputing the EMA walk client-side (utils/analyticsMath.ts).
+export const getFriendAnalyticsSeries = async (friendId: number, left: string, right: string): Promise<AnalyticsSeries> => {
+    const response = await fetch(`${API_URL}/analyticsSeries?friendId=${friendId}&left=${left}&right=${right}`);
     if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
     }

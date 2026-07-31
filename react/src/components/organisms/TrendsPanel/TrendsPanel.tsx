@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SegmentedControl from '../../molecules/SegmentedControl';
-import { getFriendAnalytics } from '../../../services/api/friendService';
-import { computeAnalyticsSeries, ANALYTICS_RANGES as RANGES } from '../../../utils/analyticsMath';
-import { AnalyticsRecord } from '../../../types/api';
+import { getFriendAnalyticsSeries } from '../../../services/api/friendService';
+import { ANALYTICS_RANGES as RANGES } from '../../../utils/analyticsMath';
+import { AnalyticsSeries } from '../../../types/api';
 
 const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -21,13 +21,13 @@ interface TrendsPanelProps {
   onOpenInsights: () => void;
 }
 
-// Per-friend view of Insights (Stage 5) — reuses the exact same EMA pipeline
-// (analyticsMath.ts's computeAnalyticsSeries) the old AnalyticsPage used,
-// just scoped to one friend and rendered as three compact sparkline cards
-// instead of one big Chart.js comparison chart.
+// Per-friend view of Insights (Stage 5) — fetches the server-computed EMA
+// series (AnalyticsService.computeSeries) the old AnalyticsPage used to
+// recompute client-side, scoped to one friend and rendered as compact
+// sparkline cards instead of one big Chart.js comparison chart.
 const TrendsPanel: React.FC<TrendsPanelProps> = ({ friendId, friendName, onOpenInsights }) => {
   const [range, setRange] = useState('6M');
-  const [records, setRecords] = useState<AnalyticsRecord[] | null>(null);
+  const [series, setSeries] = useState<AnalyticsSeries | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const rangeDef = RANGES.find((r) => r.value === range) ?? RANGES[2];
@@ -40,19 +40,19 @@ const TrendsPanel: React.FC<TrendsPanelProps> = ({ friendId, friendName, onOpenI
 
   useEffect(() => {
     let cancelled = false;
-    getFriendAnalytics(friendId, toDateStr(startDate), toDateStr(endDate))
-      .then((data) => { if (!cancelled) setRecords(data); })
+    getFriendAnalyticsSeries(friendId, toDateStr(startDate), toDateStr(endDate))
+      .then((data) => { if (!cancelled) setSeries(data); })
       .catch(() => { if (!cancelled) setError('Not enough data yet'); });
     return () => { cancelled = true; };
   }, [friendId, startDate, endDate]);
 
-  const series = records ? computeAnalyticsSeries(records, toDateStr(startDate), toDateStr(endDate)) : null;
-  const hasData = (records?.length ?? 0) > 0;
+  const hasData = (series?.frequency ?? []).some((v) => v > 0) || (series?.duration ?? []).some((v) => v > 0);
 
   const charts = series && hasData ? [
     { label: 'Duration (hrs)', color: '#14B8A6', values: series.duration },
     { label: 'Frequency', color: '#3B82F6', values: series.frequency },
     { label: 'Intensity', color: '#EC4899', values: series.intensity },
+    { label: 'Proximity', color: '#F5B544', values: series.proximity },
   ] : [];
 
   return (
@@ -81,7 +81,7 @@ const TrendsPanel: React.FC<TrendsPanelProps> = ({ friendId, friendName, onOpenI
           <div className="text-xs text-text-faint mt-1">Log a few chats and trends for {friendName} build up here.</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {charts.map((chart) => {
             const latest = chart.values[chart.values.length - 1] ?? 0;
             return (

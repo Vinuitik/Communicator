@@ -4,19 +4,20 @@ import { Chart, ChartConfiguration } from 'chart.js/auto';
 import Avatar from '../../atoms/Avatar';
 import SegmentedControl from '../../molecules/SegmentedControl';
 import { useToast } from '../../molecules/Toast';
-import { getShortFriendList, getFriendsCount, getFriendsThisWeek, getFriendAnalytics } from '../../../services/api/friendService';
-import { ShortFriend, Friend, AnalyticsRecord } from '../../../types/api';
-import { computeAnalyticsSeries, ANALYTICS_RANGES } from '../../../utils/analyticsMath';
+import { getShortFriendList, getFriendsCount, getFriendsThisWeek, getFriendAnalytics, getFriendAnalyticsSeries } from '../../../services/api/friendService';
+import { ShortFriend, Friend, AnalyticsRecord, AnalyticsSeries } from '../../../types/api';
+import { ANALYTICS_RANGES } from '../../../utils/analyticsMath';
 import { calculateIntensityScore, getDaysDiff, getGradientColor, formatDaysDiff } from '../../../utils/friendMetrics';
 import { avatarColor } from '../../../utils/avatar';
 import { profilePath } from '../../../utils/constants';
 
-type Metric = 'duration' | 'frequency' | 'intensity';
+type Metric = 'duration' | 'frequency' | 'intensity' | 'proximity';
 
 const METRICS: { value: Metric; label: string }[] = [
   { value: 'duration', label: 'Duration' },
   { value: 'frequency', label: 'Frequency' },
   { value: 'intensity', label: 'Intensity' },
+  { value: 'proximity', label: 'Proximity' },
 ];
 
 const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
@@ -79,7 +80,7 @@ const InsightsPage: React.FC = () => {
   const [metric, setMetric] = useState<Metric>('intensity');
   const [range, setRange] = useState('6M');
   const [compareIds, setCompareIds] = useState<number[]>([]);
-  const [compareSeries, setCompareSeries] = useState<Record<number, AnalyticsRecord[]>>({});
+  const [compareSeries, setCompareSeries] = useState<Record<number, AnalyticsSeries>>({});
   const [addOpen, setAddOpen] = useState(false);
 
   const rangeDef = ANALYTICS_RANGES.find((r) => r.value === range) ?? ANALYTICS_RANGES[2];
@@ -114,10 +115,11 @@ const InsightsPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const emptySeries: AnalyticsSeries = { labels: [], duration: [], frequency: [], intensity: [], proximity: [] };
     Promise.all(compareIds.map((id) =>
-      getFriendAnalytics(id, toDateStr(startDate), toDateStr(endDate))
-        .then((records) => [id, records] as const)
-        .catch(() => [id, []] as const),
+      getFriendAnalyticsSeries(id, toDateStr(startDate), toDateStr(endDate))
+        .then((series) => [id, series] as const)
+        .catch(() => [id, emptySeries] as const),
     )).then((pairs) => { if (!cancelled) setCompareSeries(Object.fromEntries(pairs)); });
     return () => { cancelled = true; };
   }, [compareIds, startDate, endDate]);
@@ -131,16 +133,14 @@ const InsightsPage: React.FC = () => {
 
   const chart = useMemo(() => {
     if (compareIds.length === 0) return null;
-    const start = toDateStr(startDate);
-    const end = toDateStr(endDate);
     let labels: string[] = [];
     const datasets = compareIds.map((id) => {
-      const series = computeAnalyticsSeries(compareSeries[id] ?? [], start, end);
-      labels = series.labels;
-      return { label: nameById[id] ?? `#${id}`, color: avatarColor(id), data: series[metric] };
+      const series = compareSeries[id];
+      if (series) labels = series.labels;
+      return { label: nameById[id] ?? `#${id}`, color: avatarColor(id), data: series?.[metric] ?? [] };
     });
     return { labels, datasets };
-  }, [compareIds, compareSeries, metric, startDate, endDate, nameById]);
+  }, [compareIds, compareSeries, metric, nameById]);
 
   const candidateFriends = shortList.filter((f) => !compareIds.includes(f.id));
   const addCompare = (id: number) => { setCompareIds((prev) => [...prev, id]); setAddOpen(false); };
