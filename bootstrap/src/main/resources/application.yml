@@ -84,6 +84,11 @@ resource:
   repository:
     url: ${RESOURCE_REPOSITORY_URL:http://fileRepository:5000}
 
+# FSRS-6 scheduling (friend module, FsrsService) — global default until the
+# design doc's per-friend/role desiredRetention lands (Next Steps #7).
+fsrs:
+  desired-retention: 0.9
+
 # ── chrono (nightly EMA decay + friend sync) ─────────────────────────────────
 chrono:
   schedule: "0 0 0 * * ?"     # daily at midnight
