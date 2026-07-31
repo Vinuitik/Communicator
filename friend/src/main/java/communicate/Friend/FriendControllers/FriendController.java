@@ -60,7 +60,7 @@ public class FriendController {
         List<FriendDTO> result = new ArrayList<>();
         for(Friend f: friends){
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), false) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false) );
         }
         return result;
     }
@@ -81,7 +81,7 @@ public class FriendController {
         }
         FriendDTO dto = new FriendDTO(friend.getId(), friend.getName(), friend.getExperience(), friend.getDateOfBirth(),
                 friend.getPlannedSpeakingTime(), friend.getAverageFrequency(), friend.getAverageDuration(),
-                friend.getAverageExcitement(), false);
+                friend.getAverageExcitement(), friend.getAverageProximity(), false);
         return ResponseEntity.ok(dto);
     }
 
@@ -136,7 +136,7 @@ public class FriendController {
             }
             
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), isBirthdayThisWeek) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), isBirthdayThisWeek) );
         }
         return result;
     }
@@ -290,7 +290,7 @@ public class FriendController {
             Page<Friend> friendsPage = friendService.getFriendsPagedForUI(page, size);
             List<FriendDTO> friends = friendsPage.getContent().stream()
                 .map(f -> new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                        f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), false))
+                                        f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false))
                 .toList();
             return ResponseEntity.ok(friends);
         } catch (Exception e) {
