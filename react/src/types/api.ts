@@ -31,6 +31,9 @@ export interface Friend {
     // is reachable (ExplanationService). Null until the friend's first
     // FSRS-scheduled interaction.
     schedulingExplanation?: string | null;
+    // Leech flag (LeechService): true once actual contact has missed the
+    // predicted due date LEECH_THRESHOLD times in a row.
+    leech?: boolean;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.

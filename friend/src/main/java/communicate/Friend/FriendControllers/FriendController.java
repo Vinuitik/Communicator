@@ -62,7 +62,7 @@ public class FriendController {
         List<FriendDTO> result = new ArrayList<>();
         for(Friend f: friends){
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false, f.getRole(), f.getSchedulingExplanation()) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false, f.getRole(), f.getSchedulingExplanation(), f.getLeech()) );
         }
         return result;
     }
@@ -83,7 +83,7 @@ public class FriendController {
         }
         FriendDTO dto = new FriendDTO(friend.getId(), friend.getName(), friend.getExperience(), friend.getDateOfBirth(),
                 friend.getPlannedSpeakingTime(), friend.getAverageFrequency(), friend.getAverageDuration(),
-                friend.getAverageExcitement(), friend.getAverageProximity(), false, friend.getRole(), friend.getSchedulingExplanation());
+                friend.getAverageExcitement(), friend.getAverageProximity(), false, friend.getRole(), friend.getSchedulingExplanation(), friend.getLeech());
         return ResponseEntity.ok(dto);
     }
 
@@ -138,7 +138,7 @@ public class FriendController {
             }
             
             result.add( new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), isBirthdayThisWeek, f.getRole(), f.getSchedulingExplanation()) );
+                                    f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), isBirthdayThisWeek, f.getRole(), f.getSchedulingExplanation(), f.getLeech()) );
         }
         return result;
     }
@@ -310,7 +310,7 @@ public class FriendController {
             Page<Friend> friendsPage = friendService.getFriendsPagedForUI(page, size);
             List<FriendDTO> friends = friendsPage.getContent().stream()
                 .map(f -> new FriendDTO(f.getId(), f.getName(), f.getExperience(), f.getDateOfBirth(), f.getPlannedSpeakingTime(),
-                                        f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false, f.getRole(), f.getSchedulingExplanation()))
+                                        f.getAverageFrequency(), f.getAverageDuration(), f.getAverageExcitement(), f.getAverageProximity(), false, f.getRole(), f.getSchedulingExplanation(), f.getLeech()))
                 .toList();
             return ResponseEntity.ok(friends);
         } catch (Exception e) {

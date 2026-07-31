@@ -53,6 +53,7 @@ public class FsrsNeglectService {
     private final FriendRepository friendRepository;
     private final FsrsService fsrs;
     private final RoleProperties roleProperties;
+    private final LeechService leechService;
     private final Random random = new Random();
 
     @Transactional
@@ -101,6 +102,9 @@ public class FsrsNeglectService {
         friend.setFsrsDifficulty(lapsed.difficulty());
         friend.setLastInteractionDate(today);
         friend.setPlannedSpeakingTime(newDue);
+        // A neglect lapse only fires because the predicted due date already
+        // passed unmet — always a miss for leech-flagging purposes.
+        leechService.recordMiss(friend);
         friendRepository.save(friend);
     }
 

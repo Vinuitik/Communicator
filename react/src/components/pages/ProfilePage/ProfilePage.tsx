@@ -188,7 +188,17 @@ const ProfilePage: React.FC = () => {
               <Avatar id={friendId} name={friend.name} size={84} rounded="avatar-lg" />
             )}
             <div className="flex-1">
-              <h1 className="m-0 font-display font-bold text-[28px] tracking-tight text-text-primary">{friend.name}</h1>
+              <div className="flex items-center gap-2.5">
+                <h1 className="m-0 font-display font-bold text-[28px] tracking-tight text-text-primary">{friend.name}</h1>
+                {friend.leech && (
+                  <span
+                    title="Actual contact keeps missing the predicted due date — the interval isn't the problem, the rhythm is."
+                    className="text-[10px] font-bold text-bad bg-bad/[.14] px-2 py-0.5 rounded-pill"
+                  >
+                    DRIFTING
+                  </span>
+                )}
+              </div>
               <div className="text-text-muted text-[13.5px] mt-1">
                 {friend.relationshipType || 'Friend'}{profile.dateMet ? ` · Known since ${profile.dateMet}` : ''}
               </div>

@@ -152,6 +152,20 @@ public class Friend {
     @Column(name = "scheduling_explanation", columnDefinition = "TEXT")
     private String schedulingExplanation;
 
+    // Leech-flagging (design doc's "coolest unconsidered version" — Anki's
+    // leech flag for cards you keep failing despite review, applied to
+    // relationships): consecutive count of predicted due dates this friend's
+    // actual contact has missed, whether via a late real interaction or a
+    // nightly neglect lapse. Reset to 0 on an on-time/early interaction. See
+    // LeechService for the increment/reset/threshold logic.
+    @Builder.Default
+    @Column(name = "missed_due_count")
+    private Integer missedDueCount = 0;
+
+    @Builder.Default
+    @Column(name = "leech")
+    private Boolean leech = false;
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);

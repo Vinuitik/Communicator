@@ -39,6 +39,7 @@ public class ReviewService {
     private final GradeComputationService gradeComputation;
     private final RoleProperties roleProperties;
     private final ExplanationService explanationService;
+    private final LeechService leechService;
 
     public LocalDate reviewInteraction(Friend friend, double durationHours, String experience,
                                         Boolean inPerson, LocalDate interactionDate) {
@@ -60,6 +61,14 @@ public class ReviewService {
             double actualElapsed = Math.max(0, ChronoUnit.DAYS.between(lastInteractionDate, interactionDate));
             double rawEffective = actualElapsed / baseInterval;
             bandit.reward(friend.getPendingBanditBucket(), rawEffective, recalled);
+
+            // Leech-flagging (design doc's leech signal): did this interaction
+            // arrive on/before the predicted due date, or after it?
+            if (interactionDate.isAfter(friend.getPlannedSpeakingTime())) {
+                leechService.recordMiss(friend);
+            } else {
+                leechService.recordHit(friend);
+            }
         }
 
         // 2. Pure FSRS state update (the bandit never touches this).

@@ -4,6 +4,6 @@ import java.time.LocalDate;
 
 public record FriendDTO(Integer id, String name, String experience, LocalDate dateOfBirth, LocalDate plannedSpeakingTime,
                        Double averageFrequency, Double averageDuration, Double averageExcitement, Double averageProximity,
-                       Boolean isBirthdayThisWeek, String role, String schedulingExplanation) {
+                       Boolean isBirthdayThisWeek, String role, String schedulingExplanation, Boolean leech) {
 
 }
