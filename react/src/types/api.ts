@@ -24,6 +24,9 @@ export interface Friend {
     // Only populated by GET /api/friend/thisWeek (FriendController.getWeekFriends) —
     // computed server-side against the current week's Mon-Sun window, not a stored field.
     isBirthdayThisWeek?: boolean;
+    // Contact-expectation role -> desiredRetention preset (RoleProperties).
+    // Defaults server-side to "Casual" when never set.
+    role?: string;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
@@ -103,6 +106,7 @@ export interface NewFriendPayload {
     dateOfBirth: string | null;
     analytics: FriendAnalyticsEntry[];
     knowledge: FriendKnowledge[];
+    role?: string;
 }
 
 // Mirrors group/.../GroupEntities/SocialGroup.java (only the fields the

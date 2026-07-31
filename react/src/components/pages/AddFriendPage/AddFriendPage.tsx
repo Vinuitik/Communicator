@@ -35,6 +35,7 @@ const AddFriendPage: React.FC = () => {
           inPerson: values.inPerson,
         }],
         knowledge,
+        role: values.role,
       };
       await addFriend(payload);
       navigate(ROUTES.HOME);

@@ -146,6 +146,7 @@ const ProfilePage: React.FC = () => {
         dateOfBirth: values.dob || null,
         analytics: [],
         knowledge: [],
+        role: values.role,
       };
       await talkedToFriend(friendId, payload);
       setEditOpen(false);
@@ -351,7 +352,7 @@ const ProfilePage: React.FC = () => {
             <h3 className="font-display font-bold text-lg text-text-primary mb-4">Edit details</h3>
             {editError && <p className="mb-3 text-sm text-bad">{editError}</p>}
             <TalkedForm
-              initialValues={{ name: friend.name, experience: friend.experience, hours: '0', dob: friend.dateOfBirth ?? '' }}
+              initialValues={{ name: friend.name, experience: friend.experience, hours: '0', dob: friend.dateOfBirth ?? '', role: friend.role ?? 'Casual' }}
               onSubmit={handleEditSubmit}
               submitting={editSubmitting}
               onCancel={() => setEditOpen(false)}

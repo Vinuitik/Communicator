@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 
 import org.springframework.stereotype.Service;
 
+import communicate.Friend.Config.RoleProperties;
 import communicate.Friend.FriendEntities.Friend;
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +37,7 @@ public class ReviewService {
     private final FsrsService fsrs;
     private final BanditService bandit;
     private final GradeComputationService gradeComputation;
+    private final RoleProperties roleProperties;
 
     public LocalDate reviewInteraction(Friend friend, double durationHours, String experience,
                                         Boolean inPerson, LocalDate interactionDate) {
@@ -74,7 +76,8 @@ public class ReviewService {
 
         // 3. Bandit picks the multiplier for the NEXT interval (applied to
         //    the scheduled date only, never stored FSRS state).
-        int baseIntervalDays = fsrs.intervalDays(state.stability());
+        double desiredRetention = roleProperties.getDesiredRetention(friend.getRole());
+        int baseIntervalDays = fsrs.intervalDays(state.stability(), desiredRetention);
         String bucket = bandit.bucket(state.difficulty(), state.stability());
         double arm = bandit.chooseArm(bucket);
         long scheduledDays = Math.max(1, Math.round(baseIntervalDays * arm));

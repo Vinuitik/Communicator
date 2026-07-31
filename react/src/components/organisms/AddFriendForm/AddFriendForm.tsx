@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../atoms/Input';
+import Select from '../../atoms/Select';
 import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 import SegmentedControl from '../../molecules/SegmentedControl';
+
+// Mirrors RoleProperties' starter presets in application.yml (fsrs.role.desired-retention).
+const ROLE_OPTIONS = [
+  { value: 'Partner', label: 'Partner' },
+  { value: 'Close', label: 'Close friend' },
+  { value: 'Casual', label: 'Casual' },
+  { value: 'Family', label: 'Family' },
+];
 
 // Ported from nginx/static/addFriendForm/addForm.html's #friendForm —
 // restyled per the redesign handoff (Stage 6): "How was the last chat?"
@@ -16,6 +25,7 @@ export interface AddFriendFormValues {
   hours: string; // parsed to float by the caller on submit
   inPerson: boolean;
   dob: string; // yyyy-mm-dd, optional
+  role: string; // contact-expectation role -> desiredRetention preset (RoleProperties)
 }
 
 const INITIAL_VALUES: AddFriendFormValues = {
@@ -25,6 +35,7 @@ const INITIAL_VALUES: AddFriendFormValues = {
   hours: '',
   inPerson: true,
   dob: '',
+  role: 'Casual',
 };
 
 interface AddFriendFormProps {
@@ -73,6 +84,13 @@ const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, can
             onChange={(v) => setValues((prev) => ({ ...prev, inPerson: v === 'in-person' }))}
           />
         </div>
+        <Select
+          label="Role"
+          name="role"
+          options={ROLE_OPTIONS}
+          value={values.role}
+          onChange={(e) => setValues((prev) => ({ ...prev, role: e.target.value }))}
+        />
 
         <button
           type="submit"

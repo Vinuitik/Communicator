@@ -84,10 +84,19 @@ resource:
   repository:
     url: ${RESOURCE_REPOSITORY_URL:http://fileRepository:5000}
 
-# FSRS-6 scheduling (friend module, FsrsService) — global default until the
-# design doc's per-friend/role desiredRetention lands (Next Steps #7).
+# FSRS-6 scheduling (friend module, FsrsService/RoleProperties). Roles
+# resolve to a desiredRetention target (design doc premise 10) — higher
+# means shorter intervals at the same stability ("hard expectations are hard
+# to exceed"). desired-retention (top-level) is the fallback for an unknown
+# or missing role. Starter presets, TBD, retune with real usage.
 fsrs:
   desired-retention: 0.9
+  role:
+    desired-retention:
+      Partner: 0.95
+      Close: 0.9
+      Casual: 0.8
+      Family: 0.85
 
 # ── chrono (nightly EMA decay + friend sync) ─────────────────────────────────
 chrono:

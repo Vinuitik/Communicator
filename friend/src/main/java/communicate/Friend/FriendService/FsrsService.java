@@ -1,6 +1,5 @@
 package communicate.Friend.FriendService;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -38,9 +37,6 @@ public class FsrsService {
 
     private static final double STABILITY_MIN = 0.001;
     private static final int    MAX_INTERVAL_DAYS = 36500;
-
-    @Value("${fsrs.desired-retention:0.9}")
-    private double desiredRetention;
 
     public record FsrsState(double stability, double difficulty) {}
 
@@ -82,8 +78,13 @@ public class FsrsService {
         return Math.pow(1.0 + FACTOR * Math.max(0, elapsedDays) / stability, DECAY);
     }
 
-    /** Days until retrievability decays to desired retention. Always >= 1. */
-    public int intervalDays(double stability) {
+    /**
+     * Days until retrievability decays to desiredRetention. Always >= 1.
+     * desiredRetention is per-friend (design doc premise 10 — a role's
+     * contact-expectation baseline, resolved by RoleProperties), not a
+     * single global constant.
+     */
+    public int intervalDays(double stability, double desiredRetention) {
         double interval = (stability / FACTOR)
             * (Math.pow(desiredRetention, 1.0 / DECAY) - 1.0);
         return (int) Math.min(Math.max(Math.round(interval), 1), MAX_INTERVAL_DAYS);

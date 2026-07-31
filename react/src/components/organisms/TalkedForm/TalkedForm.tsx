@@ -16,12 +16,21 @@ export interface TalkedFormValues {
   experience: string; // '***' | '**' | '*'
   hours: string; // parsed to float by the caller on submit
   dob: string; // yyyy-mm-dd, optional
+  role: string; // contact-expectation role -> desiredRetention preset (RoleProperties)
 }
 
 const EXPERIENCE_OPTIONS = [
   { value: '***', label: 'Great!' },
   { value: '**', label: 'Okay' },
   { value: '*', label: 'Bad' },
+];
+
+// Mirrors RoleProperties' starter presets in application.yml (fsrs.role.desired-retention).
+const ROLE_OPTIONS = [
+  { value: 'Partner', label: 'Partner' },
+  { value: 'Close', label: 'Close friend' },
+  { value: 'Casual', label: 'Casual' },
+  { value: 'Family', label: 'Family' },
 ];
 
 interface TalkedFormProps {
@@ -61,6 +70,10 @@ const TalkedForm: React.FC<TalkedFormProps> = ({ initialValues, onSubmit, submit
       <FormField
         label="Date of Birth" name="dob" type="date"
         value={values.dob} onChange={handleChange('dob')}
+      />
+      <FormField
+        label="Role" name="role" type="select" options={ROLE_OPTIONS}
+        value={values.role} onChange={handleChange('role')} required
       />
       <div className="flex gap-2.5 mt-1">
         <button

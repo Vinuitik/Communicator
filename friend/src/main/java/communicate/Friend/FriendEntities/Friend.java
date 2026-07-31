@@ -134,6 +134,17 @@ public class Friend {
     @Column(name = "pending_bandit_bucket")
     private String pendingBanditBucket;
 
+    // Contact-expectation role (design doc premise 10) — resolves to a
+    // desiredRetention target via RoleProperties, replacing FSRS's single
+    // global default with a per-friend one (a partner's daily-contact norm
+    // vs. a casual friend's quarterly comfort). Free string, not an enum, so
+    // new presets can be added in application.yml without a code change;
+    // "Casual" is the sensible default for friends who never get one
+    // assigned (design doc Open Questions).
+    @Builder.Default
+    @Column(name = "role")
+    private String role = "Casual";
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);
