@@ -198,6 +198,9 @@ const ProfilePage: React.FC = () => {
                 <div><span className="text-text-faint">Intensity</span> <b style={{ color: hasIntensity ? getIntensityGradientColor(intensityScore) : '#5A5468' }}>{hasIntensity ? intensityScore.toFixed(1) : '—'}</b></div>
                 <div><span className="text-text-faint">Birthday</span> <b className={friend.dateOfBirth ? 'text-text-emphasis' : 'text-text-faint'}>{friend.dateOfBirth || 'Not set'}</b></div>
               </div>
+              {friend.schedulingExplanation && (
+                <div className="mt-2 text-[12px] text-text-faint italic">{friend.schedulingExplanation}</div>
+              )}
             </div>
             <div className="flex flex-col gap-2 self-start">
               <button

@@ -61,6 +61,12 @@ file:
   repository:
     service:
       url: ${FILE_REPOSITORY_SERVICE_URL:http://fileRepository:5000}
+# ExplanationService's target for scheduling-explanation polish — same
+# POST /complete contract ai_agent's HostWrapperChatModel uses (see
+# host-wrapper/main.py). Reuses the friend module's "webTemplate" WebClient
+# bean with an absolute URI (overrides its fileRepository baseUrl).
+host-wrapper:
+  url: ${HOST_WRAPPER_URL:http://host-wrapper:5011}
 # EMA coefficients — single source for both the real-time per-interaction
 # update path (newData) and the no-interaction decay path (decay), the
 # latter used by chrono's nightly job AND the friend module's own

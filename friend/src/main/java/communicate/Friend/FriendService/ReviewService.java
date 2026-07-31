@@ -38,6 +38,7 @@ public class ReviewService {
     private final BanditService bandit;
     private final GradeComputationService gradeComputation;
     private final RoleProperties roleProperties;
+    private final ExplanationService explanationService;
 
     public LocalDate reviewInteraction(Friend friend, double durationHours, String experience,
                                         Boolean inPerson, LocalDate interactionDate) {
@@ -88,6 +89,11 @@ public class ReviewService {
         friend.setLastInteractionDate(interactionDate);
         friend.setPendingBanditArm(arm);
         friend.setPendingBanditBucket(bucket);
+
+        // 4. Explanation surface (design doc Next Steps #9) — template
+        //    always, LLM-polished when host-wrapper is reachable.
+        String template = explanationService.explainTemplate(friend, due, grade, arm, inPerson);
+        friend.setSchedulingExplanation(explanationService.explainViaLlm(template));
 
         return due;
     }

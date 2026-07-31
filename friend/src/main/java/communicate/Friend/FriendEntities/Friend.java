@@ -145,6 +145,13 @@ public class Friend {
     @Column(name = "role")
     private String role = "Casual";
 
+    // Human-readable "why this due date" surfaced in the UI next to
+    // plannedSpeakingTime (design doc Next Steps #9 / Success Criteria).
+    // Template-generated always; LLM-polished via host-wrapper when
+    // available, template text otherwise (see ExplanationService).
+    @Column(name = "scheduling_explanation", columnDefinition = "TEXT")
+    private String schedulingExplanation;
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);

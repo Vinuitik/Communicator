@@ -27,6 +27,10 @@ export interface Friend {
     // Contact-expectation role -> desiredRetention preset (RoleProperties).
     // Defaults server-side to "Casual" when never set.
     role?: string;
+    // "Why this due date" — template-generated, LLM-polished when host-wrapper
+    // is reachable (ExplanationService). Null until the friend's first
+    // FSRS-scheduled interaction.
+    schedulingExplanation?: string | null;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
