@@ -3,6 +3,7 @@ import Avatar from '../../atoms/Avatar';
 import Input from '../../atoms/Input';
 import Textarea from '../../atoms/Textarea';
 import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
+import SegmentedControl from '../../molecules/SegmentedControl';
 import { useToast } from '../../molecules/Toast';
 import { Friend, NewFriendPayload } from '../../../types/api';
 import { talkedToFriend } from '../../../services/api/friendService';
@@ -16,14 +17,14 @@ interface QuickLogModalProps {
 
 // Replaces the full-page /talked form for the common case (backlog: a
 // lighter-weight log-a-chat flow). There's no dedicated lightweight backend
-// endpoint for this (confirmed — Analytics only has experience/date/hours,
-// no rating/note fields), so this still calls the existing talkedToFriend
-// PUT with a minimal payload built from the friend already in hand — no
-// extra GET needed. The "note" goes into knowledge, same as the full form.
+// endpoint for this, so this still calls the existing talkedToFriend PUT
+// with a minimal payload built from the friend already in hand — no extra
+// GET needed. The "note" goes into knowledge, same as the full form.
 const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved }) => {
   const { showToast } = useToast();
   const [rating, setRating] = useState('***');
   const [hours, setHours] = useState('1');
+  const [inPerson, setInPerson] = useState(true);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
         plannedSpeakingTime: today,
         experience: rating,
         dateOfBirth: friend.dateOfBirth ?? null,
-        analytics: [{ date: today, experience: rating, hours: parseFloat(hours) || 0 }],
+        analytics: [{ date: today, experience: rating, hours: parseFloat(hours) || 0, inPerson }],
         knowledge: note.trim() ? [{ fact: note.trim(), importance: 1 }] : [],
       };
       await talkedToFriend(friend.id, payload);
@@ -89,6 +90,15 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
             <div className="mb-1.5 text-xs font-semibold text-text-muted">When</div>
             <div className="bg-input-2 border border-white/10 rounded-input px-3.5 py-2.5 text-sm text-text-emphasis">Today</div>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <div className="mb-1.5 text-xs font-semibold text-text-muted">How</div>
+          <SegmentedControl
+            options={[{ value: 'in-person', label: 'In person' }, { value: 'remote', label: 'Remote' }]}
+            value={inPerson ? 'in-person' : 'remote'}
+            onChange={(v) => setInPerson(v === 'in-person')}
+          />
         </div>
 
         <Textarea

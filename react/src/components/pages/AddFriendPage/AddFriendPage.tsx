@@ -32,6 +32,7 @@ const AddFriendPage: React.FC = () => {
           date: values.lastSpoken,
           experience: values.experience,
           hours: parseFloat(values.hours),
+          inPerson: values.inPerson,
         }],
         knowledge,
       };

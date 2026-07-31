@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../atoms/Input';
 import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
+import SegmentedControl from '../../molecules/SegmentedControl';
 
 // Ported from nginx/static/addFriendForm/addForm.html's #friendForm —
 // restyled per the redesign handoff (Stage 6): "How was the last chat?"
@@ -13,6 +14,7 @@ export interface AddFriendFormValues {
   lastSpoken: string; // yyyy-mm-dd
   experience: string; // '***' | '**' | '*'
   hours: string; // parsed to float by the caller on submit
+  inPerson: boolean;
   dob: string; // yyyy-mm-dd, optional
 }
 
@@ -21,6 +23,7 @@ const INITIAL_VALUES: AddFriendFormValues = {
   lastSpoken: '',
   experience: EXPERIENCE_RATINGS[0].value,
   hours: '',
+  inPerson: true,
   dob: '',
 };
 
@@ -62,6 +65,14 @@ const AddFriendForm: React.FC<AddFriendFormProps> = ({ onSubmit, submitting, can
           <RatingPicker options={EXPERIENCE_RATINGS} value={values.experience} onChange={(v) => setValues((prev) => ({ ...prev, experience: v }))} />
         </div>
         <Input label="Hours spoken" name="hours" type="number" min={0} max={24} step={0.01} value={values.hours} onChange={handleChange('hours')} required />
+        <div>
+          <div className="mb-1.5 text-xs font-semibold text-text-muted">How</div>
+          <SegmentedControl
+            options={[{ value: 'in-person', label: 'In person' }, { value: 'remote', label: 'Remote' }]}
+            value={values.inPerson ? 'in-person' : 'remote'}
+            onChange={(v) => setValues((prev) => ({ ...prev, inPerson: v === 'in-person' }))}
+          />
+        </div>
 
         <button
           type="submit"
