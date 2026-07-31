@@ -15,6 +15,7 @@ import communicate.Friend.FriendService.AnalyticsService;
 import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.OutreachService;
 import communicate.Friend.FriendService.ReviewService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -53,6 +54,7 @@ public class FriendController {
     private final AnalyticsService analyticsService;
     private final FileMetaDataReadService fileMetaDataReadService;
     private final ReviewService reviewService;
+    private final OutreachService outreachService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -85,6 +87,24 @@ public class FriendController {
                 friend.getPlannedSpeakingTime(), friend.getAverageFrequency(), friend.getAverageDuration(),
                 friend.getAverageExcitement(), friend.getAverageProximity(), false, friend.getRole(), friend.getSchedulingExplanation(), friend.getLeech());
         return ResponseEntity.ok(dto);
+    }
+
+    // (Stretch, design doc Next Steps #11) On-demand LLM outreach-message
+    // draft via host-wrapper — an explicit user action (button click), not
+    // computed automatically like schedulingExplanation. 503 on failure
+    // rather than a fabricated fallback message.
+    @GetMapping("/{id}/outreach-draft")
+    public ResponseEntity<Map<String, String>> getOutreachDraft(@PathVariable Integer id) {
+        Friend friend = friendService.findById(id);
+        if (friend.getId() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        String draft = outreachService.draftOutreachMessage(friend);
+        if (draft == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "Outreach drafting is unavailable right now."));
+        }
+        return ResponseEntity.ok(Map.of("draft", draft));
     }
 
     // Added for the profile.html SPA port — WebController.profile's Thymeleaf

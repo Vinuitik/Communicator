@@ -64,6 +64,18 @@ export const talkedToFriend = async (friendId: number, payload: NewFriendPayload
     }
 };
 
+// Stretch feature (design doc Next Steps #11) — on-demand LLM outreach draft.
+// Throws with the server's error text (e.g. "Outreach drafting is unavailable
+// right now.") on a 503, which the caller surfaces as a toast.
+export const getOutreachDraft = async (friendId: number): Promise<string> => {
+    const response = await fetch(`${API_URL}/${friendId}/outreach-draft`);
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to draft an outreach message.');
+    }
+    return data.draft;
+};
+
 export const removeFriend = async (friendId: number): Promise<void> => {
     const response = await fetch(`${API_URL}/deleteFriend/${friendId}`, { method: 'DELETE' });
     if (!response.ok) {

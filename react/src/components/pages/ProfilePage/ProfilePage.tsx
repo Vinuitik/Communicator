@@ -14,7 +14,7 @@ import TalkedForm, { TalkedFormValues } from '../../organisms/TalkedForm';
 import { useToast } from '../../molecules/Toast';
 import {
   getFriendProfileData, getFriend, getFriendAnalytics, getFriendGroupIds,
-  getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem, talkedToFriend,
+  getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem, talkedToFriend, getOutreachDraft,
 } from '../../../services/api/friendService';
 import { getGroups } from '../../../services/api/groupService';
 import { FriendProfileData, Friend, AnalyticsRecord, Group, KnowledgeCrudItem, NewFriendPayload } from '../../../types/api';
@@ -85,6 +85,11 @@ const ProfilePage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Stretch feature (design doc Next Steps #11) — on-demand only, never
+  // fetched automatically, so a profile visit never triggers an LLM call.
+  const [outreachDraft, setOutreachDraft] = useState<string | null>(null);
+  const [outreachLoading, setOutreachLoading] = useState(false);
 
   const loadFriend = useCallback(async () => {
     setLoading(true);
@@ -159,6 +164,17 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleDraftOutreach = async () => {
+    setOutreachLoading(true);
+    try {
+      setOutreachDraft(await getOutreachDraft(friendId));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to draft an outreach message.');
+    } finally {
+      setOutreachLoading(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center p-16 text-text-muted">Loading…</div>;
   }
@@ -211,6 +227,18 @@ const ProfilePage: React.FC = () => {
               {friend.schedulingExplanation && (
                 <div className="mt-2 text-[12px] text-text-faint italic">{friend.schedulingExplanation}</div>
               )}
+              {outreachDraft && (
+                <div className="mt-2.5 max-w-[420px] bg-input border border-white/10 rounded-input px-3.5 py-2.5 text-[12.5px] text-text-emphasis">
+                  {outreachDraft}
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(outreachDraft).then(() => showToast('Copied'))}
+                    className="block mt-1.5 border-none bg-transparent text-accent text-[11.5px] font-semibold p-0 hover:underline"
+                  >
+                    Copy
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2 self-start">
               <button
@@ -228,6 +256,15 @@ const ProfilePage: React.FC = () => {
                 className="border border-white/10 bg-input text-text-emphasis font-semibold text-[12.5px] rounded-input hover:bg-input-2 transition-colors"
               >
                 Edit details
+              </button>
+              <button
+                type="button"
+                onClick={handleDraftOutreach}
+                disabled={outreachLoading}
+                style={{ padding: '9px 18px' }}
+                className="border border-white/10 bg-input text-text-emphasis font-semibold text-[12.5px] rounded-input hover:bg-input-2 disabled:opacity-50 transition-colors"
+              >
+                {outreachLoading ? 'Drafting…' : '✍️ Draft message'}
               </button>
             </div>
           </div>
