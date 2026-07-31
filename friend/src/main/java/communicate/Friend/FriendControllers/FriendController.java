@@ -15,6 +15,7 @@ import communicate.Friend.FriendService.AnalyticsService;
 import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.ReviewService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class FriendController {
     private final FriendKnowledgeService knowledgeService;
     private final AnalyticsService analyticsService;
     private final FileMetaDataReadService fileMetaDataReadService;
+    private final ReviewService reviewService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -145,7 +147,13 @@ public class FriendController {
     public ResponseEntity<String> addFriend(@Valid @RequestBody Friend friend) { // chaned here
         try {
 
-            LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience(), friend.getAnalytics().get(0).getDate());
+            // FSRS-interval x bandit-arm replaces the fixed star-rating ladder
+            // (design doc Next Steps #6) — graded on the friend's first logged
+            // interaction, same as ReviewService's "existing == null" first-review case.
+            Analytics firstAnalytics = friend.getAnalytics().get(0);
+            LocalDate plannedTime = reviewService.reviewInteraction(friend,
+                firstAnalytics.getHours() != null ? firstAnalytics.getHours() : 0.0,
+                friend.getExperience(), firstAnalytics.getInPerson(), firstAnalytics.getDate());
             friend.setPlannedSpeakingTime(plannedTime);
 
             friendService.save(friend);
@@ -184,15 +192,27 @@ public class FriendController {
         try {
             // Call the service method to update the friend
 
-            LocalDate plannedTime = friendService.setMeetingTime(friend.getExperience(), LocalDate.now());
-            friend.setPlannedSpeakingTime(plannedTime);
-
-
             List<Analytics> analytics = friend.getAnalytics();
             List<FriendKnowledge> knowledges = friend.getKnowledge();
-            
 
             friend = friendService.updateFriend(id, friend);
+
+            // FSRS-interval x bandit-arm replaces the fixed star-rating ladder
+            // (design doc Next Steps #6), graded on the newly logged interaction.
+            // reviewInteraction needs the friend's PERSISTED scheduling state
+            // (fsrsStability/lastInteractionDate/pendingBanditArm/...), which is
+            // why this runs on the entity updateFriend() just merged and returned,
+            // not the sparse incoming request body. No analytics logged this call
+            // -> nothing to grade, leave the existing due date as-is.
+            if (analytics != null && !analytics.isEmpty()) {
+                Analytics logged = analytics.get(0);
+                LocalDate plannedTime = reviewService.reviewInteraction(friend,
+                    logged.getHours() != null ? logged.getHours() : 0.0,
+                    friend.getExperience(), logged.getInPerson(), LocalDate.now());
+                friend.setPlannedSpeakingTime(plannedTime);
+                friendService.save(friend);
+            }
+
             analyticsService.saveAll(analytics,id);
             knowledgeService.saveAll(knowledges,id);
 

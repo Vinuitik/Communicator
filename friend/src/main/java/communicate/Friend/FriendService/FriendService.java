@@ -208,25 +208,6 @@ public class FriendService {
         return date;
     }
 
-    public LocalDate setMeetingTime(String stars, LocalDate date){
-        LocalDate meetingDate = LocalDate.now();
-        switch (stars) {
-            case "*":
-                meetingDate = date.plusDays(1);
-                break;
-
-            case "**":
-                meetingDate = date.plusWeeks(1);
-                break;
-        
-            default:
-                meetingDate = date.plusMonths(1);
-                break;
-        }
-
-        return meetingDate;
-        
-    }
     @Transactional
     public void setPrimaryPhoto(Integer photoId, Integer friendId) {
         Friend friend = findById(friendId);
