@@ -6,6 +6,7 @@ import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendService.AnalyticsService;
 import communicate.Friend.FriendService.EmaMathService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.FsrsNeglectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,6 +28,7 @@ public class ChronoJobService {
     private final ChronoProperties chronoProperties;
     private final EmaMathService emaMathService;
     private final EmaProperties emaProperties;
+    private final FsrsNeglectService fsrsNeglectService;
 
     /**
      * Runs every day at midnight to apply decay for friends who didn't have interactions yesterday
@@ -81,11 +83,20 @@ public class ChronoJobService {
                 log.debug("Page {} complete: {} friends processed", page + 1, friends.size());
             }
             
-            log.info("Daily decay process completed: {} friends processed, {} decayed", 
+            log.info("Daily decay process completed: {} friends processed, {} decayed",
                     processedFriends, decayedFriends);
-            
+
         } catch (Exception e) {
             log.error("Error during daily decay process", e);
+        }
+
+        // Same nightly cron slot, separate concern (design doc Next Steps #8):
+        // FSRS/bandit scheduling state's chronic-neglect lapse, independent of
+        // the EMA visualization decay above.
+        try {
+            fsrsNeglectService.applyNightlyLapse();
+        } catch (Exception e) {
+            log.error("Error during FSRS neglect lapse process", e);
         }
     }
 
