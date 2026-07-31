@@ -259,14 +259,15 @@ public class FriendService {
 
     // Update friend's moving averages (called by chrono service)
     @Transactional
-    public void updateMovingAverages(Integer friendId, Double averageFrequency, 
-                                   Double averageDuration, Double averageExcitement) {
+    public void updateMovingAverages(Integer friendId, Double averageFrequency,
+                                   Double averageDuration, Double averageExcitement, Double averageProximity) {
         Optional<Friend> friendOpt = friendRepository.findById(friendId);
         if (friendOpt.isPresent()) {
             Friend friend = friendOpt.get();
             friend.setAverageFrequency(averageFrequency);
             friend.setAverageDuration(averageDuration);
             friend.setAverageExcitement(averageExcitement);
+            friend.setAverageProximity(averageProximity);
             friendRepository.save(friend);
         } else {
             throw new jakarta.persistence.EntityNotFoundException("Friend with id " + friendId + " not found");
@@ -287,6 +288,7 @@ public class FriendService {
                     friend.getAverageFrequency(),
                     friend.getAverageDuration(),
                     friend.getAverageExcitement(),
+                    friend.getAverageProximity(),
                     friend.getExperience()
                 ))
                 .toList();

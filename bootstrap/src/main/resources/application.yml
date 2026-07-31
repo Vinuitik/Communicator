@@ -61,13 +61,22 @@ file:
   repository:
     service:
       url: ${FILE_REPOSITORY_SERVICE_URL:http://fileRepository:5000}
-# EMA coefficients for real-time upward updates (new interaction data).
+# EMA coefficients — single source for both the real-time per-interaction
+# update path (newData) and the no-interaction decay path (decay), the
+# latter used by chrono's nightly job AND the friend module's own
+# analytics-series endpoint (chrono.coefficients.decay used to hold a
+# second copy of this same table; consolidated here since the friend
+# module can't depend on chrono's config).
 ema:
   coefficients:
     newData:
       excellent: 0.6    # *** rating
       good: 0.7         # ** rating
       poor: 0.8         # * rating
+    decay:
+      excellent: 0.07   # *** rating - very slow decay
+      good: 0.2         # ** rating
+      poor: 0.57        # * rating - faster decay
 
 # ── group ───────────────────────────────────────────────────────────────────
 # Base URL group's WebClient (bean "webClient") uses to reach fileRepository.
@@ -77,11 +86,6 @@ resource:
 
 # ── chrono (nightly EMA decay + friend sync) ─────────────────────────────────
 chrono:
-  coefficients:
-    decay:
-      excellent: 0.07   # *** rating - very slow decay
-      good: 0.2         # ** rating
-      poor: 0.57        # * rating - faster decay
   schedule: "0 0 0 * * ?"     # daily at midnight
   friendService:
     # Same JVM — chrono calls FriendService/AnalyticsService beans directly,

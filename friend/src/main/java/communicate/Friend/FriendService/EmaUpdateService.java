@@ -17,19 +17,21 @@ public class EmaUpdateService {
 
     private final FriendRepository friendRepository;
     private final EmaProperties emaProperties;
+    private final EmaMathService emaMathService;
 
     /**
      * Update friend's exponential moving averages when new analytics is created
      * Handles historical data by applying time-based decay
-     * 
+     *
      * @param friendId The ID of the friend
      * @param experience The experience rating ("*", "**", "***")
      * @param hours The duration spent
      * @param date The date when the interaction occurred
+     * @param inPerson Whether the interaction was in-person (null = unknown)
      * @throws RuntimeException if update fails to ensure transaction rollback
      */
     @Transactional
-    public void updateEmaOnNewAnalytics(Integer friendId, String experience, Double hours, LocalDate date) {
+    public void updateEmaOnNewAnalytics(Integer friendId, String experience, Double hours, LocalDate date, Boolean inPerson) {
         try {
             Friend friend = friendRepository.findById(friendId)
                     .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Friend not found: " + friendId));
@@ -45,7 +47,7 @@ public class EmaUpdateService {
 
             // Skip if data is too old (more than 12 days)
             if (daysDifference > 12) {
-                log.debug("Skipping EMA update for friend {} - date {} is too old ({} days)", 
+                log.debug("Skipping EMA update for friend {} - date {} is too old ({} days)",
                          friendId, date, daysDifference);
                 return;
             }
@@ -54,12 +56,14 @@ public class EmaUpdateService {
             double currentFrequency = friend.getAverageFrequency() != null ? friend.getAverageFrequency() : 0.0;
             double currentDuration = friend.getAverageDuration() != null ? friend.getAverageDuration() : 0.0;
             double currentExcitement = friend.getAverageExcitement() != null ? friend.getAverageExcitement() : 0.0;
+            double currentProximity = friend.getAverageProximity() != null ? friend.getAverageProximity() : 0.0;
 
             // Get base alpha coefficient based on experience rating
             double baseAlpha = emaProperties.getNewDataAlpha(experience);
 
             // Convert experience to numeric value
-            double experienceValue = convertExperienceToNumber(experience);
+            double experienceValue = emaMathService.experienceToNumber(experience);
+            double proximityValue = emaMathService.proximityToNumber(inPerson);
 
             // Calculate time-decayed alpha and values
             double timeDecayFactor = calculateTimeDecayFactor(daysDifference);
@@ -69,40 +73,31 @@ public class EmaUpdateService {
             double decayedFrequency = 1.0 * timeDecayFactor;  // 1.0 = we had a meeting
             double decayedDuration = hours * timeDecayFactor;
             double decayedExperience = experienceValue * timeDecayFactor;
+            double decayedProximity = proximityValue * timeDecayFactor;
 
-            // Calculate new EMA values using: EMA = alpha * decayed_new_value + (1 - alpha) * previous_EMA
-            double newFrequency = effectiveAlpha * decayedFrequency + (1 - effectiveAlpha) * currentFrequency;
-            double newDuration = effectiveAlpha * decayedDuration + (1 - effectiveAlpha) * currentDuration;
-            double newExcitement = effectiveAlpha * decayedExperience + (1 - effectiveAlpha) * currentExcitement;
+            // Calculate new EMA values via the shared step formula (applyNewValue
+            // already encodes EMA = alpha * decayed_new_value + (1 - alpha) * previous_EMA)
+            double newFrequency = emaMathService.applyNewValue(currentFrequency, effectiveAlpha, decayedFrequency);
+            double newDuration = emaMathService.applyNewValue(currentDuration, effectiveAlpha, decayedDuration);
+            double newExcitement = emaMathService.applyNewValue(currentExcitement, effectiveAlpha, decayedExperience);
+            double newProximity = emaMathService.applyNewValue(currentProximity, effectiveAlpha, decayedProximity);
 
             // Update friend's EMA values
             friend.setAverageFrequency(newFrequency);
             friend.setAverageDuration(newDuration);
             friend.setAverageExcitement(newExcitement);
+            friend.setAverageProximity(newProximity);
 
             friendRepository.save(friend);
 
-            log.debug("Updated EMAs for friend {} ({}): freq={:.3f}, dur={:.3f}, exc={:.3f} (date: {}, days ago: {})", 
-                     friend.getName(), friendId, newFrequency, newDuration, newExcitement, date, daysDifference);
+            log.debug("Updated EMAs for friend {} ({}): freq={:.3f}, dur={:.3f}, exc={:.3f}, prox={:.3f} (date: {}, days ago: {})",
+                     friend.getName(), friendId, newFrequency, newDuration, newExcitement, newProximity, date, daysDifference);
 
         } catch (Exception e) {
             log.error("Error updating EMA for friend {}", friendId, e);
             // Throw runtime exception to trigger transaction rollback
             throw new RuntimeException("Failed to update EMA for friend " + friendId, e);
         }
-    }
-
-    /**
-     * Convert experience rating to numeric value
-     */
-    private double convertExperienceToNumber(String experience) {
-        if (experience == null) return 2.0; // Default to neutral
-        return switch (experience) {
-            case "*" -> 1.0;
-            case "**" -> 2.0;
-            case "***" -> 3.0;
-            default -> 2.0; // Default to neutral
-        };
     }
 
     /**

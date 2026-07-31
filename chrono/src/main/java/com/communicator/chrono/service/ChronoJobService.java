@@ -1,8 +1,10 @@
 package com.communicator.chrono.service;
 
 import com.communicator.chrono.config.ChronoProperties;
+import communicate.Friend.Config.EmaProperties;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendService.AnalyticsService;
+import communicate.Friend.FriendService.EmaMathService;
 import communicate.Friend.FriendService.FriendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,8 @@ public class ChronoJobService {
     private final FriendService friendService;
     private final AnalyticsService analyticsService;
     private final ChronoProperties chronoProperties;
+    private final EmaMathService emaMathService;
+    private final EmaProperties emaProperties;
 
     /**
      * Runs every day at midnight to apply decay for friends who didn't have interactions yesterday
@@ -90,21 +94,23 @@ public class ChronoJobService {
         double currentFrequency = friend.averageFrequency() != null ? friend.averageFrequency() : 0.0;
         double currentDuration = friend.averageDuration() != null ? friend.averageDuration() : 0.0;
         double currentExcitement = friend.averageExcitement() != null ? friend.averageExcitement() : 0.0;
+        double currentProximity = friend.averageProximity() != null ? friend.averageProximity() : 0.0;
 
         // Decay rate depends on this friend's last logged experience rating (see
-        // ChronoProperties.getDecayAlpha) — previously this was hardcoded to "good"
+        // EmaProperties.getDecayAlpha) — previously this was hardcoded to "good"
         // for every friend regardless of rating.
-        double decayAlpha = chronoProperties.getDecayAlpha(friend.experience());
+        double decayAlpha = emaProperties.getDecayAlpha(friend.experience());
 
-        double newFrequency = currentFrequency * (1 - decayAlpha);
-        double newDuration = currentDuration * (1 - decayAlpha);
-        double newExcitement = currentExcitement * (1 - decayAlpha);
+        double newFrequency = emaMathService.applyDecay(currentFrequency, decayAlpha);
+        double newDuration = emaMathService.applyDecay(currentDuration, decayAlpha);
+        double newExcitement = emaMathService.applyDecay(currentExcitement, decayAlpha);
+        double newProximity = emaMathService.applyDecay(currentProximity, decayAlpha);
 
         try {
-            friendService.updateMovingAverages(friend.id(), newFrequency, newDuration, newExcitement);
-            log.debug("Applied decay to friend {}: freq {:.3f}→{:.3f}, dur {:.3f}→{:.3f}, exc {:.3f}→{:.3f}",
+            friendService.updateMovingAverages(friend.id(), newFrequency, newDuration, newExcitement, newProximity);
+            log.debug("Applied decay to friend {}: freq {:.3f}→{:.3f}, dur {:.3f}→{:.3f}, exc {:.3f}→{:.3f}, prox {:.3f}→{:.3f}",
                     friend.id(), currentFrequency, newFrequency,
-                    currentDuration, newDuration, currentExcitement, newExcitement);
+                    currentDuration, newDuration, currentExcitement, newExcitement, currentProximity, newProximity);
         } catch (Exception e) {
             log.warn("Failed to apply decay to friend {}", friend.id(), e);
         }
