@@ -20,7 +20,7 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
     Optional<Friend> findById(Integer id);
 
     // Custom query to select id, name, and moving averages
-    @Query("SELECT new communicate.Friend.DTOs.ShortFriendDTO(f.id, f.name, f.averageFrequency, f.averageDuration, f.averageExcitement, f.experience) FROM Friend f")
+    @Query("SELECT new communicate.Friend.DTOs.ShortFriendDTO(f.id, f.name, f.averageFrequency, f.averageDuration, f.averageExcitement, f.averageProximity, f.experience) FROM Friend f")
     List<ShortFriendDTO> findAllShortFriendDTOs();
 
     // Paginated queries

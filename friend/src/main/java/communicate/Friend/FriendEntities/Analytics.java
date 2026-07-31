@@ -33,6 +33,11 @@ public class Analytics {
 
     private Double hours;
 
+    // In-person vs remote/online. Nullable — historical rows and any log
+    // path that doesn't collect it yet have no value (treated as neutral by
+    // EmaMathService.proximityToNumber, not as "remote").
+    private Boolean inPerson;
+
     @ManyToOne
     @JoinColumn(name = "friend_id")
     @JsonBackReference

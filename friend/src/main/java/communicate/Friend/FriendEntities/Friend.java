@@ -102,7 +102,11 @@ public class Friend {
     @Builder.Default
     @Column(name = "average_excitement")
     private Double averageExcitement = 0.0;
-    
+
+    @Builder.Default
+    @Column(name = "average_proximity")
+    private Double averageProximity = 0.0;
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);
