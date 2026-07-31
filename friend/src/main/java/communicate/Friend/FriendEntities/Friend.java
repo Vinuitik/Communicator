@@ -107,6 +107,33 @@ public class Friend {
     @Column(name = "average_proximity")
     private Double averageProximity = 0.0;
 
+    // FSRS scheduling state (ReviewService) — null until this friend's first
+    // reviewed interaction (see design doc's cold-start/backfill step). Kept
+    // separate from the average_* EMA columns above: those are visualization-
+    // only, this is the scheduling-only fused state (design doc premise 4).
+    @Column(name = "fsrs_stability")
+    private Double fsrsStability;
+
+    @Column(name = "fsrs_difficulty")
+    private Double fsrsDifficulty;
+
+    // Date of the last interaction ReviewService actually graded — the
+    // "lastReview" anchor for computing elapsedDays and effective-arm
+    // attribution on the NEXT interaction. Distinct from plannedSpeakingTime,
+    // which holds the predicted due date going forward.
+    @Column(name = "last_interaction_date")
+    private LocalDate lastInteractionDate;
+
+    // The bandit arm/bucket ReviewService chose for the CURRENT
+    // plannedSpeakingTime prediction — read back on the next interaction to
+    // credit the reward to the effective (actually-realised) arm, same
+    // pattern as OO's ReviewService/NoteReviewRepository.pendingArm.
+    @Column(name = "pending_bandit_arm")
+    private Double pendingBanditArm;
+
+    @Column(name = "pending_bandit_bucket")
+    private String pendingBanditBucket;
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);
