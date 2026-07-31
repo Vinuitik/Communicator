@@ -133,6 +133,11 @@ public class FriendService {
                 updated = true;
             }
 
+            if (friend.getRole() != null || friendDB.getRole() == null) {
+                friendDB.setRole(friend.getRole());
+                updated = true;
+            }
+
             // Trigger save and flush even if no changes detected
             if (updated || friendDB != null) {
                 friendRepository.save(friendDB);
