@@ -40,10 +40,17 @@ export const getFriend = async (friendId: number): Promise<Friend> => {
 
 // Mirrors nginx/static/addFriendForm/addForm.js. The endpoint returns plain
 // text on success/failure, not the created Friend — see FriendController.addFriend.
-export const addFriend = async (payload: NewFriendPayload): Promise<void> => {
+//
+// requestId is optional so existing callers are unaffected; the offline
+// outbox (pwa/outbox.ts) passes a client-generated UUID as an idempotency
+// key — addFriend has no natural key (auto-increment id), so without this a
+// retried/replayed call would create a duplicate friend.
+export const addFriend = async (payload: NewFriendPayload, requestId?: string): Promise<void> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (requestId) headers['Idempotency-Key'] = requestId;
     const response = await fetch(`${API_URL}/addFriend`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
     });
     if (!response.ok) {
@@ -104,10 +111,16 @@ export const getFriendKnowledge = async (friendId: number): Promise<KnowledgeCru
     return response.json();
 };
 
-export const addFriendKnowledgeItem = async (friendId: number, fact: string, importance: number): Promise<void> => {
+// requestId is optional so existing callers are unaffected; the offline outbox
+// (pwa/outbox.ts) passes a client-generated UUID as an idempotency key —
+// addKnowledge is append-only, so without this a retried/replayed call would
+// duplicate the knowledge row. See FriendKnowledgeController.addKnowledge.
+export const addFriendKnowledgeItem = async (friendId: number, fact: string, importance: number, requestId?: string): Promise<void> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (requestId) headers['Idempotency-Key'] = requestId;
     const response = await fetch(`${API_URL}/addKnowledge/${friendId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify([{ fact, importance }]),
     });
     if (!response.ok) {

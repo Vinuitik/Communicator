@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -15,12 +16,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import communicate.Friend.DTOs.MCP_Knowledge_DTO;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
+import communicate.Friend.FriendService.ConsumedWriteRequestService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
 import lombok.RequiredArgsConstructor;
@@ -32,10 +35,32 @@ public class FriendKnowledgeController {
 
     private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;
+    private final ConsumedWriteRequestService consumedWriteRequestService;
 
     @PostMapping("addKnowledge/{id}")
-    public ResponseEntity<Map<String, Object>> addKnowledge(@PathVariable Integer id, @RequestBody List<FriendKnowledge> knowledge) {
+    public ResponseEntity<Map<String, Object>> addKnowledge(
+            @PathVariable Integer id,
+            @RequestBody List<FriendKnowledge> knowledge,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         Map<String, Object> response = new HashMap<>();
+
+        // Offline-outbox replay guard, same shape as FriendController's — addKnowledge
+        // is append-only (each item's id is nulled below), so a retried/replayed call
+        // would otherwise duplicate every knowledge row in the batch.
+        UUID requestId = null;
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            try {
+                requestId = UUID.fromString(idempotencyKey);
+            } catch (IllegalArgumentException ignored) {
+                // Not a UUID — treat as no idempotency key rather than failing the request.
+            }
+        }
+        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
+            response.put("message", "Knowledge added successfully!");
+            response.put("ids", List.of());
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        }
+
         try {
             Friend friend = friendService.getFriendById(id);
             if (friend == null) {
@@ -72,6 +97,10 @@ public class FriendKnowledgeController {
 
             response.put("message", "Knowledge added successfully!");
             response.put("ids", ids); // Add the IDs to the response
+
+            if (requestId != null) {
+                consumedWriteRequestService.markConsumed(requestId, "addKnowledge");
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {

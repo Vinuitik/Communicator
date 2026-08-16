@@ -168,7 +168,18 @@ public class FriendController {
     }
 
     @PostMapping("addFriend")
-    public ResponseEntity<String> addFriend(@Valid @RequestBody Friend friend) { // chaned here
+    public ResponseEntity<String> addFriend(
+            @Valid @RequestBody Friend friend,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) { // chaned here
+
+        // Offline-outbox replay guard, same shape as talkedToFriend above: addFriend
+        // has no natural key (id is auto-increment), so a retried/replayed call would
+        // otherwise create a second friend row.
+        UUID requestId = parseIdempotencyKey(idempotencyKey);
+        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
+            return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
+        }
+
         try {
 
             // FSRS-interval x bandit-arm replaces the fixed star-rating ladder
@@ -184,7 +195,9 @@ public class FriendController {
             analyticsService.saveAll(friend);
             knowledgeService.saveAll(friend.getKnowledge());
 
-
+            if (requestId != null) {
+                consumedWriteRequestService.markConsumed(requestId, "addFriend");
+            }
 
             return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
         } catch (Exception e) {
@@ -221,14 +234,7 @@ public class FriendController {
         // history-dependent, none of which are safe to run twice for one logged
         // interaction. No header (e.g. calls predating the outbox) skips this
         // entirely — unchanged behavior.
-        UUID requestId = null;
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            try {
-                requestId = UUID.fromString(idempotencyKey);
-            } catch (IllegalArgumentException ignored) {
-                // Not a UUID — treat as no idempotency key rather than failing the request.
-            }
-        }
+        UUID requestId = parseIdempotencyKey(idempotencyKey);
         if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
             return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
         }
@@ -390,6 +396,20 @@ public class FriendController {
         } catch (Exception e) {
             System.err.println("Error getting friends count: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // Shared by every offline-outbox-covered endpoint (addFriend, talkedToFriend,
+    // addKnowledge). Returns null for a missing/malformed header rather than
+    // rejecting the request — a caller predating the outbox, or one that doesn't
+    // send this write kind through the outbox, just gets the old non-idempotent
+    // behavior.
+    private static UUID parseIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) return null;
+        try {
+            return UUID.fromString(idempotencyKey);
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 }
