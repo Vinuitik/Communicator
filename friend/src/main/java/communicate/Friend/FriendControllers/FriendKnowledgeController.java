@@ -1,6 +1,5 @@
 package communicate.Friend.FriendControllers;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,11 +20,10 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import communicate.Friend.DTOs.MCP_Knowledge_DTO;
-import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
-import communicate.Friend.FriendService.ConsumedWriteRequestService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
-import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.OutboxWriteService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -33,9 +31,8 @@ import lombok.RequiredArgsConstructor;
 @CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class FriendKnowledgeController {
 
-    private final FriendService friendService;
     private final FriendKnowledgeService knowledgeService;
-    private final ConsumedWriteRequestService consumedWriteRequestService;
+    private final OutboxWriteService outboxWriteService;
 
     @PostMapping("addKnowledge/{id}")
     public ResponseEntity<Map<String, Object>> addKnowledge(
@@ -43,10 +40,6 @@ public class FriendKnowledgeController {
             @RequestBody List<FriendKnowledge> knowledge,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         Map<String, Object> response = new HashMap<>();
-
-        // Offline-outbox replay guard, same shape as FriendController's — addKnowledge
-        // is append-only (each item's id is nulled below), so a retried/replayed call
-        // would otherwise duplicate every knowledge row in the batch.
         UUID requestId = null;
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             try {
@@ -55,54 +48,15 @@ public class FriendKnowledgeController {
                 // Not a UUID — treat as no idempotency key rather than failing the request.
             }
         }
-        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
-            response.put("message", "Knowledge added successfully!");
-            response.put("ids", List.of());
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        }
 
         try {
-            Friend friend = friendService.getFriendById(id);
-            if (friend == null) {
-                response.put("message", "Friend with ID " + id + " not found.");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-
-            // Associate the friend with each knowledge object and set default values
-            for (FriendKnowledge k : knowledge) {
-                k.setFriend(friend);
-                // Ensure ID is null for new entities
-                k.setId(null);
-                // Set current date if not provided
-                if (k.getDate() == null) {
-                    k.setDate(LocalDate.now());
-                }
-                // Ensure priority is not null
-                if (k.getPriority() == null) {
-                    k.setPriority(5L); // Default priority
-                }
-                // Validate required fields
-                if (k.getText() == null || k.getText().trim().isEmpty()) {
-                    throw new IllegalArgumentException("Knowledge text cannot be null or empty");
-                }
-            }
-
-            // Save all knowledge objects
-            knowledgeService.saveAll(knowledge);
-
-            // Collect the IDs of the saved knowledge objects
-            List<Integer> ids = knowledge.stream()
-                                        .map(FriendKnowledge::getId)
-                                        .toList(); // Requires Java 16+; use `.collect(Collectors.toList())` for earlier versions
-
+            List<Integer> ids = outboxWriteService.applyAddKnowledge(id, knowledge, requestId);
             response.put("message", "Knowledge added successfully!");
-            response.put("ids", ids); // Add the IDs to the response
-
-            if (requestId != null) {
-                consumedWriteRequestService.markConsumed(requestId, "addKnowledge");
-            }
-
+            response.put("ids", ids);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (EntityNotFoundException e) {
+            response.put("message", "Friend with ID " + id + " not found.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         } catch (Exception e) {
             System.err.println("Error adding knowledge: " + e.getMessage());
             e.printStackTrace(); // Add stack trace for debugging

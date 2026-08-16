@@ -7,17 +7,12 @@ import communicate.Friend.DTOs.FriendDTO;
 import communicate.Friend.DTOs.FriendProfileDTO;
 import communicate.Friend.DTOs.MCP_Friend_DTO;
 import communicate.Friend.DTOs.ShortFriendDTO;
-import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
-import communicate.Friend.FriendEntities.FriendKnowledge;
 import communicate.Friend.FriendEntities.Photos;
-import communicate.Friend.FriendService.AnalyticsService;
-import communicate.Friend.FriendService.ConsumedWriteRequestService;
 import communicate.Friend.FriendService.FileMetaDataReadService;
-import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
+import communicate.Friend.FriendService.OutboxWriteService;
 import communicate.Friend.FriendService.OutreachService;
-import communicate.Friend.FriendService.ReviewService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -53,12 +48,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 @CrossOrigin(origins = "http://nginx", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class FriendController {
     private final FriendService friendService;
-    private final FriendKnowledgeService knowledgeService;
-    private final AnalyticsService analyticsService;
     private final FileMetaDataReadService fileMetaDataReadService;
-    private final ReviewService reviewService;
     private final OutreachService outreachService;
-    private final ConsumedWriteRequestService consumedWriteRequestService;
+    private final OutboxWriteService outboxWriteService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -171,34 +163,8 @@ public class FriendController {
     public ResponseEntity<String> addFriend(
             @Valid @RequestBody Friend friend,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) { // chaned here
-
-        // Offline-outbox replay guard, same shape as talkedToFriend above: addFriend
-        // has no natural key (id is auto-increment), so a retried/replayed call would
-        // otherwise create a second friend row.
-        UUID requestId = parseIdempotencyKey(idempotencyKey);
-        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
-            return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
-        }
-
         try {
-
-            // FSRS-interval x bandit-arm replaces the fixed star-rating ladder
-            // (design doc Next Steps #6) — graded on the friend's first logged
-            // interaction, same as ReviewService's "existing == null" first-review case.
-            Analytics firstAnalytics = friend.getAnalytics().get(0);
-            LocalDate plannedTime = reviewService.reviewInteraction(friend,
-                firstAnalytics.getHours() != null ? firstAnalytics.getHours() : 0.0,
-                friend.getExperience(), firstAnalytics.getInPerson(), firstAnalytics.getDate());
-            friend.setPlannedSpeakingTime(plannedTime);
-
-            friendService.save(friend);
-            analyticsService.saveAll(friend);
-            knowledgeService.saveAll(friend.getKnowledge());
-
-            if (requestId != null) {
-                consumedWriteRequestService.markConsumed(requestId, "addFriend");
-            }
-
+            outboxWriteService.applyAddFriend(friend, parseIdempotencyKey(idempotencyKey));
             return ResponseEntity.status(HttpStatus.CREATED).body("Friend added successfully!");
         } catch (Exception e) {
             System.err.println("Error adding friend: " + e.getMessage());
@@ -226,58 +192,13 @@ public class FriendController {
             @PathVariable Integer id,
             @RequestBody Friend friend,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-
-        // Offline-outbox replay guard (react/src/pwa/outbox.ts): a request retried
-        // after a dropped response, or a Drive mailbox file consumed twice, carries
-        // the same Idempotency-Key. Short-circuit before touching anything —
-        // analytics/knowledge below are appends and reviewInteraction is
-        // history-dependent, none of which are safe to run twice for one logged
-        // interaction. No header (e.g. calls predating the outbox) skips this
-        // entirely — unchanged behavior.
-        UUID requestId = parseIdempotencyKey(idempotencyKey);
-        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
-            return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
-        }
-
         try {
-            // Call the service method to update the friend
-
-            List<Analytics> analytics = friend.getAnalytics();
-            List<FriendKnowledge> knowledges = friend.getKnowledge();
-
-            friend = friendService.updateFriend(id, friend);
-
-            // FSRS-interval x bandit-arm replaces the fixed star-rating ladder
-            // (design doc Next Steps #6), graded on the newly logged interaction.
-            // reviewInteraction needs the friend's PERSISTED scheduling state
-            // (fsrsStability/lastInteractionDate/pendingBanditArm/...), which is
-            // why this runs on the entity updateFriend() just merged and returned,
-            // not the sparse incoming request body. No analytics logged this call
-            // -> nothing to grade, leave the existing due date as-is.
-            if (analytics != null && !analytics.isEmpty()) {
-                Analytics logged = analytics.get(0);
-                LocalDate plannedTime = reviewService.reviewInteraction(friend,
-                    logged.getHours() != null ? logged.getHours() : 0.0,
-                    friend.getExperience(), logged.getInPerson(), LocalDate.now());
-                friend.setPlannedSpeakingTime(plannedTime);
-                friendService.save(friend);
-            }
-
-            analyticsService.saveAll(analytics,id);
-            knowledgeService.saveAll(knowledges,id);
-
-            if (requestId != null) {
-                consumedWriteRequestService.markConsumed(requestId, "talkedToFriend");
-            }
-
-            // Return a success message with HTTP status 200 (OK)
+            outboxWriteService.applyTalkedToFriend(id, friend, parseIdempotencyKey(idempotencyKey));
             return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
         } catch (EntityNotFoundException e) {
-            // If the entity is not found, return a 404 (Not Found)
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                                 .body("Friend with ID " + id + " not found.");
         } catch (Exception e) {
-            // For other errors, return a 500 (Internal Server Error)
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body("An error occurred while updating the friend: " + e.getMessage());
         }
