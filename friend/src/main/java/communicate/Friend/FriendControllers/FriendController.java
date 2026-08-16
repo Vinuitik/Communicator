@@ -12,6 +12,7 @@ import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;
 import communicate.Friend.FriendEntities.Photos;
 import communicate.Friend.FriendService.AnalyticsService;
+import communicate.Friend.FriendService.ConsumedWriteRequestService;
 import communicate.Friend.FriendService.FileMetaDataReadService;
 import communicate.Friend.FriendService.FriendKnowledgeService;
 import communicate.Friend.FriendService.FriendService;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 
 import org.springframework.http.HttpStatus;
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -55,6 +58,7 @@ public class FriendController {
     private final FileMetaDataReadService fileMetaDataReadService;
     private final ReviewService reviewService;
     private final OutreachService outreachService;
+    private final ConsumedWriteRequestService consumedWriteRequestService;
 
     //private static final Logger logger = LoggerFactory.getLogger(MyController.class);
     
@@ -206,8 +210,28 @@ public class FriendController {
 
     @PutMapping("talkedToFriend/{id}")
     public ResponseEntity<String> updateFriend(
-            @PathVariable Integer id, 
-            @RequestBody Friend friend) {
+            @PathVariable Integer id,
+            @RequestBody Friend friend,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+
+        // Offline-outbox replay guard (react/src/pwa/outbox.ts): a request retried
+        // after a dropped response, or a Drive mailbox file consumed twice, carries
+        // the same Idempotency-Key. Short-circuit before touching anything —
+        // analytics/knowledge below are appends and reviewInteraction is
+        // history-dependent, none of which are safe to run twice for one logged
+        // interaction. No header (e.g. calls predating the outbox) skips this
+        // entirely — unchanged behavior.
+        UUID requestId = null;
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            try {
+                requestId = UUID.fromString(idempotencyKey);
+            } catch (IllegalArgumentException ignored) {
+                // Not a UUID — treat as no idempotency key rather than failing the request.
+            }
+        }
+        if (requestId != null && consumedWriteRequestService.isDuplicate(requestId)) {
+            return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
+        }
 
         try {
             // Call the service method to update the friend
@@ -236,7 +260,10 @@ public class FriendController {
             analyticsService.saveAll(analytics,id);
             knowledgeService.saveAll(knowledges,id);
 
-            
+            if (requestId != null) {
+                consumedWriteRequestService.markConsumed(requestId, "talkedToFriend");
+            }
+
             // Return a success message with HTTP status 200 (OK)
             return ResponseEntity.ok("Friend with ID " + id + " updated successfully.");
         } catch (EntityNotFoundException e) {

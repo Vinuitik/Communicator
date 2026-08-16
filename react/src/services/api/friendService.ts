@@ -53,10 +53,17 @@ export const addFriend = async (payload: NewFriendPayload): Promise<void> => {
 
 // Mirrors nginx/static/updateForm/talkedForm.js. The endpoint returns plain
 // text, not the updated Friend — see FriendController.updateFriend.
-export const talkedToFriend = async (friendId: number, payload: NewFriendPayload): Promise<void> => {
+//
+// requestId is optional so existing callers are unaffected; the offline
+// outbox (pwa/outbox.ts) passes a client-generated UUID as an idempotency
+// key so a retried/replayed call doesn't double-log the interaction — see
+// FriendController.updateFriend's Idempotency-Key handling.
+export const talkedToFriend = async (friendId: number, payload: NewFriendPayload, requestId?: string): Promise<void> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (requestId) headers['Idempotency-Key'] = requestId;
     const response = await fetch(`${API_URL}/talkedToFriend/${friendId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload),
     });
     if (!response.ok) {
