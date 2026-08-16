@@ -68,6 +68,16 @@ public class EncryptionService {
         return key != null;
     }
 
+    /** Raw AES key, base64-encoded — handed to the browser once via the offline-outbox
+     * relay's bridge endpoint (BackupController.syncBridge) so it can encrypt/decrypt
+     * mailbox files itself while the server is unreachable. Same key as backups; rotating
+     * it means changing SYNC_PASSPHRASE, which invalidates both together (accepted
+     * tradeoff for a single-tenant install — see EncryptionService's class doc). */
+    public String exportKeyBase64() {
+        if (key == null) throw new IllegalStateException("Encryption not configured");
+        return java.util.Base64.getEncoder().encodeToString(key.getEncoded());
+    }
+
     /** Compress (gzip) then encrypt. Output: [12B IV][GCM ciphertext + 16B auth tag]. */
     public byte[] encrypt(byte[] plaintext) throws Exception {
         byte[] compressed = gzip(plaintext);

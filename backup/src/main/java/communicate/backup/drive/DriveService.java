@@ -8,6 +8,7 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
 import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.UserCredentials;
 import communicate.backup.settings.SettingsService;
 import org.slf4j.Logger;
@@ -40,6 +41,9 @@ public class DriveService {
 
     /** Auto-created top-level backup folder in the owner's Drive. */
     private static final String ROOT_FOLDER_NAME = "Communicator";
+
+    /** Offline-outbox relay folder, nested under the root folder. */
+    private static final String MAILBOX_FOLDER_NAME = "_mailbox";
 
     @Value("${backup.oauth.client-id:}")     private String clientId;
     @Value("${backup.oauth.client-secret:}") private String clientSecret;
@@ -103,6 +107,25 @@ public class DriveService {
         return d;
     }
 
+    /** Fresh short-lived Drive access token, minted from the stored refresh token — used by
+     * the offline-outbox relay's bridge endpoint (BackupController.syncBridge). The refresh
+     * token and client secret never leave the server; the browser only ever holds this. */
+    public AccessTokenInfo mintAccessToken() throws IOException {
+        String refreshToken = settings.getRefreshToken();
+        if (refreshToken.isBlank() || clientId.isBlank() || clientSecret.isBlank()) {
+            throw new IOException("Google Drive not connected");
+        }
+        UserCredentials creds = UserCredentials.newBuilder()
+            .setClientId(clientId)
+            .setClientSecret(clientSecret)
+            .setRefreshToken(refreshToken)
+            .build();
+        AccessToken token = creds.refreshAccessToken();
+        return new AccessTokenInfo(token.getTokenValue(), token.getExpirationTime().getTime());
+    }
+
+    public record AccessTokenInfo(String accessToken, long expiresAtEpochMillis) {}
+
     public String fetchAccountEmail() throws IOException {
         return requireClient().about().get().setFields("user(emailAddress)")
             .execute().getUser().getEmailAddress();
@@ -141,6 +164,32 @@ public class DriveService {
             log.info("[Drive] created backup folder '{}' ({})", ROOT_FOLDER_NAME, id);
         }
         settings.set(SettingsService.DRIVE_FOLDER_ID, id);
+        return id;
+    }
+
+    /** The offline-outbox relay's "_mailbox" folder, nested under the root backup folder —
+     * distinct from backups (see MailboxConsumeService). Same find-or-create-persist shape
+     * as {@link #rootFolderId()}. */
+    public String mailboxFolderId() throws IOException {
+        String configured = settings.getMailboxFolderId();
+        if (!configured.isBlank()) return configured;
+
+        Drive d = requireClient();
+        String parentId = rootFolderId();
+        FileList found = d.files().list()
+            .setQ("name = '" + MAILBOX_FOLDER_NAME + "' and mimeType = '" + FOLDER_MIME
+                + "' and trashed = false and '" + parentId + "' in parents")
+            .setFields("files(id)").setPageSize(1).execute();
+        String id;
+        if (!found.getFiles().isEmpty()) {
+            id = found.getFiles().get(0).getId();
+        } else {
+            File folder = new File().setName(MAILBOX_FOLDER_NAME).setMimeType(FOLDER_MIME)
+                .setParents(Collections.singletonList(parentId));
+            id = d.files().create(folder).setFields("id").execute().getId();
+            log.info("[Drive] created mailbox folder '{}' ({})", MAILBOX_FOLDER_NAME, id);
+        }
+        settings.set(SettingsService.MAILBOX_FOLDER_ID, id);
         return id;
     }
 

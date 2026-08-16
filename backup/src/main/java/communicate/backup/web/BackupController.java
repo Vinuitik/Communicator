@@ -1,5 +1,6 @@
 package communicate.backup.web;
 
+import communicate.backup.crypto.EncryptionService;
 import communicate.backup.drive.BackupOAuthService;
 import communicate.backup.drive.DriveService;
 import communicate.backup.service.BackupService;
@@ -30,14 +31,16 @@ public class BackupController {
     private final BackupService backup;
     private final DbBackupService dbBackup;
     private final SettingsService settings;
+    private final EncryptionService encryption;
 
     public BackupController(BackupOAuthService oauth, DriveService drive, BackupService backup,
-                            DbBackupService dbBackup, SettingsService settings) {
+                            DbBackupService dbBackup, SettingsService settings, EncryptionService encryption) {
         this.oauth = oauth;
         this.drive = drive;
         this.backup = backup;
         this.dbBackup = dbBackup;
         this.settings = settings;
+        this.encryption = encryption;
     }
 
     // ── OAuth connect ──────────────────────────────────────────────────────────────
@@ -114,6 +117,41 @@ public class BackupController {
     public ResponseEntity<?> setEnabled(@RequestParam boolean value) {
         settings.setEnabled(value);
         return ResponseEntity.ok(Map.of("enabled", value));
+    }
+
+    // ── Offline-outbox Drive relay bridge ──────────────────────────────────────────
+
+    /**
+     * Bridge bundle for the offline-outbox's Drive relay tier (react/src/pwa/driveClient.ts).
+     * Mints a fresh short-lived Drive access token from the stored refresh token (never
+     * exposes the refresh token or client secret itself) and hands back the shared
+     * encryption key + mailbox folder id. Cached client-side with a safety margin against
+     * expiresAt; the browser never calls Google's OAuth token endpoint directly.
+     *
+     * <p>409 if Drive isn't connected or the encryption passphrase isn't configured — a
+     * client should never cache an unusable bridge (mirrors ObsidianOptimizer's
+     * PwaController.setup() gating).
+     */
+    @GetMapping("/sync/bridge")
+    public ResponseEntity<?> syncBridge() {
+        if (!oauth.isConnected()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Drive not connected"));
+        }
+        if (!encryption.isConfigured()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Encryption not configured"));
+        }
+        try {
+            DriveService.AccessTokenInfo token = drive.mintAccessToken();
+            String mailboxFolderId = drive.mailboxFolderId();
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("accessToken", token.accessToken());
+            body.put("expiresAt", token.expiresAtEpochMillis());
+            body.put("mailboxFolderId", mailboxFolderId);
+            body.put("encryptionKeyBase64", encryption.exportKeyBase64());
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────

@@ -16,6 +16,7 @@ public class SettingsService {
     public static final String REFRESH_TOKEN   = "refresh_token";
     public static final String ACCOUNT_EMAIL   = "account_email";
     public static final String DRIVE_FOLDER_ID = "drive_folder_id";
+    public static final String MAILBOX_FOLDER_ID = "mailbox_folder_id";
     public static final String DEVICE_ID       = "device_id";
     public static final String ENABLED         = "enabled";
 
@@ -40,6 +41,7 @@ public class SettingsService {
     public String getRefreshToken() { return get(REFRESH_TOKEN); }
     public String getAccountEmail() { return get(ACCOUNT_EMAIL); }
     public String getDriveFolderId() { return get(DRIVE_FOLDER_ID); }
+    public String getMailboxFolderId() { return get(MAILBOX_FOLDER_ID); }
 
     /** Auto-backup is on by default (blank = enabled); only an explicit "false" disables it. */
     public boolean isEnabled() { return !"false".equalsIgnoreCase(get(ENABLED)); }
