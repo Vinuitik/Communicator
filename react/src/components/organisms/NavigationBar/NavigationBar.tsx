@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Logo from '../../atoms/Logo';
 import { ROUTES } from '../../../utils/constants';
+import { onUpdateAvailable, checkForUpdate, reloadApp } from '../../../pwa/registerSW';
+import { useToast } from '../../molecules/Toast';
 
 // Redesign IA (see design_handoff_friends_tracker/README.md): 5 destinations
 // + one persistent action. "+ Add friend" is reachable from anywhere, not a
@@ -39,8 +41,32 @@ const DownloadIcon: React.FC = () => (
   </svg>
 );
 
+const RefreshIcon: React.FC = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.3L3 16m0 5v-5h5" />
+  </svg>
+);
+
 const NavigationBar: React.FC = () => {
   const { pathname } = useLocation();
+  const { showToast } = useToast();
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // A new service-worker version has taken over the page — surface a
+  // persistent refresh affordance (not just a toast, which auto-dismisses)
+  // since the user may not be looking at the screen when it fires.
+  useEffect(() => onUpdateAvailable(() => {
+    setUpdateAvailable(true);
+    showToast('Update available — tap refresh to get the latest version.');
+  }), [showToast]);
+
+  // Nudge the browser to re-check for a new service-worker version whenever
+  // the tab regains focus, instead of waiting on its own multi-hour interval.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') checkForUpdate(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
 
   return (
     <nav className="flex-none flex items-center gap-5 px-6 h-[60px] bg-surface border-b border-hairline">
@@ -80,6 +106,16 @@ const NavigationBar: React.FC = () => {
         >
           <PlusIcon /> Add friend
         </Link>
+        {updateAvailable && (
+          <button
+            type="button"
+            title="Update available — click to refresh"
+            onClick={reloadApp}
+            className="w-[38px] h-[38px] flex items-center justify-center rounded-input border border-accent/40 bg-accent/16 text-accent-light hover:brightness-110 transition-all animate-pulse"
+          >
+            <RefreshIcon />
+          </button>
+        )}
         <Link
           to={ROUTES.GET_APP}
           title="Get the app"

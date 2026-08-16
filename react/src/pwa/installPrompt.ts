@@ -24,6 +24,15 @@ function isStandalone(): boolean {
     || (window.navigator as { standalone?: boolean }).standalone === true;
 }
 
+// iOS Safari never fires beforeinstallprompt (canInstall stays false forever there) —
+// callers use this to show manual "Share → Add to Home Screen" steps instead. iPadOS
+// 13+ reports itself as a desktop Mac UA, so a touch-point check catches it too.
+export function isIOS(): boolean {
+  const ua = window.navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua)
+    || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
+}
+
 export function state(): InstallState {
   return { canInstall: !!deferred, installed: isStandalone() };
 }

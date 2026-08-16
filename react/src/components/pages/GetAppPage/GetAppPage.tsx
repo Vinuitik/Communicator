@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { onInstallChange, promptInstall, InstallState } from '../../../pwa/installPrompt';
+import { onInstallChange, promptInstall, isIOS, InstallState } from '../../../pwa/installPrompt';
+import { onUpdateAvailable, checkForUpdate, reloadApp } from '../../../pwa/registerSW';
 
 // Desktop installer for the browser extension. Absolute path, not routed through
 // react-router — nginx serves it straight off disk (see nginx/nginx.conf's
@@ -22,12 +23,23 @@ const Card: React.FC<{ badge: string; title: string; children: React.ReactNode }
 const GetAppPage: React.FC = () => {
   const [{ canInstall, installed }, setInstall] = useState<InstallState>({ canInstall: false, installed: false });
   const [msg, setMsg] = useState('');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => onInstallChange(setInstall), []);
+  useEffect(() => onUpdateAvailable(() => setUpdateAvailable(true)), []);
 
   async function install() {
     const outcome = await promptInstall();
     setMsg(outcome === 'accepted' ? 'Installing… check your taskbar / home screen.' : '');
+  }
+
+  async function handleCheckForUpdate() {
+    setChecking(true);
+    await checkForUpdate();
+    // The service worker's controllerchange (which flips updateAvailable) fires
+    // asynchronously after this — give it a beat before re-enabling the button.
+    setTimeout(() => setChecking(false), 1500);
   }
 
   return (
@@ -48,12 +60,21 @@ const GetAppPage: React.FC = () => {
             <div className="text-good text-sm font-semibold">✓ Already installed on this device</div>
           ) : canInstall ? (
             <button className={primaryButtonClasses} onClick={install}>Install app</button>
+          ) : isIOS() ? (
+            <p className="text-text-faint text-xs">
+              On <strong className="text-text-secondary">iPhone/iPad</strong>, open this page in{' '}
+              <strong className="text-text-secondary">Safari</strong>, tap the{' '}
+              <strong className="text-text-secondary">Share</strong> icon (square with an arrow),
+              then <strong className="text-text-secondary">Add to Home Screen</strong>. iOS doesn't
+              support installing from Chrome or any other browser — it must be Safari.
+            </p>
           ) : (
             <p className="text-text-faint text-xs">
               In <strong className="text-text-secondary">Chrome or Edge</strong>, use the install
               icon in the address bar (a monitor with a ↓), or the ⋮ menu → "Install this site as
-              an app". <strong className="text-text-secondary">Firefox and Safari</strong> desktop
-              don't support installing web apps.
+              an app". On <strong className="text-text-secondary">Android</strong>, use the ⋮ menu
+              → "Install app" / "Add to Home screen". <strong className="text-text-secondary">
+              Firefox and Safari</strong> desktop don't support installing web apps.
             </p>
           )}
           {msg && <p className="text-accent-light text-xs mt-2">{msg}</p>}
@@ -72,6 +93,25 @@ const GetAppPage: React.FC = () => {
             <strong className="text-text-secondary">Load unpacked</strong> and pick the unzipped
             folder.
           </p>
+        </Card>
+
+        <Card badge="Installed app" title="Keep it updated">
+          <p className="text-text-muted text-sm mb-3">
+            Updates install in the background the next time you open the app, but a phone or
+            laptop that's rarely closed can sit on an old version for a while. A pulsing refresh
+            icon appears in the nav when one's ready — or check right here.
+          </p>
+          {updateAvailable ? (
+            <button className={primaryButtonClasses} onClick={reloadApp}>Refresh to update</button>
+          ) : (
+            <button
+              className="inline-block px-4 py-2 rounded-input text-sm font-bold bg-input border border-white/10 text-text-secondary hover:text-text-emphasis disabled:opacity-50 transition-colors"
+              onClick={handleCheckForUpdate}
+              disabled={checking}
+            >
+              {checking ? 'Checking…' : 'Check for updates'}
+            </button>
+          )}
         </Card>
       </div>
     </div>

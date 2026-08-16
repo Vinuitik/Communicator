@@ -122,22 +122,43 @@ Control panel over **two unrelated backend services** — not touched by the red
 
 No shared organism reuse here — mode-radio cards, provider-key rows, backup cards are one-off layouts local to `SettingsPage.tsx` behind a small local `Card` wrapper.
 
-## Get the app — PWA + extension (added 2026-07-30)
+## Get the app — PWA + extension (added 2026-07-30; refresh/update + iOS install added 2026-08-16)
 
-Files: public/manifest.json, public/service-worker.js, src/pwa/{registerSW,installPrompt}.ts, pages/GetAppPage.tsx, ../../extension/ (separate module, see [extension/PROTO.md](../../extension/PROTO.md))
+Files: public/manifest.json, public/service-worker.js, src/pwa/{registerSW,installPrompt}.ts, pages/GetAppPage.tsx, organisms/NavigationBar.tsx, ../../extension/ (separate module, see [extension/PROTO.md](../../extension/PROTO.md))
 
 ```
 index.tsx → registerServiceWorker() (registerSW.ts) + import './pwa/installPrompt' (side-effect:
             captures the browser's beforeinstallprompt event before GetAppPage ever mounts)
 GetAppPage → "Install as app" card    → installPrompt.promptInstall() → native browser install
+                                          (canInstall false + isIOS() → manual Safari Share →
+                                          Add to Home Screen steps, since iOS never fires
+                                          beforeinstallprompt)
            → "Browser extension" card → <a href="/downloads/communicator-extension.zip" download>
                                           (absolute path — nginx `root`, not a react-router route;
                                           see nginx/PROTO.md's /downloads/ entry)
+           → "Keep it updated" card   → registerSW.checkForUpdate() (manual nudge) /
+                                          registerSW.reloadApp() once an update is detected
 ```
+
+**Update detection + refresh**: `service-worker.js` calls `skipWaiting()`+`clients.claim()`
+unconditionally on install/activate. `registerSW.ts` tracks whether a controller already existed
+at page load (`hadController`) so it can tell a real update apart from the very first install,
+then listens for `controllerchange` and fires every `onUpdateAvailable()` subscriber at most once
+per page load. Two consumers subscribe: `NavigationBar` (pulsing refresh icon-button next to the
+download icon, `animate-pulse`, + a one-shot toast via `useToast()`) and `GetAppPage`'s "Keep it
+updated" card (swaps its "Check for updates" button for a "Refresh to update" one). Both call
+`reloadApp()` (`location.reload()`) on click — safe because `handleNavigate()` in the service
+worker is network-first. `NavigationBar` also calls `checkForUpdate()` on every `visibilitychange`
+back to `'visible'`, nudging the browser to re-fetch `service-worker.js` instead of waiting on its
+own multi-hour cache-lifetime check — this is the main way a tab that's kept open for days
+actually notices a new deploy.
 
 No offline write queue, no share-target, no IndexedDB outbox — this is a
 straight install-ability + shell-caching PWA, not the full offline-sync port
-some other projects have. `service-worker.js` is hand-written (no Workbox/CRA
+some other projects have. **Researched but not yet built** — see
+[src/pwa/SYNC_ENGINE_RESEARCH.md](pwa/SYNC_ENGINE_RESEARCH.md) for the porting
+plan from habitTracker/ObsidianOptimizer's encrypted offline-write outbox.
+`service-worker.js` is hand-written (no Workbox/CRA
 PWA template): app-shell (`/app/`, `/app/index.html`, `/app/manifest.json`)
 cached on install; CRA's hashed `static/js`/`static/css` stale-while-revalidate
 at runtime; `/api/fileRepository/...` (friend photos/files) cache-first since
@@ -194,6 +215,9 @@ uploaded media doesn't change in place.
 | PWA installability (manifest, icons, theme color) | `public/manifest.json`, `public/index.html` `<link rel="manifest">` |
 | Service worker caching rules | `public/service-worker.js` (`SHELL_URLS`, `isMedia`/`isBuildAsset`/`isAppIcon`) |
 | Install-prompt button behavior | `src/pwa/installPrompt.ts`, `components/pages/GetAppPage.tsx` |
+| iOS manual install instructions | `src/pwa/installPrompt.ts` (`isIOS()`), `components/pages/GetAppPage.tsx` |
+| Update-available detection / refresh button | `src/pwa/registerSW.ts` (`onUpdateAvailable`/`checkForUpdate`/`reloadApp`), `components/organisms/NavigationBar/NavigationBar.tsx`, `components/pages/GetAppPage/GetAppPage.tsx` |
+| Offline write sync engine (encrypted outbox) | `[NOT IMPLEMENTED]` — see `src/pwa/SYNC_ENGINE_RESEARCH.md` for the porting research |
 | Extension download link/zip | `components/pages/GetAppPage.tsx` (`EXTENSION_ZIP`), [extension/PROTO.md](../../extension/PROTO.md) |
 | SPA client-route fallback | `react/nginx.conf` (react-ui's own nginx) |
 | Build/serve | `react/Dockerfile` (CRA build → nginx:alpine), rebuild `react-ui` image to deploy |
