@@ -193,6 +193,38 @@ public class DriveService {
         return id;
     }
 
+    /** Every file currently in the mailbox folder, oldest first (name sorts by the
+     * timestamp baked into it by driveClient.ts, so files replay in write order).
+     * Used by MailboxConsumeService — every file here is an encrypted outbox batch,
+     * unfiltered by kind (unlike listBackups). */
+    public List<File> listMailboxFiles() throws IOException {
+        List<File> out = new ArrayList<>();
+        String folderId = mailboxFolderId();
+        String pageToken = null;
+        do {
+            Drive.Files.List req = requireClient().files().list()
+                .setQ("'" + folderId + "' in parents and trashed = false")
+                .setFields("nextPageToken, files(id, name)")
+                .setPageSize(1000);
+            if (pageToken != null) req.setPageToken(pageToken);
+            FileList page = req.execute();
+            out.addAll(page.getFiles());
+            pageToken = page.getNextPageToken();
+        } while (pageToken != null);
+        out.sort(java.util.Comparator.comparing(File::getName));
+        return out;
+    }
+
+    /** Hard-delete a consumed mailbox file — these are transient events, not data, so no
+     * trash/rotation concern (unlike backups). */
+    public void deleteMailboxFile(String fileId) throws IOException {
+        try {
+            requireClient().files().delete(fileId).execute();
+        } catch (GoogleJsonResponseException e) {
+            if (e.getStatusCode() != 404) throw e; // already gone = done
+        }
+    }
+
     // ── Upload / list / download / delete ─────────────────────────────────────────
 
     /** Upload an encrypted backup into the root folder. Returns the Drive file id. */
