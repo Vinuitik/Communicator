@@ -105,6 +105,17 @@ async function replayDirect(q: QueuedIntent): Promise<void> {
   }
 }
 
+// Keeps a fresh Drive bridge token cached in the browser WHILE the server is healthy, so a
+// valid token is already on hand the instant the server goes down. Without this, submit()/
+// flush() only ever ask for a bridge token AFTER already noticing the server is unreachable —
+// but the bridge-mint endpoint (/backup/sync/bridge) lives in the same monolith as everything
+// else, so by then it's down too and the Drive relay tier can never engage on a cold outage.
+async function keepBridgeWarm(): Promise<void> {
+  if (!(await isServerReachable())) return;
+  if (await driveClient.isAvailable()) return;
+  await driveClient.refreshBridge();
+}
+
 let wired = false;
 
 // Wire-up: one call in src/index.tsx, alongside registerServiceWorker().
@@ -112,13 +123,19 @@ export function wireAutoFlush(): void {
   if (wired) return;
   wired = true;
   window.addEventListener('online', () => {
+    void keepBridgeWarm();
     void flush();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void flush();
+    if (document.visibilityState === 'visible') {
+      void keepBridgeWarm();
+      void flush();
+    }
   });
   window.setInterval(() => {
+    void keepBridgeWarm();
     void flush();
   }, 60_000);
+  void keepBridgeWarm();
   void flush();
 }
