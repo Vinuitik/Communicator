@@ -6,7 +6,7 @@ import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 import SegmentedControl from '../../molecules/SegmentedControl';
 import { useToast } from '../../molecules/Toast';
 import { Friend, NewFriendPayload } from '../../../types/api';
-import { talkedToFriend } from '../../../services/api/friendService';
+import { talkedToFriendOffline } from '../../../pwa/offlineApi';
 
 interface QuickLogModalProps {
   friend: Friend | null;
@@ -44,9 +44,13 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
         analytics: [{ date: today, experience: rating, hours: parseFloat(hours) || 0, inPerson }],
         knowledge: note.trim() ? [{ fact: note.trim(), importance: 1 }] : [],
       };
-      await talkedToFriend(friend.id, payload);
+      const result = await talkedToFriendOffline(friend.id, payload);
       onSaved(friend.id);
-      showToast(`Logged a chat with ${friend.name} · rescheduled`);
+      showToast(
+        result.queued
+          ? `Saved offline — will sync with ${friend.name} once back online`
+          : `Logged a chat with ${friend.name} · rescheduled`,
+      );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log this chat.');

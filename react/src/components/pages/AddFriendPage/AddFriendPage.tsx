@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddFriendForm, { AddFriendFormValues } from '../../organisms/AddFriendForm';
 import KnowledgeEditor from '../../organisms/KnowledgeEditor';
-import { addFriend } from '../../../services/api/friendService';
+import { addFriendOffline } from '../../../pwa/offlineApi';
 import { FriendKnowledge, NewFriendPayload } from '../../../types/api';
 import { ROUTES } from '../../../utils/constants';
 
@@ -37,7 +37,7 @@ const AddFriendPage: React.FC = () => {
         knowledge,
         role: values.role,
       };
-      await addFriend(payload);
+      await addFriendOffline(payload);
       navigate(ROUTES.HOME);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add friend.');

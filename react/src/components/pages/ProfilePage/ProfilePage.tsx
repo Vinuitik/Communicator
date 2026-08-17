@@ -14,8 +14,9 @@ import TalkedForm, { TalkedFormValues } from '../../organisms/TalkedForm';
 import { useToast } from '../../molecules/Toast';
 import {
   getFriendProfileData, getFriend, getFriendAnalytics, getFriendGroupIds,
-  getFriendKnowledge, addFriendKnowledgeItem, deleteFriendKnowledgeItem, talkedToFriend, getOutreachDraft,
+  getFriendKnowledge, deleteFriendKnowledgeItem, getOutreachDraft,
 } from '../../../services/api/friendService';
+import { talkedToFriendOffline, addFriendKnowledgeItemOffline } from '../../../pwa/offlineApi';
 import { getGroups } from '../../../services/api/groupService';
 import { FriendProfileData, Friend, AnalyticsRecord, Group, KnowledgeCrudItem, NewFriendPayload } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
@@ -153,9 +154,9 @@ const ProfilePage: React.FC = () => {
         knowledge: [],
         role: values.role,
       };
-      await talkedToFriend(friendId, payload);
+      const result = await talkedToFriendOffline(friendId, payload);
       setEditOpen(false);
-      showToast('Friend details updated');
+      showToast(result.queued ? 'Saved offline — will sync once back online' : 'Friend details updated');
       await loadFriend();
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Failed to update friend.');
@@ -313,7 +314,11 @@ const ProfilePage: React.FC = () => {
                       items={rawItems}
                       loading={rawLoading}
                       error={rawError}
-                      onAdd={async (fact, importance) => { await addFriendKnowledgeItem(friendId, fact, importance); await loadRaw(); showToast('New fact captured to Raw · AI will re-summarise'); }}
+                      onAdd={async (fact, importance) => {
+                        const result = await addFriendKnowledgeItemOffline(friendId, fact, importance);
+                        await loadRaw();
+                        showToast(result.queued ? 'Fact saved offline — will sync once back online' : 'New fact captured to Raw · AI will re-summarise');
+                      }}
                       onDelete={async (itemId) => { await deleteFriendKnowledgeItem(itemId); await loadRaw(); }}
                     />
                   </div>
