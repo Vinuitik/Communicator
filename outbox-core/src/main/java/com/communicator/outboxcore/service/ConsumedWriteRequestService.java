@@ -1,20 +1,21 @@
-package communicate.Friend.FriendService;
+package com.communicator.outboxcore.service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import communicate.Friend.FriendEntities.ConsumedWriteRequest;
-import communicate.Friend.FriendRepositories.ConsumedWriteRequestRepository;
+import com.communicator.outboxcore.entities.ConsumedWriteRequest;
+import com.communicator.outboxcore.repositories.ConsumedWriteRequestRepository;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Idempotency-key ledger used by every offline-outbox write kind (see
- * ConsumedWriteRequest). One dedup mechanism shared by both replay paths: a
- * client retrying a direct call, and the future Drive mailbox consume job
- * replaying a batch file.
+ * Idempotency-key ledger used by every offline-outbox write kind, across every
+ * module (see ConsumedWriteRequest). One dedup mechanism shared by every replay
+ * path: a client retrying a direct call, or a Drive mailbox consume job replaying
+ * a batch file.
  */
 @Service
 @RequiredArgsConstructor

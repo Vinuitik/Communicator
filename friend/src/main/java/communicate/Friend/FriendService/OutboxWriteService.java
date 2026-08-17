@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.communicator.outboxcore.service.ConsumedWriteRequestService;
+
 import communicate.Friend.FriendEntities.Analytics;
 import communicate.Friend.FriendEntities.Friend;
 import communicate.Friend.FriendEntities.FriendKnowledge;

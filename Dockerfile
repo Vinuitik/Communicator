@@ -7,6 +7,7 @@ WORKDIR /app
 # of source changes.
 COPY pom.xml .
 COPY knowledge-core/pom.xml knowledge-core/
+COPY outbox-core/pom.xml outbox-core/
 COPY friend/pom.xml friend/
 COPY group/pom.xml group/
 COPY connections/pom.xml connections/
@@ -17,6 +18,7 @@ RUN mvn -B -q dependency:go-offline -DskipTests || true
 
 # Copy sources and package
 COPY knowledge-core/src knowledge-core/src
+COPY outbox-core/src outbox-core/src
 COPY friend/src friend/src
 COPY group/src group/src
 COPY connections/src connections/src

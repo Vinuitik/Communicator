@@ -29,16 +29,19 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.example.demo",             // group (+ app-wide SecurityFilterChain in .config)
         "coommunicator.connections",    // connections (sic: original package typo)
         "com.communicator.chrono",      // chrono (scheduled jobs; no JPA entities)
+        "com.communicator.outboxcore",  // outbox-core (shared idempotency ledger)
 })
 @EntityScan(basePackages = {
         "communicate",                  // friend + backup
         "com.example.demo",             // group
         "coommunicator.connections",    // connections
+        "com.communicator.outboxcore",  // outbox-core (ConsumedWriteRequest)
 })
 @EnableJpaRepositories(basePackages = {
         "communicate",                  // friend + backup
         "com.example.demo",             // group
         "coommunicator.connections",    // connections
+        "com.communicator.outboxcore",  // outbox-core (ConsumedWriteRequestRepository)
 })
 @EnableConfigurationProperties
 @EnableScheduling

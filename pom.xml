@@ -32,6 +32,7 @@
 
     <modules>
         <module>knowledge-core</module>
+        <module>outbox-core</module>
         <module>friend</module>
         <module>group</module>
         <module>connections</module>
