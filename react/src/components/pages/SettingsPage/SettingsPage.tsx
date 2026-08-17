@@ -96,6 +96,22 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => { loadBackupStatus(); }, [loadBackupStatus]);
 
+  // Landed here from BackupController's oauth/callback redirect (BackupController.java
+  // redirectToSettings) — show the result as a toast instead of the old standalone
+  // "you can close this tab" dead-end page, then strip the query params.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const drive = params.get('drive');
+    if (!drive) return;
+    if (drive === 'connected') {
+      showToast('Google Drive connected.', 'success');
+    } else if (drive === 'error') {
+      showToast(`Could not connect Google Drive: ${params.get('message') || 'unknown error'}`, 'error');
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleModeChange = async (value: 'ollama' | 'cloud') => {
     setModeState(value);
     setModeStatus({ text: 'Saving…' });

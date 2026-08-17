@@ -7,7 +7,6 @@ import communicate.backup.service.BackupService;
 import communicate.backup.service.DbBackupService;
 import communicate.backup.settings.SettingsService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,19 +52,26 @@ public class BackupController {
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build();
     }
 
-    /** Google redirects here with ?code&state. Returns a small confirmation page. */
-    @GetMapping(value = "/oauth/callback", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> oauthCallback(@RequestParam(required = false) String code,
-                                                @RequestParam(required = false) String state,
-                                                @RequestParam(required = false) String error) {
-        if (error != null) return html("Google Drive connection failed: " + escape(error));
+    /** Google redirects here with ?code&state. Redirects back into the app's Settings
+     * page (not a standalone dead-end page) with a query param the frontend reads to
+     * show a success/error toast — see SettingsPage.tsx. */
+    @GetMapping(value = "/oauth/callback")
+    public ResponseEntity<Void> oauthCallback(@RequestParam(required = false) String code,
+                                              @RequestParam(required = false) String state,
+                                              @RequestParam(required = false) String error) {
+        if (error != null) return redirectToSettings("error", error);
         try {
-            String email = oauth.handleCallback(code, state);
-            return html("✅ Google Drive connected" + (email.isBlank() ? "" : " as <b>" + escape(email) + "</b>")
-                + ".<br>You can close this tab — backups are now active.");
+            oauth.handleCallback(code, state);
+            return redirectToSettings("connected", null);
         } catch (Exception e) {
-            return html("❌ Connection failed: " + escape(e.getMessage()));
+            return redirectToSettings("error", e.getMessage());
         }
+    }
+
+    private ResponseEntity<Void> redirectToSettings(String drive, String message) {
+        String location = "/app/settings?drive=" + drive
+            + (message == null ? "" : "&message=" + java.net.URLEncoder.encode(message, java.nio.charset.StandardCharsets.UTF_8));
+        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(location)).build();
     }
 
     @PostMapping("/disconnect")
@@ -154,15 +160,4 @@ public class BackupController {
         }
     }
 
-    // ── helpers ─────────────────────────────────────────────────────────────────
-
-    private static ResponseEntity<String> html(String body) {
-        return ResponseEntity.ok("<!doctype html><meta charset=utf-8>"
-            + "<body style='font-family:system-ui;max-width:32rem;margin:4rem auto;line-height:1.5'>"
-            + "<h2>Communicator backup</h2><p>" + body + "</p></body>");
-    }
-
-    private static String escape(String s) {
-        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
 }
