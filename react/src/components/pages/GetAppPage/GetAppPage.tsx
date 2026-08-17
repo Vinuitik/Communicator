@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { onInstallChange, promptInstall, isIOS, InstallState } from '../../../pwa/installPrompt';
+import { onInstallChange, promptInstall, isIOS, isFirefox, InstallState } from '../../../pwa/installPrompt';
 import { onUpdateAvailable, checkForUpdate, reloadApp } from '../../../pwa/registerSW';
 
-// Desktop installer for the browser extension. Absolute path, not routed through
-// react-router — nginx serves it straight off disk (see nginx/nginx.conf's
-// /downloads/ location + extension/package.sh, which builds this zip).
+// Desktop installer for the browser extension. Absolute paths, not routed through
+// react-router — nginx serves them straight off disk (see nginx/nginx.conf's
+// /downloads/ and /ext/ locations).
+// Chrome/Edge/Brave: unsigned zip, loaded via "Load unpacked" (extension/package.sh).
 const EXTENSION_ZIP = '/downloads/communicator-extension.zip';
+// Firefox: signed .xpi, installs directly on click — no dev-mode dance (Mozilla
+// requires signing for a persistent install; see extension/deploy-extension.sh).
+// "latest" is a stable alias so this link survives every version bump.
+const EXTENSION_XPI = '/ext/communicator-extension-latest.xpi';
 
 const primaryButtonClasses =
   'inline-block px-4 py-2 rounded-input text-sm font-bold bg-accent-gradient text-white shadow-button-sm hover:brightness-110 disabled:opacity-50 transition-all';
@@ -80,19 +85,32 @@ const GetAppPage: React.FC = () => {
           {msg && <p className="text-accent-light text-xs mt-2">{msg}</p>}
         </Card>
 
-        <Card badge="Chrome / Edge / Brave" title="Browser extension">
+        <Card badge={isFirefox() ? 'Firefox' : 'Chrome / Edge / Brave'} title="Browser extension">
           <p className="text-text-muted text-sm mb-3">
             Right-click any selected text, link, or image while browsing and add it straight to a
             friend's profile — no copy-paste, no tab-switching.
           </p>
-          <a className={primaryButtonClasses} href={EXTENSION_ZIP} download>Download extension</a>
-          <p className="text-text-faint text-xs mt-2">
-            Unpacked, not on the Chrome Web Store. After unzipping: go to{' '}
-            <code className="text-accent-light">chrome://extensions</code>, enable{' '}
-            <strong className="text-text-secondary">Developer mode</strong>, then{' '}
-            <strong className="text-text-secondary">Load unpacked</strong> and pick the unzipped
-            folder.
-          </p>
+          {isFirefox() ? (
+            <>
+              <a className={primaryButtonClasses} href={EXTENSION_XPI}>Install extension</a>
+              <p className="text-text-faint text-xs mt-2">
+                Signed and installs directly — Firefox will show its own "Add extension?" prompt,
+                no unzipping or developer mode needed. Updates automatically after that.
+              </p>
+            </>
+          ) : (
+            <>
+              <a className={primaryButtonClasses} href={EXTENSION_ZIP} download>Download extension</a>
+              <p className="text-text-faint text-xs mt-2">
+                Unpacked, not on the Chrome Web Store. After unzipping: go to{' '}
+                <code className="text-accent-light">chrome://extensions</code>, enable{' '}
+                <strong className="text-text-secondary">Developer mode</strong>, then{' '}
+                <strong className="text-text-secondary">Load unpacked</strong> and pick the
+                unzipped folder. On <strong className="text-text-secondary">Firefox</strong>,
+                reopen this page in Firefox for a direct, signed install instead.
+              </p>
+            </>
+          )}
         </Card>
 
         <Card badge="Installed app" title="Keep it updated">

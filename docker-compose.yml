@@ -67,6 +67,11 @@ services:
       TZ: ${HOST_TIMEZONE:-UTC}
     ports:
       - "8090:80"  # Expose Nginx on port 80
+    volumes:
+      # Signed Firefox .xpi + updates.json for self-hosted extension auto-update
+      # (nginx /ext/ ← extension/deploy-extension.sh writes here). :ro — nginx only
+      # reads; new versions appear live without recreating the container.
+      - ./ext-dist:/ext-dist:ro
     depends_on:
       - communicator-app
       - ai-agent

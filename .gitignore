@@ -74,3 +74,12 @@ resourceRepository/personalResources/**
 **/logs/
 # Maven build output
 target/
+
+# Generated Firefox build of extension/ (extension/build-firefox-extension.sh) —
+# not checked in, regenerate locally from extension/manifest.json + the overlay
+extension-firefox/
+# Signed .xpi + updates.json published by extension/deploy-extension.sh (nginx
+# serves these live via a bind mount — see docker-compose.yml's nginx volumes)
+ext-dist/
+# npx/web-ext download cache reused across signings (keeps re-signs fast)
+.web-ext-cache/

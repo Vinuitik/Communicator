@@ -1,0 +1,14 @@
+{
+  "version": "0.1.3",
+  "background": {
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "communicator-extension@communicator.work",
+      "strict_min_version": "121.0",
+      "update_url": "https://communicator.work/ext/updates.json"
+    }
+  }
+}

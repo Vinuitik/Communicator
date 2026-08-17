@@ -33,6 +33,13 @@ export function isIOS(): boolean {
     || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
 }
 
+// Firefox is the one browser where the extension .xpi itself is directly
+// installable (signed via AMO — see extension/deploy-extension.sh) instead of
+// needing the unzip-and-load-unpacked dance Chrome/Edge/Brave require.
+export function isFirefox(): boolean {
+  return window.navigator.userAgent.includes('Firefox');
+}
+
 export function state(): InstallState {
   return { canInstall: !!deferred, installed: isStandalone() };
 }
