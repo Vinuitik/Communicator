@@ -5,10 +5,10 @@
 # components that actually fail, so a clean run doesn't pollute an agent's
 # context and a failing one gives everything needed to debug without re-running.
 #
-# A Python/React component with zero real test files is silently skipped
-# (not a failure) — this repo currently only has tests in the friend module;
-# this script is written to pick up tests in any other module/service the
-# moment they're added, with no changes needed here.
+# A Python/React component with zero real test files is silently skipped (not a failure) —
+# this script is written to pick up tests in any other module/service the moment they're
+# added, with no changes needed here. The e2e/ suite at the end is the one exception: it's
+# disruptive (stops/restarts the real communicator-app container) and always runs last.
 #
 # Usage: ./run-all-tests.sh          (silent unless something fails)
 #        ./run-all-tests.sh -v       (verbose: prints the [OK]/[SKIP]/[FAIL]
@@ -91,6 +91,22 @@ if [ -z "$tests_found" ]; then
     SUMMARY+=("[SKIP] react (no test files)")
 else
     run_component "react" bash -c "cd react && CI=true npm test -- --watchAll=false"
+fi
+
+# ── Whole-system E2E: offline-outbox sync engine ──
+# Drives a real headless browser against the live docker-compose stack and stops/restarts
+# the real communicator-app container mid-run to simulate an outage — see e2e/README's
+# sibling doc, tasks/SYNC_ENGINE_TESTING_HANDOFF.md. Runs LAST and never in parallel with
+# anything above: it's disruptive to the live app, and both its own tests share that one
+# container so they can't overlap with each other either (playwright.config.ts: workers 1).
+if [ -d e2e ]; then
+    run_component "e2e" \
+        docker run --rm \
+            -v "$(pwd)":/workspace -w /workspace/e2e \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            --network host \
+            mcr.microsoft.com/playwright:v1.48.0-jammy \
+            bash -c "npm install --no-audit --no-fund && npx playwright test"
 fi
 
 if [ "$VERBOSE" -eq 1 ] || [ "$FAILED" -eq 1 ]; then

@@ -57,6 +57,9 @@ ai_agent/service-account-key.json
 **/yarn.lock
 **/*.tsbuildinfo
 **/npm-debug.log*
+
+# Playwright's own generated artifact dir (e2e/)
+**/test-results/
 **/yarn-debug.log*
 **/yarn-error.log*
 
