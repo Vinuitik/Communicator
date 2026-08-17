@@ -2,7 +2,7 @@
 
 > **Proto, not a flow.** This maps the *internal wiring* of one service + its **seams** (cross-service edges). End-to-end pipelines that traverse these seams live in the top-level [flows/](../../../../../../flows/) docs and link back down here for mechanics.
 
-Files: FriendController.java, FriendService.java, EmaUpdateService.java, AnalyticsService.java, FriendKnowledgeService.java, WebController.java, Friend.java, EmaProperties.java
+Files: FriendController.java, FriendService.java, OutboxWriteService.java, EmaUpdateService.java, AnalyticsService.java, FriendKnowledgeService.java, WebController.java, Friend.java, EmaProperties.java
 
 ## Role
 
@@ -26,19 +26,19 @@ Sibling controllers not expanded here (same pattern): `FriendKnowledgeController
 
 ```
 UI form submit → nginx /api/friend/addFriend → FriendController.addFriend(@Valid Friend)
-  friendService.setMeetingTime(experience, analytics[0].date)   — schedules NEXT contact
-     "*"  → date + 1 day     (bad meeting, follow up fast)
-     "**" → date + 1 week
-     else → date + 1 month   ("***" or anything else)
-  friend.setPlannedSpeakingTime(plannedTime)
-  friendService.save(friend)                    — cascade ALL persists child rows too
-  analyticsService.saveAll(friend)              — per-analytics row → EMA recompute (see below)
-  knowledgeService.saveAll(friend.getKnowledge())
+  OutboxWriteService.applyAddFriend(friend, requestId)   — idempotency-ledger checked first
+    reviewService.reviewInteraction(friend, hours, experience, inPerson, firstAnalytics.date)
+       → plannedSpeakingTime          — FSRS initialState() (this is the friend's first-ever review)
+                                         see FriendService/FLOWS.md for the full mechanism
+    friend.setPlannedSpeakingTime(plannedTime)
+    friendService.save(friend)                    — cascade ALL persists child rows too
+    analyticsService.saveAll(friend)              — per-analytics row → EMA recompute (see below)
+    knowledgeService.saveAll(friend.getKnowledge())
   → 201 CREATED "Friend added successfully!"
 ```
 
-`@Valid` enforces `Friend` bean constraints: name 1–50 chars, `plannedSpeakingTime` NotNull, `experience` NotNull ≤100, `dateOfBirth` `@Past`. A constraint violation is a 400 before the method body runs.
-To change the scheduling cadence: `FriendService.setMeetingTime()`.
+`@Valid` enforces `Friend` bean constraints: name 1–50 chars, `plannedSpeakingTime` NotNull, `experience` NotNull ≤100, `dateOfBirth` `@Past`. A constraint violation is a 400 before the method body runs. `plannedSpeakingTime` must be present on the request body to pass validation even though `reviewInteraction` immediately overwrites it — a legacy artifact of the old fixed-ladder scheduler, not fixed opportunistically here.
+To change the scheduling cadence: `ReviewService.reviewInteraction()` (see [FriendService/FLOWS.md](FriendService/FLOWS.md)) — `FriendService.setMeetingTime()`, the old fixed star-rating ladder, was deleted once FSRS+bandit replaced it.
 
 ---
 
@@ -47,15 +47,19 @@ To change the scheduling cadence: `FriendService.setMeetingTime()`.
 The single most important write path — this is what the user does after actually meeting someone.
 
 ```
-PUT /api/friend/talkedToFriend/{id}  body = Friend (experience + new analytics/knowledge)
-  setMeetingTime(experience, LocalDate.now())  → plannedSpeakingTime  (reschedule from TODAY)
-  friendService.updateFriend(id, friend)       — merge name/experience/dob/plannedSpeakingTime
-  analyticsService.saveAll(analytics, id)       — append interaction rows + EMA recompute
-  knowledgeService.saveAll(knowledges, id)      — append new facts
+PUT /api/friend/talkedToFriend/{id}  body = Friend (experience + duration/inPerson + new analytics/knowledge)
+  OutboxWriteService.applyTalkedToFriend(id, friend, requestId)   — idempotency-ledger checked first
+    friendService.updateFriend(id, friend)       — merge name/experience/dob (NOT plannedSpeakingTime — see below)
+    analyticsService.saveAll(analytics, id)       — append interaction rows + EMA recompute (cosmetic health)
+    knowledgeService.saveAll(knowledges, id)      — append new facts
+    reviewService.reviewInteraction(...)          → plannedSpeakingTime + FSRS/bandit state
+                                                     see FriendService/FLOWS.md for the full mechanism
   → 200 OK
 ```
 
 **`updateFriend` merge quirk (bug-prone):** the guard is `if (field != null || dbField == null)` — a non-null incoming value overwrites, but a null incoming value ALSO overwrites when the DB value is null. It never clears an already-set field to null, but partial updates that omit a field still re-set it. It then saves unconditionally (`updated || friendDB != null` is always true) and `flush()`es. To change merge semantics: `FriendService.updateFriend()`.
+
+**Scheduling is FSRS+bandit, not a fixed ladder.** `plannedSpeakingTime` is set by `ReviewService.reviewInteraction()`, not by `updateFriend`'s merge — full mechanism (grade computation, FSRS-6 math, Thompson-sampling bandit, nightly neglect lapse, leech-flagging) documented in [FriendService/FLOWS.md](FriendService/FLOWS.md).
 
 ---
 
@@ -81,7 +85,7 @@ AnalyticsService.save / saveAll → EmaUpdateService.updateEmaOnNewAnalytics(fri
 
 Note the inverted alpha: a **worse** meeting ("*", alpha .8) moves the average *harder* than a great one (".6") — recent bad experiences dominate faster. To retune: `EmaProperties` (`ema.coefficients.new-data.*` in `application.properties`) + the `0.1` decay constant / `12`-day window in `EmaUpdateService.calculateTimeDecayFactor()`.
 
-`updateMovingAverages()` (`PUT /api/friend/updateAverages`) is the **chrono-service write-back** path — chrono computes batch EMAs offline and pushes them here. See [chrono FLOWS](../../../../../../chrono/src/main/java/FLOWS.md).
+`updateMovingAverages()` is the **chrono nightly write-back** path — chrono computes the decayed EMAs and calls this directly. No HTTP hop: chrono and friend have run in the same JVM since the JVM-monolith merge, so this is a plain injected-bean method call (`ChronoJobService` holds a `FriendService` field directly), not a network round-trip through nginx like it used to be. See [chrono FLOWS](../../../../../../chrono/src/main/java/FLOWS.md).
 
 ---
 
@@ -128,9 +132,9 @@ Legacy multi-page UI still served by this service (the React app is replacing it
 | Caller | Trigger / why | Entry point |
 |---|---|---|
 | React UI / legacy static | user views week list, adds friend, logs interaction | `GET /thisWeek`, `POST /addFriend`, `PUT /talkedToFriend/{id}`, `GET /friends/ui/page/..` |
-| chrono | nightly EMA rebalance write-back | `PUT /updateAverages` → `updateMovingAverages()` |
-| chrono | pull friends + current EMA for batch math | `GET /friends/chrono/page/{p}/size/{s}` → `ShortFriendDTO` |
-| chrono | did these friends interact on date D? | `POST /batch-interaction-check` → `AnalyticsService.getFriendsWithInteractionsOnDate()` |
+| chrono | nightly EMA rebalance write-back — **same JVM, direct bean call, no HTTP** | `FriendService.updateMovingAverages()` |
+| chrono | pull friends + current EMA for batch math — **same JVM, direct bean call** | `FriendService.getFriendsPaginatedForChrono(page, size)` → `List<ShortFriendDTO>` |
+| chrono | did these friends interact on date D? — **same JVM, direct bean call** | `AnalyticsService.getFriendsWithInteractionsOnDate()` |
 | AI agent / MCP | list a friend's knowledge (paginated projection) | `GET /friends/page/{p}` → `MCP_Friend_DTO`; `FriendKnowledgeService.getKnowledgeIdsByFriendId()` |
 
 **Outbound** (who this service calls):
@@ -159,16 +163,15 @@ Legacy multi-page UI still served by this service (the React app is replacing it
 
 | Thing to change | Where |
 |---|---|
-| Next-contact scheduling cadence (1d/1wk/1mo) | `FriendService.setMeetingTime()` |
+| Next-contact scheduling cadence | `ReviewService.reviewInteraction()` / `FsrsService` / `BanditService` / `RoleProperties` — see [FriendService/FLOWS.md](FriendService/FLOWS.md). The old fixed ladder (`FriendService.setMeetingTime()`, "*"→+1d/"**"→+1wk/else→+1mo) was deleted when FSRS+bandit replaced it. |
 | EMA alpha per rating | `EmaProperties.getNewDataAlpha()` / `application.properties ema.coefficients.new-data.*` |
 | EMA time-decay constant / stale window | `EmaUpdateService.calculateTimeDecayFactor()` (0.1) + `daysDifference > 12` guard |
 | Experience → numeric mapping | `EmaUpdateService.convertExperienceToNumber()` |
 | "This week" inclusion rule | `FriendService.findThisWeek()` |
 | Friend field merge on update | `FriendService.updateFriend()` |
 | Default page size | `FriendService.getFriendsPaginated(int)` (10) |
-| Add-friend orchestration | `FriendController.addFriend()` |
-| Log-interaction orchestration | `FriendController.talkedToFriend()` (`updateFriend`) |
-| chrono EMA write-back | `FriendController.updateFriendAverages()` → `FriendService.updateMovingAverages()` |
+| Add-friend / log-interaction orchestration | `OutboxWriteService.applyAddFriend()` / `applyTalkedToFriend()` — shared by the HTTP controllers and the offline-outbox mailbox consumer |
+| chrono EMA write-back | `ChronoJobService.applyDecayToFriend()` → `FriendService.updateMovingAverages()` (same-JVM bean call, not HTTP) |
 | Bean validation rules | `Friend.java` annotations |
 | Media backend URL | env `FILE_REPOSITORY_SERVICE_URL` (compose) |
 | DB connection | env `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` (compose) |

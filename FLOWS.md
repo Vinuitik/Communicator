@@ -26,6 +26,7 @@ Read a **flow** to understand "what happens when the user does X." Drop into a *
 | Flow | What it covers | Services touched |
 |---|---|---|
 | [Relationship Lifecycle](flows/relationship-lifecycle.md) | log interaction → EMA health → weekly reminder → nightly decay (the CRM core loop) | UI · nginx · friend · chrono · Postgres |
+| [Relationship Scheduling — FSRS + Bandit](friend/src/main/java/communicate/Friend/FriendService/FLOWS.md) | deep dive: how `plannedSpeakingTime` is actually chosen — FSRS-6 stability/difficulty + Thompson-sampling bandit interval multiplier + nightly neglect lapse | friend · chrono · host-wrapper · Postgres |
 | [Knowledge → Validated Facts](flows/knowledge-rag.md) | RAG + AI fact-checking: notes → chunks → embeddings → summary → validated referenced facts | UI · nginx · ai_agent · friend · embedder · Postgres/ParadeDB · Redis · mode-switched LLM |
 | [Chat with the AI agent](flows/chat.md) | structured-chat ReAct agent driving MCP tools over WebSocket, mode-switchable LLM | UI · nginx · ai_agent · knowledgeMCP (in-process) · friend · Ollama/host-wrapper |
 | [AI Settings](flows/ai-settings.md) | local/cloud LLM mode switch + encrypted provider keys, live no-restart reload | UI · nginx · ai_agent · Postgres · host-wrapper |
