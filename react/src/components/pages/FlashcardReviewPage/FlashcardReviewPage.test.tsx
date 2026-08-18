@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import FlashcardReviewPage from './FlashcardReviewPage';
 import { ToastProvider } from '../../molecules/Toast';
@@ -56,8 +56,12 @@ describe('FlashcardReviewPage', () => {
 
     renderPage();
 
-    expect(await screen.findByText('Loves hiking')).toBeInTheDocument();
-    expect(screen.getByText('Alex')).toBeInTheDocument();
+    const factText = await screen.findByText('Loves hiking');
+    expect(factText).toBeInTheDocument();
+    // "Alex" appears both in the folder sidebar and the card's own byline --
+    // scope to the card panel to avoid an ambiguous match.
+    const cardPanel = factText.closest('.flex-col.flex-1') as HTMLElement;
+    expect(within(cardPanel).getByText('Alex')).toBeInTheDocument();
   });
 
   it('renders a sensible empty state with zero starred friends, not a blank page', async () => {
@@ -79,7 +83,7 @@ describe('FlashcardReviewPage', () => {
     renderPage();
 
     const revealButton = await screen.findByRole('button', { name: /reveal/i });
-    revealButton.click();
+    fireEvent.click(revealButton);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Hard' })).toBeInTheDocument();
