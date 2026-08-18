@@ -15,6 +15,7 @@ import SettingsPage from './components/pages/SettingsPage';
 import GetAppPage from './components/pages/GetAppPage';
 import InsightsPage from './components/pages/InsightsPage';
 import ProfilePage from './components/pages/ProfilePage';
+import FlashcardReviewPage from './components/pages/FlashcardReviewPage';
 import { ROUTES, profilePath } from './utils/constants';
 
 // Talked/Knowledge/Social/FileUpload used to be standalone routes — all four
@@ -53,6 +54,7 @@ const App: React.FC = () => {
             {/* Old "Analytics" bookmarks still land somewhere real. */}
             <Route path="/analytics" element={<Navigate to={ROUTES.INSIGHTS} replace />} />
             <Route path={ROUTES.INSIGHTS} element={<InsightsPage />} />
+            <Route path={ROUTES.REVIEW} element={<FlashcardReviewPage />} />
             <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
           </Routes>
         </PageLayout>

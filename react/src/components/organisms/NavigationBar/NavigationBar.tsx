@@ -19,6 +19,7 @@ const NAV_ITEMS: { label: string; to: string; match: (pathname: string) => boole
   },
   { label: 'Groups', to: ROUTES.GROUPS, match: (p) => p.startsWith('/groups') },
   { label: 'Connections', to: ROUTES.CONNECTIONS, match: (p) => p.startsWith('/connections') },
+  { label: 'Review', to: ROUTES.REVIEW, match: (p) => p.startsWith(ROUTES.REVIEW) },
   { label: 'Insights', to: ROUTES.INSIGHTS, match: (p) => p.startsWith(ROUTES.INSIGHTS) },
 ];
 

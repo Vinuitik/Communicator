@@ -15,6 +15,7 @@ export const ROUTES = {
   SETTINGS: '/settings',
   GET_APP: '/get-app',
   INSIGHTS: '/insights',
+  REVIEW: '/review',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',
 };

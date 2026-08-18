@@ -28,5 +28,9 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
     
     @Query("SELECT new communicate.Friend.DTOs.MCP_Friend_DTO(f.id, f.name, f.dateOfBirth) FROM Friend f")
     Page<communicate.Friend.DTOs.MCP_Friend_DTO> findAllMCPFriendDTOs(Pageable pageable);
-        
+
+    // Flashcard-review folder list (ReviewPage's default view) — every
+    // currently-starred friend.
+    List<Friend> findByFlashcardsEnabledTrue();
+
 }

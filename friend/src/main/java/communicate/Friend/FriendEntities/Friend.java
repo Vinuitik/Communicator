@@ -166,6 +166,15 @@ public class Friend {
     @Column(name = "leech")
     private Boolean leech = false;
 
+    // Flashcard-review "star" toggle (Feature D — reviewing logged knowledge
+    // as flashcards, separate from FSRS contact scheduling above). Turning
+    // this on enrolls a FriendKnowledgeReview row per personal + inherited-
+    // group fact (FlashcardEnrollmentService); turning it off hides rather
+    // than deletes those rows.
+    @Builder.Default
+    @Column(name = "flashcards_enabled")
+    private Boolean flashcardsEnabled = false;
+
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);

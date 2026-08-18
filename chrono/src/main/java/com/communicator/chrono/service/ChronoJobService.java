@@ -5,8 +5,12 @@ import communicate.Friend.Config.EmaProperties;
 import communicate.Friend.DTOs.ShortFriendDTO;
 import communicate.Friend.FriendService.AnalyticsService;
 import communicate.Friend.FriendService.EmaMathService;
+import communicate.Friend.FriendService.FlashcardBankruptcyService;
+import communicate.Friend.FriendService.FlashcardReviewSettingsService;
+import communicate.Friend.FriendService.FlashcardSpreadService;
 import communicate.Friend.FriendService.FriendService;
 import communicate.Friend.FriendService.FsrsNeglectService;
+import communicate.Friend.FriendEntities.FlashcardReviewSettings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,6 +33,9 @@ public class ChronoJobService {
     private final EmaMathService emaMathService;
     private final EmaProperties emaProperties;
     private final FsrsNeglectService fsrsNeglectService;
+    private final FlashcardBankruptcyService flashcardBankruptcyService;
+    private final FlashcardSpreadService flashcardSpreadService;
+    private final FlashcardReviewSettingsService flashcardReviewSettingsService;
 
     /**
      * Runs every day at midnight to apply decay for friends who didn't have interactions yesterday
@@ -97,6 +104,20 @@ public class ChronoJobService {
             fsrsNeglectService.applyNightlyLapse();
         } catch (Exception e) {
             log.error("Error during FSRS neglect lapse process", e);
+        }
+
+        // Flashcard-review (design doc "Feature D") nightly lapse + daily-cap
+        // spread — same slot, independent of the two concerns above. Order
+        // matters: bankruptcy/neglect lapses first (they redistribute their
+        // own overdue rows via least-loaded-day), then a global spread pass
+        // enforces maxDailyReviews across the WHOLE pool (including rows
+        // bankruptcy just rescheduled).
+        try {
+            FlashcardReviewSettings settings = flashcardReviewSettingsService.get();
+            flashcardBankruptcyService.run(settings.getBankruptcyLimit(), settings.getChronicNeglectDays());
+            flashcardSpreadService.run(settings.getMaxDailyReviews());
+        } catch (Exception e) {
+            log.error("Error during flashcard review nightly job", e);
         }
     }
 

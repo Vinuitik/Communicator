@@ -4,7 +4,8 @@ import {
   getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup,
   getSchedulingRolePresets, saveSchedulingRolePreset,
 } from '../../../services/api/settingsService';
-import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS, SchedulingRolePreset } from '../../../types/api';
+import { getFlashcardReviewSettings, saveFlashcardReviewSettings } from '../../../services/api/flashcardService';
+import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS, SchedulingRolePreset, FlashcardReviewSettings } from '../../../types/api';
 import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
 
@@ -70,6 +71,11 @@ const SettingsPage: React.FC = () => {
   const [roleBusy, setRoleBusy] = useState<Record<string, boolean>>({});
   const [roleStatus, setRoleStatus] = useState<Record<string, { text: string; variant?: 'ok' | 'error' }>>({});
 
+  const [flashcardSettings, setFlashcardSettingsState] = useState<FlashcardReviewSettings | null>(null);
+  const [flashcardDraft, setFlashcardDraft] = useState({ maxDailyReviews: '', chronicNeglectDays: '', bankruptcyLimit: '' });
+  const [flashcardBusy, setFlashcardBusy] = useState(false);
+  const [flashcardStatus, setFlashcardStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
+
   const [backup, setBackup] = useState<BackupStatus | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupRunStatus, setBackupRunStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
@@ -105,6 +111,22 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   useEffect(() => { loadRolePresets(); }, [loadRolePresets]);
+
+  const loadFlashcardSettings = useCallback(async () => {
+    try {
+      const data = await getFlashcardReviewSettings();
+      setFlashcardSettingsState(data);
+      setFlashcardDraft({
+        maxDailyReviews: String(data.maxDailyReviews),
+        chronicNeglectDays: String(data.chronicNeglectDays),
+        bankruptcyLimit: String(data.bankruptcyLimit),
+      });
+    } catch (err) {
+      setFlashcardStatus({ text: `Could not load flashcard settings: ${err instanceof Error ? err.message : err}`, variant: 'error' });
+    }
+  }, []);
+
+  useEffect(() => { loadFlashcardSettings(); }, [loadFlashcardSettings]);
 
   const loadBackupStatus = useCallback(async () => {
     try {
@@ -194,6 +216,29 @@ const SettingsPage: React.FC = () => {
       setRoleStatus((s) => ({ ...s, [role]: { text: `Could not save: ${err instanceof Error ? err.message : err}`, variant: 'error' } }));
     } finally {
       setRoleBusy((b) => ({ ...b, [role]: false }));
+    }
+  };
+
+  const handleSaveFlashcardSettings = async () => {
+    const maxDailyReviews = parseInt(flashcardDraft.maxDailyReviews, 10);
+    const chronicNeglectDays = parseInt(flashcardDraft.chronicNeglectDays, 10);
+    const bankruptcyLimit = parseInt(flashcardDraft.bankruptcyLimit, 10);
+    if (!Number.isFinite(maxDailyReviews) || maxDailyReviews <= 0
+        || !Number.isFinite(chronicNeglectDays) || chronicNeglectDays <= 0
+        || !Number.isFinite(bankruptcyLimit) || bankruptcyLimit <= 0) {
+      setFlashcardStatus({ text: 'All three values must be positive numbers.', variant: 'error' });
+      return;
+    }
+    setFlashcardBusy(true);
+    setFlashcardStatus({ text: 'Saving…' });
+    try {
+      const saved = await saveFlashcardReviewSettings({ maxDailyReviews, chronicNeglectDays, bankruptcyLimit });
+      setFlashcardSettingsState(saved);
+      setFlashcardStatus({ text: 'Saved — takes effect on the next nightly run.', variant: 'ok' });
+    } catch (err) {
+      setFlashcardStatus({ text: `Could not save: ${err instanceof Error ? err.message : err}`, variant: 'error' });
+    } finally {
+      setFlashcardBusy(false);
     }
   };
 
@@ -415,6 +460,52 @@ const SettingsPage: React.FC = () => {
           {rolePresets && rolePresets.length === 0 && (
             <p className="text-xs text-text-faint">No role presets yet — they're seeded on the next app boot.</p>
           )}
+        </div>
+      </Card>
+
+      <Card title="Flashcard review">
+        <p className="text-xs text-text-muted mb-3.5 -mt-2">
+          Drives the nightly job that caps and lapses your starred friends' flashcard queue (FlashcardSpreadService/FlashcardBankruptcyService).
+          Max/day spreads overflow onto the next day (hardest cards stay, easiest spill forward). Chronic neglect lapses a card that's sat
+          overdue past that many days. Bankruptcy limit mass-lapses everything still overdue once the total crosses that count.
+        </p>
+        {flashcardStatus.text && (
+          <div className={`mb-3 text-sm ${statusTextClass(flashcardStatus.variant)}`}>{flashcardStatus.text}</div>
+        )}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <label className="flex items-center gap-1.5 text-xs text-text-muted">
+            Max reviews/day
+            <input
+              type="number" step="1" min="1"
+              value={flashcardDraft.maxDailyReviews}
+              onChange={(e) => setFlashcardDraft((d) => ({ ...d, maxDailyReviews: e.target.value }))}
+              disabled={flashcardBusy}
+              className="w-20 bg-input border border-white/10 rounded-input px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-text-muted">
+            Chronic neglect (days)
+            <input
+              type="number" step="1" min="1"
+              value={flashcardDraft.chronicNeglectDays}
+              onChange={(e) => setFlashcardDraft((d) => ({ ...d, chronicNeglectDays: e.target.value }))}
+              disabled={flashcardBusy}
+              className="w-20 bg-input border border-white/10 rounded-input px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-text-muted">
+            Bankruptcy limit
+            <input
+              type="number" step="1" min="1"
+              value={flashcardDraft.bankruptcyLimit}
+              onChange={(e) => setFlashcardDraft((d) => ({ ...d, bankruptcyLimit: e.target.value }))}
+              disabled={flashcardBusy}
+              className="w-20 bg-input border border-white/10 rounded-input px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
+            />
+          </label>
+          <button type="button" onClick={handleSaveFlashcardSettings} disabled={flashcardBusy || !flashcardSettings} className={`${primaryButtonClasses} flex-shrink-0 ml-auto`}>
+            Save
+          </button>
         </div>
       </Card>
 

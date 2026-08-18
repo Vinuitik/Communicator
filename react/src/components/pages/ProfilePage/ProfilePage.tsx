@@ -18,6 +18,7 @@ import {
 } from '../../../services/api/friendService';
 import { talkedToFriendOffline, addFriendKnowledgeItemOffline } from '../../../pwa/offlineApi';
 import { getGroups } from '../../../services/api/groupService';
+import { setFriendFlashcardsEnabled } from '../../../services/api/flashcardService';
 import { FriendProfileData, Friend, AnalyticsRecord, Group, KnowledgeCrudItem, NewFriendPayload } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
 import { ROUTES } from '../../../utils/constants';
@@ -92,6 +93,8 @@ const ProfilePage: React.FC = () => {
   const [outreachDraft, setOutreachDraft] = useState<string | null>(null);
   const [outreachLoading, setOutreachLoading] = useState(false);
 
+  const [starBusy, setStarBusy] = useState(false);
+
   const loadFriend = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -165,6 +168,26 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // Star toggle (FlashcardEnrollmentService) -- turning it on enrolls this
+  // friend's personal + inherited-group facts as flashcards (Review page);
+  // turning it off just hides them from the review queue, doesn't delete
+  // anything. Optimistic update, reverted on failure.
+  const handleToggleStar = async () => {
+    if (!friend) return;
+    const next = !friend.flashcardsEnabled;
+    setStarBusy(true);
+    setFriend({ ...friend, flashcardsEnabled: next });
+    try {
+      await setFriendFlashcardsEnabled(friend.id, next);
+      showToast(next ? 'Starred — added to your flashcard review deck' : 'Un-starred — hidden from the review queue');
+    } catch (err) {
+      setFriend({ ...friend, flashcardsEnabled: !next });
+      showToast(err instanceof Error ? err.message : 'Could not update the star.', 'error');
+    } finally {
+      setStarBusy(false);
+    }
+  };
+
   const handleDraftOutreach = async () => {
     setOutreachLoading(true);
     try {
@@ -207,6 +230,17 @@ const ProfilePage: React.FC = () => {
             <div className="flex-1">
               <div className="flex items-center gap-2.5">
                 <h1 className="m-0 font-display font-bold text-[28px] tracking-tight text-text-primary">{friend.name}</h1>
+                <button
+                  type="button"
+                  onClick={handleToggleStar}
+                  disabled={starBusy}
+                  title={friend.flashcardsEnabled ? 'Starred — remove from flashcard review' : 'Star — review logged facts as flashcards'}
+                  className={`text-xl leading-none border-none bg-transparent p-0 transition-colors disabled:opacity-50 ${
+                    friend.flashcardsEnabled ? 'text-soon' : 'text-text-faintest hover:text-text-muted'
+                  }`}
+                >
+                  {friend.flashcardsEnabled ? '★' : '☆'}
+                </button>
                 {friend.leech && (
                   <span
                     title="Actual contact keeps missing the predicted due date — the interval isn't the problem, the rhythm is."
