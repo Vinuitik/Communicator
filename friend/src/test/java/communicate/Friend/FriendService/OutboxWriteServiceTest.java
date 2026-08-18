@@ -39,9 +39,10 @@ class OutboxWriteServiceTest {
     @Mock FriendKnowledgeService knowledgeService;
     @Mock ReviewService reviewService;
     @Mock ConsumedWriteRequestService ledger;
+    @Mock FlashcardEnrollmentService flashcardEnrollmentService;
 
     private OutboxWriteService service() {
-        return new OutboxWriteService(friendService, analyticsService, knowledgeService, reviewService, ledger);
+        return new OutboxWriteService(friendService, analyticsService, knowledgeService, reviewService, ledger, flashcardEnrollmentService);
     }
 
     // ── talkedToFriend ───────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ class OutboxWriteServiceTest {
         Friend result = service().applyTalkedToFriend(1, incoming, requestId);
 
         assertThat(result).isSameAs(incoming);
-        verifyNoInteractions(friendService, analyticsService, knowledgeService, reviewService);
+        verifyNoInteractions(friendService, analyticsService, knowledgeService, reviewService, flashcardEnrollmentService);
         verify(ledger, never()).markConsumed(any(), any());
     }
 
@@ -115,7 +116,7 @@ class OutboxWriteServiceTest {
 
         service().applyAddFriend(incoming, requestId);
 
-        verifyNoInteractions(friendService, analyticsService, knowledgeService, reviewService);
+        verifyNoInteractions(friendService, analyticsService, knowledgeService, reviewService, flashcardEnrollmentService);
         verify(ledger, never()).markConsumed(any(), any());
     }
 
@@ -184,6 +185,34 @@ class OutboxWriteServiceTest {
         assertThat(result.get(0)).isNull();
         verify(knowledgeService).saveAll(List.of(fact));
         verify(ledger).markConsumed(requestId, "addKnowledge");
+    }
+
+    @Test
+    void applyAddKnowledge_starredFriend_autoEnrollsFlashcards() {
+        UUID requestId = UUID.randomUUID();
+        when(ledger.isDuplicate(requestId)).thenReturn(false);
+        Friend starredFriend = Friend.builder().id(1).flashcardsEnabled(true).build();
+        when(friendService.getFriendById(1)).thenReturn(starredFriend);
+        FriendKnowledge fact = new FriendKnowledge();
+        fact.setText("likes chess");
+
+        service().applyAddKnowledge(1, List.of(fact), requestId);
+
+        verify(flashcardEnrollmentService).enrollFriend(1);
+    }
+
+    @Test
+    void applyAddKnowledge_unstarredFriend_doesNotEnrollFlashcards() {
+        UUID requestId = UUID.randomUUID();
+        when(ledger.isDuplicate(requestId)).thenReturn(false);
+        Friend unstarredFriend = Friend.builder().id(1).flashcardsEnabled(false).build();
+        when(friendService.getFriendById(1)).thenReturn(unstarredFriend);
+        FriendKnowledge fact = new FriendKnowledge();
+        fact.setText("likes chess");
+
+        service().applyAddKnowledge(1, List.of(fact), requestId);
+
+        verifyNoInteractions(flashcardEnrollmentService);
     }
 
     @Test

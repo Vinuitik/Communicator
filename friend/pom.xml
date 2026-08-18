@@ -26,6 +26,18 @@
             <artifactId>outbox-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Flashcard-review enrollment (FlashcardEnrollmentService) reads
+             GroupKnowledge/SocialGroup to inherit group facts into a starred
+             friend's folder. group does not depend on friend (checked — no
+             cross-refs either direction previously), so this stays a clean,
+             acyclic addition; it mirrors chrono's own friend-module
+             dependency for cross-module JPA reads within the merged
+             monolith's single datasource (see PathPrefixConfig). -->
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>group</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

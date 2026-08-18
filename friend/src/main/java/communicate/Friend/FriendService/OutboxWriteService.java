@@ -32,6 +32,7 @@ public class OutboxWriteService {
     private final FriendKnowledgeService knowledgeService;
     private final ReviewService reviewService;
     private final ConsumedWriteRequestService ledger;
+    private final FlashcardEnrollmentService flashcardEnrollmentService;
 
     @Transactional
     public Friend applyTalkedToFriend(Integer id, Friend friend, UUID requestId) {
@@ -120,6 +121,13 @@ public class OutboxWriteService {
 
         knowledgeService.saveAll(knowledge);
         List<Integer> ids = knowledge.stream().map(FriendKnowledge::getId).toList();
+
+        // New knowledge logged for an already-starred friend auto-enrolls as
+        // a flashcard too (design doc "Feature D") — gated on
+        // Friend.flashcardsEnabled, same friend object already loaded above.
+        if (Boolean.TRUE.equals(friend.getFlashcardsEnabled())) {
+            flashcardEnrollmentService.enrollFriend(friendId);
+        }
 
         if (requestId != null) {
             ledger.markConsumed(requestId, "addKnowledge");
