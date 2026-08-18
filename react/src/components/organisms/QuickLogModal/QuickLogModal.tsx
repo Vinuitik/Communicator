@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import Avatar from '../../atoms/Avatar';
 import Input from '../../atoms/Input';
+import Select from '../../atoms/Select';
 import Textarea from '../../atoms/Textarea';
 import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 import SegmentedControl from '../../molecules/SegmentedControl';
 import { useToast } from '../../molecules/Toast';
 import { Friend, NewFriendPayload } from '../../../types/api';
 import { talkedToFriendOffline } from '../../../pwa/offlineApi';
+import { ROLE_OPTIONS } from '../../../utils/constants';
 
 interface QuickLogModalProps {
   friend: Friend | null;
@@ -25,6 +27,7 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
   const [rating, setRating] = useState('***');
   const [hours, setHours] = useState('1');
   const [inPerson, setInPerson] = useState(true);
+  const [role, setRole] = useState(friend?.role ?? 'Casual');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,7 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
         dateOfBirth: friend.dateOfBirth ?? null,
         analytics: [{ date: today, experience: rating, hours: parseFloat(hours) || 0, inPerson }],
         knowledge: note.trim() ? [{ fact: note.trim(), importance: 1 }] : [],
+        role,
       };
       const result = await talkedToFriendOffline(friend.id, payload);
       onSaved(friend.id);
@@ -85,6 +89,16 @@ const QuickLogModal: React.FC<QuickLogModalProps> = ({ friend, onClose, onSaved 
 
         <div className="text-xs text-text-secondary mb-2">How did it go?</div>
         <RatingPicker options={EXPERIENCE_RATINGS} value={rating} onChange={setRating} className="mb-4" />
+
+        <div className="mb-4">
+          <Select
+            label="Role"
+            name="role"
+            options={ROLE_OPTIONS}
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+          />
+        </div>
 
         <div className="flex gap-3 mb-4">
           <div className="flex-1">

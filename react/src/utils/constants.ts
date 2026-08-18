@@ -56,3 +56,13 @@ export const SUCCESS_MESSAGES = {
 export const DEFAULTS = {
   PAGE_SIZE: 10,
 };
+
+// Contact-expectation role options -> desiredRetention preset (RoleProperties).
+// Mirrors RoleProperties' starter presets in application.yml
+// (fsrs.role.desired-retention). Shared by AddFriendForm and QuickLogModal.
+export const ROLE_OPTIONS = [
+  { value: 'Partner', label: 'Partner' },
+  { value: 'Close', label: 'Close friend' },
+  { value: 'Casual', label: 'Casual' },
+  { value: 'Family', label: 'Family' },
+];
