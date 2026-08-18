@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.communicator.outboxcore.service.ConsumedWriteRequestService;
@@ -32,6 +33,7 @@ public class OutboxWriteService {
     private final FriendKnowledgeService knowledgeService;
     private final ReviewService reviewService;
     private final ConsumedWriteRequestService ledger;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Friend applyTalkedToFriend(Integer id, Friend friend, UUID requestId) {
@@ -56,6 +58,10 @@ public class OutboxWriteService {
                 friend.getExperience(), logged.getInPerson(), LocalDate.now());
             friend.setPlannedSpeakingTime(plannedTime);
             friendService.save(friend);
+            // TODO(Feature B, read-side stage): plannedSpeakingTime stays as a dual-write
+            // for now so existing readers don't break; retire once every reader moves to
+            // querying Meeting instead.
+            eventPublisher.publishEvent(new FriendRescheduledEvent(friend.getId(), plannedTime));
         }
 
         analyticsService.saveAll(analytics, id);
@@ -85,6 +91,7 @@ public class OutboxWriteService {
         friendService.save(friend);
         analyticsService.saveAll(friend);
         knowledgeService.saveAll(friend.getKnowledge());
+        eventPublisher.publishEvent(new FriendRescheduledEvent(friend.getId(), plannedTime));
 
         if (requestId != null) {
             ledger.markConsumed(requestId, "addFriend");

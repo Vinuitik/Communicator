@@ -28,6 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "communicate",                  // friend + backup (backup is communicate.backup)
         "com.example.demo",             // group (+ app-wide SecurityFilterChain in .config)
         "coommunicator.connections",    // connections (sic: original package typo)
+        "com.communicator.meeting",     // meeting (Meeting/MeetingAttendee + FriendRescheduledEvent listener)
         "com.communicator.chrono",      // chrono (scheduled jobs; no JPA entities)
         "com.communicator.outboxcore",  // outbox-core (shared idempotency ledger)
 })
@@ -35,12 +36,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "communicate",                  // friend + backup
         "com.example.demo",             // group
         "coommunicator.connections",    // connections
+        "com.communicator.meeting",     // meeting
         "com.communicator.outboxcore",  // outbox-core (ConsumedWriteRequest)
 })
 @EnableJpaRepositories(basePackages = {
         "communicate",                  // friend + backup
         "com.example.demo",             // group
         "coommunicator.connections",    // connections
+        "com.communicator.meeting",     // meeting
         "com.communicator.outboxcore",  // outbox-core (ConsumedWriteRequestRepository)
 })
 @EnableConfigurationProperties
