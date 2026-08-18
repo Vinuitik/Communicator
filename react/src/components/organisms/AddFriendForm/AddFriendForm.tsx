@@ -4,14 +4,7 @@ import Input from '../../atoms/Input';
 import Select from '../../atoms/Select';
 import RatingPicker, { EXPERIENCE_RATINGS } from '../../molecules/RatingPicker';
 import SegmentedControl from '../../molecules/SegmentedControl';
-
-// Mirrors RoleProperties' starter presets in application.yml (fsrs.role.desired-retention).
-const ROLE_OPTIONS = [
-  { value: 'Partner', label: 'Partner' },
-  { value: 'Close', label: 'Close friend' },
-  { value: 'Casual', label: 'Casual' },
-  { value: 'Family', label: 'Family' },
-];
+import { ROLE_OPTIONS } from '../../../utils/constants';
 
 // Ported from nginx/static/addFriendForm/addForm.html's #friendForm —
 // restyled per the redesign handoff (Stage 6): "How was the last chat?"
