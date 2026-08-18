@@ -4,7 +4,7 @@ import { Chart, ChartConfiguration } from 'chart.js/auto';
 import Avatar from '../../atoms/Avatar';
 import SegmentedControl from '../../molecules/SegmentedControl';
 import { useToast } from '../../molecules/Toast';
-import { getShortFriendList, getFriendsCount, getFriendsThisWeek, getFriendAnalytics, getFriendAnalyticsSeries } from '../../../services/api/friendService';
+import { getShortFriendList, getFriendsCount, getFriendsThisWeek, getFriendsPage, getFriendAnalytics, getFriendAnalyticsSeries } from '../../../services/api/friendService';
 import { ShortFriend, Friend, AnalyticsRecord, AnalyticsSeries } from '../../../types/api';
 import { ANALYTICS_RANGES } from '../../../utils/analyticsMath';
 import { calculateIntensityScore, getDaysDiff, getGradientColor, formatDaysDiff } from '../../../utils/friendMetrics';
@@ -76,6 +76,7 @@ const InsightsPage: React.FC = () => {
   const [totalFriends, setTotalFriends] = useState(0);
   const [overdueFriends, setOverdueFriends] = useState<Friend[]>([]);
   const [talkedThisMonth, setTalkedThisMonth] = useState<number | null>(null);
+  const [leechingFriends, setLeechingFriends] = useState<Friend[]>([]);
 
   const [metric, setMetric] = useState<Metric>('intensity');
   const [range, setRange] = useState('6M');
@@ -101,6 +102,18 @@ const InsightsPage: React.FC = () => {
       })
       .catch(() => {});
   }, []);
+
+  // leech is per-friend ("3 consecutive missed/late contacts" — LeechService)
+  // and already lands on every Friend the backend sends; overdueFriends above
+  // only covers *this week's* friends so it can't be reused here. One
+  // full-roster page (size = total count) is the cheapest way to see every
+  // friend's leech flag without a new endpoint.
+  useEffect(() => {
+    if (totalFriends === 0) return;
+    getFriendsPage(0, totalFriends)
+      .then((friends) => setLeechingFriends(friends.filter((f) => f.leech === true)))
+      .catch(() => {});
+  }, [totalFriends]);
 
   useEffect(() => {
     if (shortList.length === 0) return;
@@ -312,6 +325,35 @@ const InsightsPage: React.FC = () => {
             <button type="button" disabled className="border-none bg-accent-gradient text-white font-bold px-3.5 rounded-input opacity-50 cursor-not-allowed">→</button>
           </div>
         </div>
+      </div>
+
+      <div data-testid="leeching-section" className="bg-surface border border-bad/30 rounded-card p-5 mt-4">
+        <h2 className="text-[15px] font-bold text-text-primary mb-3 flex items-center gap-2">
+          <span className="text-bad">⚠</span> Leeching
+          {leechingFriends.length > 0 && (
+            <span className="text-[10px] font-bold text-bad bg-bad/[.14] px-2 py-0.5 rounded-pill ml-auto">{leechingFriends.length}</span>
+          )}
+        </h2>
+        {leechingFriends.length === 0 ? (
+          <div className="text-center py-6 px-3 border border-dashed border-white/10 rounded-card">
+            <div className="text-[22px] opacity-50 mb-1.5">✨</div>
+            <div className="text-xs text-text-muted font-semibold">No leeching friends right now.</div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {leechingFriends.map((friend) => (
+              <div
+                key={friend.id}
+                onClick={() => navigate(profilePath(friend.id))}
+                className="flex items-center gap-2.5 px-3 py-2.5 bg-surface-2 rounded-lg cursor-pointer hover:bg-input transition-colors"
+              >
+                <Avatar id={friend.id} name={friend.name} size={30} />
+                <span className="flex-1 text-[13px] font-semibold text-text-primary">{friend.name}</span>
+                <span className="text-[11px] font-bold text-bad bg-bad/[.14] px-2 py-0.5 rounded-pill">LEECH</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
