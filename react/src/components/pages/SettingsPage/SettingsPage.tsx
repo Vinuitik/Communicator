@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   getLlmSettings, setLlmMode, saveProviderKey, removeProviderKey, checkHostWrapperStatus,
   getBackupStatus, disconnectDrive, setBackupEnabled, runBackup, restoreBackup,
+  getSchedulingRolePresets, saveSchedulingRolePreset,
 } from '../../../services/api/settingsService';
-import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS } from '../../../types/api';
+import { BackupStatus, HostWrapperStatus, KNOWN_PROVIDERS, SchedulingRolePreset } from '../../../types/api';
 import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
 
@@ -64,6 +65,11 @@ const SettingsPage: React.FC = () => {
   const [providerBusy, setProviderBusy] = useState<Record<string, boolean>>({});
   const [hostWrapper, setHostWrapper] = useState<HostWrapperStatus | null>(null);
 
+  const [rolePresets, setRolePresets] = useState<SchedulingRolePreset[] | null>(null);
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, { desiredRetention: string; maxIntervalDays: string }>>({});
+  const [roleBusy, setRoleBusy] = useState<Record<string, boolean>>({});
+  const [roleStatus, setRoleStatus] = useState<Record<string, { text: string; variant?: 'ok' | 'error' }>>({});
+
   const [backup, setBackup] = useState<BackupStatus | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupRunStatus, setBackupRunStatus] = useState<{ text: string; variant?: 'ok' | 'error' }>({ text: '' });
@@ -84,6 +90,21 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => { loadLlmSettings(); }, [loadLlmSettings]);
   useEffect(() => { checkHostWrapperStatus().then(setHostWrapper); }, []);
+
+  const loadRolePresets = useCallback(async () => {
+    try {
+      const data = await getSchedulingRolePresets();
+      setRolePresets(data);
+      setRoleDrafts(Object.fromEntries(data.map((p) => [
+        p.role,
+        { desiredRetention: String(p.desiredRetention), maxIntervalDays: String(p.maxIntervalDays) },
+      ])));
+    } catch (err) {
+      setRoleStatus((s) => ({ ...s, _load: { text: `Could not load scheduling presets: ${err instanceof Error ? err.message : err}`, variant: 'error' } }));
+    }
+  }, []);
+
+  useEffect(() => { loadRolePresets(); }, [loadRolePresets]);
 
   const loadBackupStatus = useCallback(async () => {
     try {
@@ -147,6 +168,32 @@ const SettingsPage: React.FC = () => {
       showToast(`Could not remove key: ${err instanceof Error ? err.message : err}`, 'error');
     } finally {
       setProviderBusy((b) => ({ ...b, [provider]: false }));
+    }
+  };
+
+  const handleSaveRolePreset = async (role: string) => {
+    const draft = roleDrafts[role];
+    if (!draft) return;
+    const desiredRetention = parseFloat(draft.desiredRetention);
+    const maxIntervalDays = parseInt(draft.maxIntervalDays, 10);
+    if (!Number.isFinite(desiredRetention) || desiredRetention <= 0 || desiredRetention >= 1) {
+      setRoleStatus((s) => ({ ...s, [role]: { text: 'Desired retention must be between 0 and 1.', variant: 'error' } }));
+      return;
+    }
+    if (!Number.isFinite(maxIntervalDays) || maxIntervalDays <= 0) {
+      setRoleStatus((s) => ({ ...s, [role]: { text: 'Max interval must be a positive number of days.', variant: 'error' } }));
+      return;
+    }
+    setRoleBusy((b) => ({ ...b, [role]: true }));
+    setRoleStatus((s) => ({ ...s, [role]: { text: 'Saving…' } }));
+    try {
+      const saved = await saveSchedulingRolePreset(role, desiredRetention, maxIntervalDays);
+      setRolePresets((rows) => (rows ? rows.map((r) => (r.role === role ? saved : r)) : rows));
+      setRoleStatus((s) => ({ ...s, [role]: { text: 'Saved — takes effect immediately.', variant: 'ok' } }));
+    } catch (err) {
+      setRoleStatus((s) => ({ ...s, [role]: { text: `Could not save: ${err instanceof Error ? err.message : err}`, variant: 'error' } }));
+    } finally {
+      setRoleBusy((b) => ({ ...b, [role]: false }));
     }
   };
 
@@ -302,6 +349,72 @@ const SettingsPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </Card>
+
+      <h2 className="font-display font-bold text-[19px] text-text-primary mt-9 mb-1 pt-4 border-t border-hairline">Scheduling</h2>
+      <p className="text-text-muted text-[13px] mb-4">Per-role FSRS presets that decide when you're next due to contact someone.</p>
+
+      <Card title="Role presets">
+        <p className="text-xs text-text-muted mb-3.5 -mt-2">
+          Desired retention (0–1) controls how aggressively intervals shrink for that role. Max interval (days) is a hard ceiling —
+          scheduling can never propose a date further out than this, no matter how good the streak.
+        </p>
+        {roleStatus._load && (
+          <div className={`mb-3 text-sm ${statusTextClass(roleStatus._load.variant)}`}>{roleStatus._load.text}</div>
+        )}
+        <div>
+          {(rolePresets || []).map((preset) => {
+            const draft = roleDrafts[preset.role] || { desiredRetention: '', maxIntervalDays: '' };
+            const busy = !!roleBusy[preset.role];
+            const status = roleStatus[preset.role];
+            return (
+              <div key={preset.role} className="py-2.5 border-b border-hairline last:border-b-0">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-24 flex-shrink-0 font-semibold text-[13px] text-text-primary">{preset.role}</span>
+                  <label className="flex items-center gap-1.5 text-xs text-text-muted">
+                    Retention
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={draft.desiredRetention}
+                      onChange={(e) => setRoleDrafts((d) => ({ ...d, [preset.role]: { ...d[preset.role], desiredRetention: e.target.value } }))}
+                      disabled={busy}
+                      className="w-20 bg-input border border-white/10 rounded-input px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
+                    />
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-text-muted">
+                    Max interval (days)
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={draft.maxIntervalDays}
+                      onChange={(e) => setRoleDrafts((d) => ({ ...d, [preset.role]: { ...d[preset.role], maxIntervalDays: e.target.value } }))}
+                      disabled={busy}
+                      className="w-20 bg-input border border-white/10 rounded-input px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveRolePreset(preset.role)}
+                    disabled={busy}
+                    className={`${primaryButtonClasses} flex-shrink-0 ml-auto`}
+                  >
+                    Save
+                  </button>
+                </div>
+                {status?.text && (
+                  <div className={`mt-1.5 text-xs ${statusTextClass(status.variant)}`}>{status.text}</div>
+                )}
+              </div>
+            );
+          })}
+          {rolePresets && rolePresets.length === 0 && (
+            <p className="text-xs text-text-faint">No role presets yet — they're seeded on the next app boot.</p>
+          )}
         </div>
       </Card>
 

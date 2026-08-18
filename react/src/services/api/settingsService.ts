@@ -1,4 +1,4 @@
-import { BackupStatus, HostWrapperStatus, LlmSettings } from '../../types/api';
+import { BackupStatus, HostWrapperStatus, LlmSettings, SchedulingRolePreset } from '../../types/api';
 import { API_BASE } from './config';
 
 // Mirrors nginx/static/settings/settings.js. Two separate backend services
@@ -6,6 +6,10 @@ import { API_BASE } from './config';
 // (routers/settings.py), backup/restore lives in the Java `backup` service.
 const LLM_API = `${API_BASE.AI}/settings/llm`;
 const BACKUP_API = API_BASE.BACKUP;
+// Scheduling role presets (desiredRetention/maxIntervalDays) live in the
+// friend service itself (SchedulingRolePresetController) since RoleProperties
+// and ReviewService are friend-module concerns, not a generic settings KV store.
+const SCHEDULING_ROLES_API = `${API_BASE.FRIEND}/scheduling/roles`;
 
 export const getLlmSettings = async (): Promise<LlmSettings> => {
     const response = await fetch(LLM_API);
@@ -101,4 +105,28 @@ export const restoreBackup = async (): Promise<{ started: boolean; reason?: stri
         throw new Error(data.reason || `HTTP ${response.status}`);
     }
     return { started: true };
+};
+
+export const getSchedulingRolePresets = async (): Promise<SchedulingRolePreset[]> => {
+    const response = await fetch(SCHEDULING_ROLES_API);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
+};
+
+export const saveSchedulingRolePreset = async (
+    role: string,
+    desiredRetention: number,
+    maxIntervalDays: number,
+): Promise<SchedulingRolePreset> => {
+    const response = await fetch(`${SCHEDULING_ROLES_API}/${encodeURIComponent(role)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, desiredRetention, maxIntervalDays }),
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.json();
 };

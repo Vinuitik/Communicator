@@ -53,6 +53,7 @@ class ReviewServiceTest {
         when(bandit.bucket(anyDouble(), anyDouble())).thenReturn("dEasy:sShort");
         when(bandit.chooseArm(anyString())).thenReturn(1.0);
         when(roleProperties.getDesiredRetention(any())).thenReturn(0.9);
+        when(roleProperties.getMaxIntervalDays(any())).thenReturn(Integer.MAX_VALUE); // no cap unless a test overrides it
         when(explanationService.explainTemplate(any(), any(), anyInt(), anyDouble(), any())).thenReturn("template");
         when(explanationService.explainViaLlm(anyString())).thenReturn("polished");
         service = new ReviewService(fsrs, bandit, gradeComputation, roleProperties, explanationService, leechService);
@@ -136,6 +137,23 @@ class ReviewServiceTest {
         assertThat(due).isEqualTo(today.plusDays(12));
         assertThat(friend.getFsrsStability()).isCloseTo(8.2956, org.assertj.core.data.Offset.offset(1e-4));
         assertThat(friend.getPendingBanditArm()).isEqualTo(1.5);
+    }
+
+    @Test
+    void banditMultipliedInterval_exceedingRoleCap_getsClampedToMaxIntervalDays() {
+        // Base FSRS interval for first Easy is 8 days; arm 2.0 would stretch the
+        // due date to 16 days, but the role's cap (10) must win -- clamp is
+        // applied AFTER the bandit multiplier, not before.
+        when(gradeComputation.computeGrade(anyDouble(), any(), any())).thenReturn(FsrsService.GRADE_EASY);
+        when(bandit.chooseArm(anyString())).thenReturn(2.0);
+        when(roleProperties.getMaxIntervalDays(any())).thenReturn(10);
+        Friend friend = Friend.builder().build();
+
+        LocalDate due = service.reviewInteraction(friend, 3.0, "***", true, today);
+
+        assertThat(due).isEqualTo(today.plusDays(10));
+        // Stored FSRS stability is untouched by the cap -- only the scheduled date is clamped.
+        assertThat(friend.getFsrsStability()).isCloseTo(8.2956, org.assertj.core.data.Offset.offset(1e-4));
     }
 
     @Test
