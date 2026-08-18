@@ -43,8 +43,4 @@ public abstract class AbstractFact {
     @NotNull(message = "Priority is required")
     @JsonProperty("importance")
     private Long priority;
-
-    private LocalDate reviewDate;
-
-    private Integer interval;
 }

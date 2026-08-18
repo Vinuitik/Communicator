@@ -43,8 +43,6 @@ public class ConnectionPermissionService extends AbstractFactService<ConnectionP
         for (ConnectionPermission p : permissionList) {
             p.setConnection(connection);
             p.setDate(LocalDate.now());
-            p.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-            p.setInterval(1); // Default interval
         }
         return saveAll(permissionList);
     }

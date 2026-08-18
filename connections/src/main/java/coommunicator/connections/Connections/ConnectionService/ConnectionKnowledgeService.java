@@ -43,8 +43,6 @@ public class ConnectionKnowledgeService extends AbstractFactService<ConnectionsK
         for (ConnectionsKnowledge k : knowledgeList) {
             k.setConnection(connection);
             k.setDate(LocalDate.now());
-            k.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-            k.setInterval(1); // Default interval
         }
         return saveAll(knowledgeList);
     }

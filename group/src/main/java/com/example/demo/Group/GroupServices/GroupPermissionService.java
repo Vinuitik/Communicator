@@ -40,8 +40,6 @@ public class GroupPermissionService extends AbstractFactService<GroupPermission,
         for (GroupPermission permission : permissionList) {
             permission.setGroup(group);
             permission.setDate(LocalDate.now());
-            permission.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-            permission.setInterval(1); // Default interval
         }
 
         return saveAll(permissionList);
@@ -54,8 +52,6 @@ public class GroupPermissionService extends AbstractFactService<GroupPermission,
 
         permission.setGroup(group);
         permission.setDate(LocalDate.now());
-        permission.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-        permission.setInterval(1); // Default interval
 
         return save(permission);
     }

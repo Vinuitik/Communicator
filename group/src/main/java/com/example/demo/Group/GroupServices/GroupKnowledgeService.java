@@ -40,8 +40,6 @@ public class GroupKnowledgeService extends AbstractFactService<GroupKnowledge, I
         for (GroupKnowledge knowledge : knowledgeList) {
             knowledge.setGroup(group);
             knowledge.setDate(LocalDate.now());
-            knowledge.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-            knowledge.setInterval(1); // Default interval
         }
 
         return saveAll(knowledgeList);
@@ -54,8 +52,6 @@ public class GroupKnowledgeService extends AbstractFactService<GroupKnowledge, I
 
         knowledge.setGroup(group);
         knowledge.setDate(LocalDate.now());
-        knowledge.setReviewDate(LocalDate.now().plusDays(1)); // Default review date
-        knowledge.setInterval(1); // Default interval
 
         return save(knowledge);
     }
