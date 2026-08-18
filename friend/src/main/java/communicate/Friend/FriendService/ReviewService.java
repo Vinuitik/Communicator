@@ -91,6 +91,9 @@ public class ReviewService {
         String bucket = bandit.bucket(state.difficulty(), state.stability());
         double arm = bandit.chooseArm(bucket);
         long scheduledDays = Math.max(1, Math.round(baseIntervalDays * arm));
+        // Cap AFTER the bandit multiplier, not before — otherwise a good streak of
+        // chats keeps compounding stability with no ceiling (the bug this fixes).
+        scheduledDays = Math.min(scheduledDays, roleProperties.getMaxIntervalDays(friend.getRole()));
         LocalDate due = interactionDate.plusDays(scheduledDays);
 
         friend.setFsrsStability(state.stability());

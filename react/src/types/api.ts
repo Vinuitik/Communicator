@@ -272,6 +272,15 @@ export interface HostWrapperStatus {
     providers?: Record<string, { configured: boolean }>;
 }
 
+// Row shape from friend's GET/PUT /api/friend/scheduling/roles — mirrors
+// SchedulingRolePreset.java. maxIntervalDays is the FSRS+bandit scheduling
+// ceiling (the fix for friends getting proposed 200+ days out).
+export interface SchedulingRolePreset {
+    role: string;
+    desiredRetention: number;
+    maxIntervalDays: number;
+}
+
 // ── Profile (profile.html port) ────────────────────────────────────────────
 
 // Response shape from FriendController.getProfileData (GET /api/friend/profile/{id}/data) —
