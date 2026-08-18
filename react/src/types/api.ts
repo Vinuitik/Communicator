@@ -34,6 +34,10 @@ export interface Friend {
     // Leech flag (LeechService): true once actual contact has missed the
     // predicted due date LEECH_THRESHOLD times in a row.
     leech?: boolean;
+    // Flashcard-review "star" toggle (FlashcardEnrollmentService) — reviewing
+    // logged knowledge as flashcards, independent of the FSRS state above
+    // (which drives contact scheduling, not fact recall).
+    flashcardsEnabled?: boolean;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
@@ -381,6 +385,43 @@ export interface AiChatFrame {
 export interface AiChatMessage {
     role: 'user' | 'assistant';
     content: string;
+}
+
+// ── Flashcard review (Feature D) ────────────────────────────────────────────
+
+// Row shape from GET /api/friend/flashcards/queue|folders/{friendId} —
+// mirrors FlashcardCardDTO.java. sourceType is 'FRIEND' | 'GROUP' (which
+// underlying knowledge table the fact came from); the frontend never needs
+// to resolve that itself, the backend already has.
+export interface FlashcardCard {
+    reviewId: number;
+    friendId: number;
+    friendName: string | null;
+    sourceType: 'FRIEND' | 'GROUP';
+    sourceKnowledgeId: number;
+    fact: string;
+    importance: number | null;
+    fsrsStability: number | null;
+    fsrsDifficulty: number | null;
+    lastReviewedDate: string | null;
+    dueDate: string;
+}
+
+// Row shape from GET /api/friend/flashcards/folders — mirrors FlashcardFolderDTO.java.
+export interface FlashcardFolder {
+    friendId: number;
+    friendName: string;
+    dueCount: number;
+    totalCount: number;
+}
+
+// Row shape from GET/PUT /api/friend/flashcards/settings — mirrors
+// FlashcardReviewSettings.java. Drives the nightly spread/bankruptcy jobs.
+export interface FlashcardReviewSettings {
+    id?: number;
+    maxDailyReviews: number;
+    chronicNeglectDays: number;
+    bankruptcyLimit: number;
 }
 
 // Response shape from backup service's GET /backup/status
