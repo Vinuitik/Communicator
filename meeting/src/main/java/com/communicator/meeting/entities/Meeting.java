@@ -2,6 +2,7 @@ package com.communicator.meeting.entities;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -29,8 +30,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * A scheduled or logged contact with exactly one subject — a Friend, a
- * SocialGroup, or a Connection. Real @ManyToOne FKs, not a polymorphic
+ * A scheduled or logged contact. Real @ManyToOne FKs, not a polymorphic
  * subject_type/subject_id pair — this module is the one place in the app
  * allowed to depend on friend/group/connections simultaneously (see
  * meeting/pom.xml's module-level comment); those three never depend on
@@ -38,9 +38,16 @@ import lombok.Setter;
  * to a Meeting change goes through a Spring application event instead of a
  * direct call (see FriendRescheduledEvent in the friend module).
  *
- * Exactly one of friend/group/connection must be set — enforced in
- * {@link #validateExactlyOneSubject()}, not a DB CHECK constraint (this repo
- * has no migration tooling beyond Hibernate ddl-auto: update).
+ * <p>The source of truth for "who this meeting is about" is the attendee list
+ * ({@code MeetingAttendee}, via {@code MeetingAttendeeRepository.findByMeetingId})
+ * plus {@link #selfAttending}, NOT these FK fields directly — {@link MeetingTypeDeriver}
+ * computes FRIEND/GROUP/CONNECTION from (selfAttending, attendee count), and
+ * {@code MeetingEditService} keeps friend/group/connection in sync with that derived type
+ * purely as query-acceleration + backward-compat for every repository finder and DTO already
+ * written against them. At most one of friend/group/connection is set — enforced in
+ * {@link #validateAtMostOneSubject()} — but for an ad-hoc GROUP meeting (2+ attendees that
+ * didn't match an existing SocialGroup closely enough, see GroupMatchingService) NONE of the
+ * three may be set; the attendee list + selfAttending is still authoritative in that case.
  */
 @Entity
 @Table(name = "meeting")
@@ -73,6 +80,26 @@ public class Meeting {
     @Column(nullable = false)
     private LocalDate date;
 
+    /** Optional time-of-day — CalendarBoard is day-columns only today, no hour grid, so this is
+     * set/edited via the edit modal's time field, not drag-and-drop. */
+    private LocalTime time;
+
+    /** Optional free-text location. */
+    private String location;
+
+    /** Whether "I" (the single app user, never a Friend row myself) am on this meeting.
+     * Default true. Drives MeetingTypeDeriver: self+1 attendee=FRIEND, self+2+=GROUP,
+     * no-self+2=CONNECTION, no-self+3+=GROUP.
+     *
+     * <p>columnDefinition (not just a Java-side default) is required here: ddl-auto=update adds
+     * this column to an already-populated `meeting` table, and a primitive boolean field reading
+     * a NULL column throws on unboxing — the DB-level default backfills every existing row to
+     * true at ALTER-time (correct for existing FSRS_PROPOSED/BIRTHDAY/MANUAL-friend rows, which
+     * were always "I attended" before this field existed; MeetingBackfillRunner separately fixes
+     * up the CONNECTION rows, which need false, not true). */
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private boolean selfAttending = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MeetingSource source;
@@ -101,11 +128,11 @@ public class Meeting {
 
     @PrePersist
     @PreUpdate
-    private void validateExactlyOneSubject() {
+    private void validateAtMostOneSubject() {
         int subjectCount = (friend != null ? 1 : 0) + (group != null ? 1 : 0) + (connection != null ? 1 : 0);
-        if (subjectCount != 1) {
+        if (subjectCount > 1) {
             throw new IllegalStateException(
-                "Meeting must have exactly one subject (friend/group/connection), had " + subjectCount);
+                "Meeting must have at most one subject FK (friend/group/connection), had " + subjectCount);
         }
     }
 }

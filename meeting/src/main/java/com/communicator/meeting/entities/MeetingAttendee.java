@@ -14,10 +14,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * One row per (Group Meeting, attendee) pair — the batch-log target list.
- * Only ever attached to a Meeting whose subject is a group; pre-filled from
- * GroupMember when the meeting is created, editable (presence toggle) before
- * the meeting is marked DONE.
+ * One row per (Meeting, attendee) pair. Originally Group-batch-log-only; generalized to every
+ * Meeting so the meeting-edit flow can derive its type (FRIEND/GROUP/CONNECTION, see
+ * MeetingType/MeetingTypeDeriver) from who's actually on it instead of that being picked
+ * explicitly. For a Group meeting this is still pre-filled from GroupMember when auto-created,
+ * editable (presence toggle) before the meeting is marked DONE; for Friend/Connection meetings
+ * it's just the 1 (or 2, no-self) attendees implied by that meeting's type.
  */
 @Entity
 @Table(name = "meeting_attendee", uniqueConstraints = {
