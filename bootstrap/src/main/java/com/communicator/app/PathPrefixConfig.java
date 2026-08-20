@@ -36,5 +36,11 @@ public class PathPrefixConfig implements WebMvcConfigurer {
 
         configurer.addPathPrefix("/api/connections", c ->
                 c.getPackageName().startsWith("coommunicator.connections"));
+
+        // meeting's own controller mapping is already "/meetings" (MeetingController),
+        // so only "/api" is prepended here — final path is /api/meetings/**, matching
+        // the nginx location added alongside this and the frontend's API_BASE.MEETING.
+        configurer.addPathPrefix("/api", c ->
+                c.getPackageName().startsWith("com.communicator.meeting"));
     }
 }

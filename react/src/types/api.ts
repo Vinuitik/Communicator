@@ -424,17 +424,23 @@ export interface FlashcardReviewSettings {
     bankruptcyLimit: number;
 }
 
-// ── Meetings (Feature B: group batch-log + Group→Connections nudge) ────────
-// meeting module is mounted bare at /meetings (no /api prefix, no
-// PathPrefixConfig involved — see MeetingController's own @RequestMapping).
+// ── Meetings (Feature B: group batch-log, Group→Connections nudge, Connection
+// outcome logging) ───────────────────────────────────────────────────────
+// meeting module is namespaced under /api/meetings — MeetingController's own
+// @RequestMapping is "/meetings", prefixed by PathPrefixConfig to /api (see
+// PathPrefixConfig.java's meeting entry).
 
 export type MeetingSource = 'FSRS_PROPOSED' | 'BIRTHDAY' | 'MANUAL';
 export type MeetingStatus = 'PROPOSED' | 'DONE' | 'CANCELLED';
 
+// Mirrors ConnectionOutcome.java (meeting module) — outcome of a logged CONNECTION
+// meeting. Only ever set on CONNECTION-subject Meeting rows.
+export type ConnectionOutcome = 'WENT_WELL' | 'NEUTRAL' | 'TENSE';
+
 // Mirrors meeting/.../dtos/MeetingDTO.java — flat read view of a Meeting row.
 // Exactly one of friendId/groupId/connectionFriend*Id is set, matching the
 // entity's "exactly one subject" rule; group rows have friendId and the
-// connection ids null.
+// connection ids null. `outcome` is only ever set on CONNECTION-subject rows.
 export interface MeetingDTO {
   id: number;
   friendId?: number | null;
@@ -447,6 +453,7 @@ export interface MeetingDTO {
   source: MeetingSource;
   status: MeetingStatus;
   note?: string | null;
+  outcome?: ConnectionOutcome | null;
 }
 
 // Body for POST /meetings/manual — mirrors ManualMeetingRequest.java.
@@ -455,6 +462,17 @@ export interface ManualMeetingRequest {
   friendId?: number | null;
   groupId?: number | null;
   date: string; // ISO date
+  note?: string | null;
+}
+
+// Body for POST /meetings/connection — mirrors ConnectionMeetingRequest.java.
+// Lighter than Friend/Group's manual log form: no duration, no attendee batch
+// (Connection is a fixed friend1/friend2 pair by schema).
+export interface ConnectionMeetingRequest {
+  friend1Id: number;
+  friend2Id: number;
+  date: string; // ISO date
+  outcome: ConnectionOutcome;
   note?: string | null;
 }
 

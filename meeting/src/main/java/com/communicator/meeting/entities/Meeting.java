@@ -84,6 +84,13 @@ public class Meeting {
     @Lob
     private String note;
 
+    // Only ever set on CONNECTION-subject rows (date + outcome + optional note is the
+    // whole log form for Connections — no duration/attendee batch, see the plan's
+    // Feature B "CONNECTION meetings use a distinct lighter log form" section). Nullable
+    // and unused by Friend/Group rows, same optional-use pattern as `note`.
+    @Enumerated(EnumType.STRING)
+    private ConnectionOutcome outcome;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
