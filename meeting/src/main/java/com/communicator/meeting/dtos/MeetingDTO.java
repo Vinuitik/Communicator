@@ -2,6 +2,7 @@ package com.communicator.meeting.dtos;
 
 import java.time.LocalDate;
 
+import com.communicator.meeting.entities.ConnectionOutcome;
 import com.communicator.meeting.entities.Meeting;
 import com.communicator.meeting.entities.MeetingSource;
 import com.communicator.meeting.entities.MeetingStatus;
@@ -18,7 +19,8 @@ public record MeetingDTO(
     LocalDate date,
     MeetingSource source,
     MeetingStatus status,
-    String note
+    String note,
+    ConnectionOutcome outcome
 ) {
     public static MeetingDTO from(Meeting m) {
         return new MeetingDTO(
@@ -32,7 +34,8 @@ public record MeetingDTO(
             m.getDate(),
             m.getSource(),
             m.getStatus(),
-            m.getNote()
+            m.getNote(),
+            m.getOutcome()
         );
     }
 }

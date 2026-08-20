@@ -16,11 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.communicator.meeting.dtos.CompleteGroupMeetingRequest;
 import com.communicator.meeting.dtos.ConnectionCandidateDTO;
+import com.communicator.meeting.dtos.ConnectionMeetingRequest;
 import com.communicator.meeting.dtos.ManualMeetingRequest;
 import com.communicator.meeting.dtos.MeetingDTO;
 import com.communicator.meeting.entities.Meeting;
 import com.communicator.meeting.dtos.AttendeeDTO;
 import com.communicator.meeting.repositories.MeetingAttendeeRepository;
+import com.communicator.meeting.service.ConnectionMeetingService;
 import com.communicator.meeting.service.GroupMeetingService;
 import com.communicator.meeting.service.MeetingQueryService;
 
@@ -43,6 +45,7 @@ public class MeetingController {
     private final GroupMeetingService groupMeetingService;
     private final MeetingQueryService meetingQueryService;
     private final MeetingAttendeeRepository attendeeRepository;
+    private final ConnectionMeetingService connectionMeetingService;
 
     @GetMapping("thisWeek")
     public List<MeetingDTO> thisWeek(@RequestParam(defaultValue = "0") int weekOffset) {
@@ -93,5 +96,21 @@ public class MeetingController {
     @GetMapping("{meetingId}/connection-candidates")
     public List<ConnectionCandidateDTO> connectionCandidates(@PathVariable Long meetingId) {
         return groupMeetingService.connectionCandidates(meetingId);
+    }
+
+    /**
+     * Log a CONNECTION meeting — date + outcome + optional note, saved as already-DONE (no
+     * PROPOSED/scheduling state for Connections). Note auto-appends to ConnectionsKnowledge.
+     */
+    @PostMapping("connection")
+    public ResponseEntity<MeetingDTO> createConnectionMeeting(@RequestBody ConnectionMeetingRequest request) {
+        try {
+            Meeting meeting = connectionMeetingService.logConnectionMeeting(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(MeetingDTO.from(meeting));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
