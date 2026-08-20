@@ -12,6 +12,7 @@ import {
 } from '../../../services/api/groupService';
 import { getGroupFriends, addFriendsToGroup, removeFriendFromGroup, getShortFriendList } from '../../../services/api/friendService';
 import { getGroupMeetings, createManualMeeting, getConnectionCandidates } from '../../../services/api/groupMeetingService';
+import { logConnectionMeeting } from '../../../services/api/connectionMeetingService';
 import { Group, KnowledgeCrudItem, Friend, ShortFriend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
 import { ROUTES, profilePath } from '../../../utils/constants';
 import { avatarColor } from '../../../utils/avatar';
@@ -238,13 +239,19 @@ const GroupDetailsPage: React.FC = () => {
     setNudgeCandidates([]);
   };
 
-  // Stub — the actual save (a Connection outcome endpoint) is being built by
-  // a different agent in a different worktree and doesn't exist here yet.
-  // See GroupConnectionsNudge's own doc comment; a parent wires this up once
-  // that lands.
-  const handleLogConnectionOutcome = (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => {
-    // eslint-disable-next-line no-console
-    console.log('Connection outcome logged (stub, not yet persisted):', { friend1Id, friend2Id, outcome });
+  // GroupConnectionsNudge's own ConnectionOutcome values (WENT_WELL/NEUTRAL/TENSE)
+  // already match ConnectionMeetingRequest.outcome 1:1, no translation needed.
+  const handleLogConnectionOutcome = async (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => {
+    try {
+      await logConnectionMeeting({
+        friend1Id,
+        friend2Id,
+        date: new Date().toISOString().slice(0, 10),
+        outcome,
+      });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to log that connection outcome.', 'error');
+    }
   };
 
   const permissionTag = (value: number): { label: string; color: string } => (
