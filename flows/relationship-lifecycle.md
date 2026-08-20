@@ -6,6 +6,8 @@ Protos for mechanics: [friend](../friend/src/main/java/communicate/Friend/PROTO.
 
 Deep dive on the scheduler itself (FSRS-6 + Thompson-sampling bandit — the part that actually picks `plannedSpeakingTime`): [FriendService/FLOWS.md](../friend/src/main/java/communicate/Friend/FriendService/FLOWS.md)
 
+**Sibling flow:** [meeting-scheduling.md](meeting-scheduling.md) covers how this scheduling decision now *surfaces* — the home screen described in Stage 2 below has moved off `plannedSpeakingTime` reads entirely, onto a `Meeting` row per subject (Friend/Group/Connection). This doc still owns the actual scheduling math (Stage 1); meeting-scheduling.md owns the UI-facing week board, Group batch-logging, and Connection outcome logging.
+
 ---
 
 ## Stage 1 — Log an interaction ("I talked to X")
@@ -57,10 +59,23 @@ User fills "talked to" form (experience stars, duration, in-person?, new facts) 
 
 ---
 
-## Stage 2 — "Who do I contact this week?" (the home screen)
+## Stage 2 — "Who do I contact this week?"
+
+**No longer the home screen's own query.** `GET /api/friend/thisWeek` / `FriendService.findThisWeek()`
+still exist and still work exactly as described below, but as of the Meeting-scheduling feature
+(see [meeting-scheduling.md](meeting-scheduling.md)) the actual home screen (`HomePage`, route `/`)
+reads `GET /api/meetings/thisWeek` (the `meeting` module) instead — a `Meeting` row per subject
+(Friend/Group/Connection/Birthday), not a Friend-only, `plannedSpeakingTime`-only list. A Friend's
+`plannedSpeakingTime` still drives what the board shows, just indirectly: `ReviewService` sets it
+(Stage 1), which publishes `FriendRescheduledEvent`, which `meeting`'s `MeetingService` listens for to
+upsert that friend's `FSRS_PROPOSED` `Meeting` row — see meeting-scheduling.md Stage 5 for that seam.
+
+This endpoint's remaining live callers are narrower widgets: `FriendsPage`'s week-chip filter and
+`InsightsPage`'s KPI strip (`getFriendsThisWeek`) — both Friend-list views where a flat
+`plannedSpeakingTime` scan is still exactly what's wanted.
 
 ```
-User opens home  →  GET /api/friend/thisWeek  → nginx → friend:8085/thisWeek
+GET /api/friend/thisWeek  → nginx → friend:8085/thisWeek
  → FriendService.findThisWeek()                                     [friend proto §This week]
      loads ALL friends, keeps a friend if:
         birthday falls in [Mon..Sun]   OR   plannedSpeakingTime ≤ Sunday (due/overdue)
@@ -128,5 +143,6 @@ Every midnight, chrono runs **two independent passes** in the same job: the lega
 | How a meeting raises health | `EmaProperties` + `EmaUpdateService` (friend) |
 | How silence lowers health | `ChronoJobService.applyDecayToFriend()` + `application.yml ema.coefficients.decay` |
 | Nightly schedule | `ChronoJobService.@Scheduled(cron)` (hardcoded — not the yaml) |
-| Weekly list inclusion rule | `FriendService.findThisWeek()` |
+| Weekly list inclusion rule (Friend-only widgets: FriendsPage/InsightsPage) | `FriendService.findThisWeek()` |
+| Home screen's week board (all subject types) | `MeetingQueryService.thisWeek()` — see [meeting-scheduling.md](meeting-scheduling.md) |
 | Shared EMA arithmetic (both up/down paths) | `EmaMathService` |
