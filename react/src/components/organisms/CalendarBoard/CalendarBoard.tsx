@@ -1,19 +1,32 @@
 import React, { useMemo } from 'react';
-import { Friend } from '../../../types/api';
+import { Friend, MeetingDTO, MeetingSource } from '../../../types/api';
 
 interface CalendarBoardProps {
-  friends: Friend[];
+  meetings: MeetingDTO[];
   loading: boolean;
   error: string | null;
+  /** Which week the passed-in meetings were fetched for — drives the column date labels. */
+  weekOffset: number;
+  /** Friend-subject cards still open the existing profile/QuickLogModal flow. */
   onOpenFriend: (friend: Friend) => void;
   onLogChat: (friend: Friend) => void;
   onAddFriend: () => void;
+  /**
+   * Hook points for Group/Connection cards. The batch-log modal (presence ->
+   * per-attendee grade) and the lightweight Connection outcome form
+   * (date + Went well/Neutral/Tense + note) are being built by another agent
+   * in parallel (SCHEDULING_MEETINGS_PLAN.md Feature B) — these are stubs so
+   * that work can slot in later without coordinating live. Defaults to a
+   * console.log TODO when not supplied.
+   */
+  onGroupMeetingClick?: (meeting: MeetingDTO) => void;
+  onConnectionMeetingClick?: (meeting: MeetingDTO) => void;
 }
 
 interface DayColumn {
   dayName: string;
   dateLabel: string;
-  friends: Friend[];
+  meetings: MeetingDTO[];
   isToday: boolean;
 }
 
@@ -21,32 +34,27 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 const formatDate = (date: Date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-// Sorts friends into Mon-Sun columns (current week) plus an "overdue" bucket,
-// mirroring calendarView/calendar.js renderCalendar exactly (including its
-// day-index math: loop index 0-6 is Mon-Sun, JS Date#getDay() is Sun-Sat).
-// GET /api/friend/thisWeek has no date param — it only ever returns the
-// real current week, so there's nothing to page prev/next through; see
-// WeekBoardHeader for how the prev/Today/next buttons are treated.
-const useWeekColumns = (friends: Friend[]) => useMemo(() => {
+// Sorts meetings into Mon-Sun columns for the *targeted* week (today shifted
+// by weekOffset*7 days), mirroring the old friend-based day-index math
+// (loop index 0-6 is Mon-Sun, JS Date#getDay() is Sun-Sat). Unlike the old
+// endpoint, GET /meetings/thisWeek only ever returns rows dated inside that
+// Mon-Sun window (MeetingQueryService.thisWeek) — there is no "overdue
+// before Monday" bucket anymore, so there's no "Previous" column to build;
+// paging back with weekOffset<0 is how you see last week's (now-DONE) rows.
+const useWeekColumns = (meetings: MeetingDTO[], weekOffset: number) => useMemo(() => {
   const today = new Date();
   const currentDay = today.getDay();
   const mondayOffset = currentDay === 0 ? -6 : -(currentDay - 1);
   const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
+  monday.setDate(today.getDate() + mondayOffset + weekOffset * 7);
   monday.setHours(0, 0, 0, 0);
 
-  const friendsByDay = new Map<number, Friend[]>();
-  for (let i = 0; i < 7; i += 1) friendsByDay.set(i, []);
-  const previousFriends: Friend[] = [];
+  const meetingsByDay = new Map<number, MeetingDTO[]>();
+  for (let i = 0; i < 7; i += 1) meetingsByDay.set(i, []);
 
-  friends.forEach((friend) => {
-    if (!friend.plannedSpeakingTime) return;
-    const speakingDate = new Date(friend.plannedSpeakingTime);
-    if (speakingDate < monday) {
-      previousFriends.push(friend);
-    } else {
-      friendsByDay.get(speakingDate.getDay())!.push(friend);
-    }
+  meetings.forEach((meeting) => {
+    const meetingDate = new Date(meeting.date);
+    meetingsByDay.get(meetingDate.getDay())?.push(meeting);
   });
 
   const columns: DayColumn[] = [];
@@ -57,73 +65,141 @@ const useWeekColumns = (friends: Friend[]) => useMemo(() => {
     columns.push({
       dayName: DAY_NAMES[dayIndex],
       dateLabel: formatDate(columnDate),
-      friends: friendsByDay.get(dayIndex) ?? [],
+      meetings: meetingsByDay.get(dayIndex) ?? [],
       isToday: columnDate.toDateString() === today.toDateString(),
     });
   }
 
-  return { previousFriends, columns };
-}, [friends]);
+  return columns;
+}, [meetings, weekOffset]);
 
-type Category = 'birthday' | 'family' | 'work' | 'personal';
+type Category = 'friend' | 'group' | 'connection' | 'birthday';
 
-const categoryFor = (friend: Friend): Category => {
-  if (friend.isBirthdayThisWeek) return 'birthday';
-  const experience = friend.experience?.toLowerCase() ?? '';
-  if (experience.includes('family')) return 'family';
-  if (experience.includes('work')) return 'work';
-  return 'personal';
+// Which FK is set decides the subject type; BIRTHDAY source (always a
+// Friend-subject row) keeps its own highlighted category, same special
+// treatment it had when it was a flag on Friend.plannedSpeakingTime.
+const categoryFor = (meeting: MeetingDTO): Category => {
+  if (meeting.source === 'BIRTHDAY') return 'birthday';
+  if (meeting.groupId != null) return 'group';
+  if (meeting.connectionFriend1Id != null || meeting.connectionFriend2Id != null) return 'connection';
+  return 'friend';
 };
 
 // bg-category-* classes must appear literally somewhere for Tailwind to
-// generate them — this map is that literal usage.
+// generate them — this map is that literal usage. Reuses the same 4 dot
+// colors the board already had (personal/family/work/birthday), remapped
+// from "friend.experience text category" to "meeting subject type" since
+// Meeting rows don't carry an experience string.
 const CATEGORY_DOT: Record<Category, string> = {
-  personal: 'bg-category-personal',
-  family: 'bg-category-family',
-  work: 'bg-category-work',
+  friend: 'bg-category-personal',
+  group: 'bg-category-family',
+  connection: 'bg-category-work',
   birthday: 'bg-category-birthday',
 };
 
 export const CATEGORY_LEGEND: { label: string; dot: string }[] = [
-  { label: 'Personal', dot: 'bg-category-personal' },
-  { label: 'Family', dot: 'bg-category-family' },
-  { label: 'Work', dot: 'bg-category-work' },
+  { label: 'Friend', dot: 'bg-category-personal' },
+  { label: 'Group', dot: 'bg-category-family' },
+  { label: 'Connection', dot: 'bg-category-work' },
   { label: 'Birthday', dot: 'bg-category-birthday' },
 ];
 
-// The week-column "day-column catch-up board" from the redesign handoff —
-// 8 horizontally-scrollable columns (Previous/overdue + Mon-Sun), a colored
-// dot per category instead of the legacy's solid-color card backgrounds,
-// and a "Log chat" button on every card that opens the quick-log modal
-// instead of navigating away.
-const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error, onOpenFriend, onLogChat, onAddFriend }) => {
-  const { previousFriends, columns } = useWeekColumns(friends);
+const SOURCE_LABEL: Record<MeetingSource, string> = {
+  FSRS_PROPOSED: 'Scheduled',
+  BIRTHDAY: 'Birthday',
+  MANUAL: 'Manual',
+};
 
-  const friendCard = (friend: Friend) => (
-    <div
-      key={friend.id}
-      className={`bg-surface-2 border rounded-[10px] px-2.5 py-2.5 ${
-        friend.isBirthdayThisWeek ? 'border-category-birthday/50' : 'border-white/[.06]'
-      }`}
-    >
-      <div className="cursor-pointer" onClick={() => onOpenFriend(friend)}>
-        <div className="flex items-center gap-1.5">
-          <span className={`w-2 h-2 rounded-sm flex-none ${CATEGORY_DOT[categoryFor(friend)]}`} />
-          <span className="font-bold text-xs leading-tight text-text-primary">
-            {friend.isBirthdayThisWeek ? `🎂 ${friend.name}` : friend.name}
-          </span>
-        </div>
-        <div className="text-[10.5px] text-text-muted mt-1">{friend.relationshipType || friend.experience || ''}</div>
-      </div>
-      <button
-        type="button"
-        onClick={() => onLogChat(friend)}
-        className="mt-2.5 w-full border-none bg-accent/16 text-accent-light text-[11px] font-bold py-1.5 rounded-md hover:bg-accent/28 transition-colors"
+// Builds just enough of a Friend to hand to the existing onOpenFriend/
+// onLogChat callbacks (profile nav + QuickLogModal), which only ever read
+// id/name/dateOfBirth/role off it — MeetingDTO only carries id+name for its
+// friend subject, so the rest stays undefined/blank rather than triggering
+// an extra fetch just to open a modal.
+const friendFromMeeting = (meeting: MeetingDTO): Friend => ({
+  id: meeting.friendId as number,
+  name: meeting.friendName ?? 'Friend',
+  plannedSpeakingTime: meeting.date,
+  experience: '',
+});
+
+// The week-column "day-column catch-up board" from the redesign handoff —
+// now one card per Meeting row instead of one dot per friend on
+// plannedSpeakingTime, so a friend can show up twice (e.g. FSRS date +
+// birthday) instead of birthday silently being dropped when it didn't
+// coincide with the FSRS date (see SCHEDULING_MEETINGS_PLAN.md Feature B).
+const CalendarBoard: React.FC<CalendarBoardProps> = ({
+  meetings, loading, error, weekOffset, onOpenFriend, onLogChat, onAddFriend,
+  onGroupMeetingClick, onConnectionMeetingClick,
+}) => {
+  const columns = useWeekColumns(meetings, weekOffset);
+
+  const handleGroupClick = (meeting: MeetingDTO) => {
+    if (onGroupMeetingClick) onGroupMeetingClick(meeting);
+    else console.log('TODO: open group batch-log modal for meeting', meeting.id);
+  };
+
+  const handleConnectionClick = (meeting: MeetingDTO) => {
+    if (onConnectionMeetingClick) onConnectionMeetingClick(meeting);
+    else console.log('TODO: open connection outcome form for meeting', meeting.id);
+  };
+
+  const meetingCard = (meeting: MeetingDTO) => {
+    const category = categoryFor(meeting);
+    const isDone = meeting.status === 'DONE';
+    const isBirthday = meeting.source === 'BIRTHDAY';
+    const subtitle = meeting.note?.trim() || SOURCE_LABEL[meeting.source];
+
+    let title: string;
+    let onCardClick: () => void;
+    let actionLabel: string;
+    let onAction: () => void;
+
+    if (category === 'group') {
+      title = meeting.groupName ?? 'Group';
+      onCardClick = () => handleGroupClick(meeting);
+      actionLabel = 'Log meeting';
+      onAction = () => handleGroupClick(meeting);
+    } else if (category === 'connection') {
+      title = `Connection #${meeting.connectionFriend1Id ?? '?'}–#${meeting.connectionFriend2Id ?? '?'}`;
+      onCardClick = () => handleConnectionClick(meeting);
+      actionLabel = 'Log outcome';
+      onAction = () => handleConnectionClick(meeting);
+    } else {
+      const friend = friendFromMeeting(meeting);
+      title = isBirthday ? `🎂 ${friend.name}` : friend.name;
+      onCardClick = () => onOpenFriend(friend);
+      actionLabel = '✓ Log chat';
+      onAction = () => onLogChat(friend);
+    }
+
+    return (
+      <div
+        key={meeting.id}
+        className={`bg-surface-2 border rounded-[10px] px-2.5 py-2.5 ${
+          isBirthday ? 'border-category-birthday/50' : 'border-white/[.06]'
+        } ${isDone ? 'opacity-60' : ''}`}
       >
-        ✓ Log chat
-      </button>
-    </div>
-  );
+        <div className="cursor-pointer" onClick={onCardClick}>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-sm flex-none ${CATEGORY_DOT[category]}`} />
+            <span className="font-bold text-xs leading-tight text-text-primary">{title}</span>
+          </div>
+          <div className="text-[10.5px] text-text-muted mt-1">{subtitle}</div>
+        </div>
+        {isDone ? (
+          <div className="mt-2.5 w-full text-center text-good text-[11px] font-bold py-1.5">✓ Done</div>
+        ) : (
+          <button
+            type="button"
+            onClick={onAction}
+            className="mt-2.5 w-full border-none bg-accent/16 text-accent-light text-[11px] font-bold py-1.5 rounded-md hover:bg-accent/28 transition-colors"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const addButton = (
     <button
@@ -144,16 +220,6 @@ const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error, 
 
   return (
     <div className="flex gap-2.5 overflow-x-auto pb-2">
-      <div className="flex-none w-[152px] bg-bad/5 border border-bad/40 rounded-card p-[13px]">
-        <div className="pb-2.5 mb-2.5 border-b border-hairline">
-          <div className="font-bold text-[12.5px] text-bad">Previous</div>
-          <div className="text-[10.5px] text-text-faint mt-0.5">Overdue</div>
-        </div>
-        <div className="flex flex-col gap-2 min-h-[220px]">
-          {previousFriends.map(friendCard)}
-          {addButton}
-        </div>
-      </div>
       {columns.map((col) => (
         <div
           key={col.dayName}
@@ -170,7 +236,7 @@ const CalendarBoard: React.FC<CalendarBoardProps> = ({ friends, loading, error, 
             </div>
           </div>
           <div className="flex flex-col gap-2 min-h-[220px]">
-            {col.friends.map(friendCard)}
+            {col.meetings.map(meetingCard)}
             {addButton}
           </div>
         </div>
