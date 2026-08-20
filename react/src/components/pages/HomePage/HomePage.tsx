@@ -5,9 +5,10 @@ import QuickLogModal from '../../organisms/QuickLogModal';
 import GroupBatchLogModal from '../../organisms/GroupBatchLogModal';
 import GroupConnectionsNudge, { ConnectionOutcome } from '../../organisms/GroupConnectionsNudge';
 import ConnectionOutcomeForm from '../../organisms/ConnectionOutcomeForm';
+import MeetingEditModal from '../../organisms/MeetingEditModal';
 import { useToast } from '../../molecules/Toast';
 import { Friend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
-import { getThisWeek } from '../../../services/api/meetingService';
+import { getThisWeek, updateMeeting } from '../../../services/api/meetingService';
 import { getConnectionCandidates } from '../../../services/api/groupMeetingService';
 import { logConnectionMeeting } from '../../../services/api/connectionMeetingService';
 import { ROUTES, profilePath } from '../../../utils/constants';
@@ -35,6 +36,11 @@ const HomePage: React.FC = () => {
   // Connection card click -> lighter one-step outcome form (no presence/
   // batch step — Connections are a fixed pair, see ConnectionOutcomeForm).
   const [connectionMeetingTarget, setConnectionMeetingTarget] = useState<MeetingDTO | null>(null);
+
+  // Pencil icon on a PROPOSED card -> MeetingEditModal (edit/reschedule/
+  // cancel — a different action from the three "log what happened" flows
+  // above, which only apply to a meeting that already occurred).
+  const [editTarget, setEditTarget] = useState<MeetingDTO | null>(null);
 
   const load = useCallback(async (offset: number) => {
     setLoading(true);
@@ -87,6 +93,25 @@ const HomePage: React.FC = () => {
       });
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to log that connection outcome.', 'error');
+    }
+  };
+
+  // Drag-and-drop reschedule (CalendarBoard, day-columns only — no
+  // time-of-day drag). PATCH /meetings/{id} is a full replace, so every
+  // other field is resent unchanged off the dragged meeting's current DTO,
+  // only `date` differs.
+  const handleDropOnDate = async (meeting: MeetingDTO, newDate: string) => {
+    try {
+      await updateMeeting(meeting.id, {
+        date: newDate,
+        time: meeting.time,
+        location: meeting.location,
+        attendeeFriendIds: meeting.attendees.map((a) => a.friendId),
+        selfAttending: meeting.selfAttending,
+      });
+      load(weekOffset);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to reschedule this meeting.', 'error');
     }
   };
 
@@ -153,9 +178,18 @@ const HomePage: React.FC = () => {
         onAddFriend={() => navigate(ROUTES.ADD_FRIEND)}
         onGroupMeetingClick={(meeting) => { setGroupMeetingTarget(meeting); setGroupMeetingStage('batchLog'); }}
         onConnectionMeetingClick={(meeting) => setConnectionMeetingTarget(meeting)}
+        onEditMeeting={(meeting) => setEditTarget(meeting)}
+        onDropOnDate={handleDropOnDate}
       />
 
       <QuickLogModal friend={logTarget} onClose={() => setLogTarget(null)} onSaved={() => load(weekOffset)} />
+
+      <MeetingEditModal
+        meeting={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => { setEditTarget(null); showToast('Meeting updated'); load(weekOffset); }}
+        onCancelled={() => { setEditTarget(null); showToast('Meeting cancelled'); load(weekOffset); }}
+      />
 
       {groupMeetingStage === 'batchLog' && groupMeetingTarget && (
         <GroupBatchLogModal
