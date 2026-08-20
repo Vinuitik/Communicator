@@ -86,7 +86,9 @@ describe('HomePage — week board', () => {
   it('renders a GROUP-sourced meeting row without crashing', async () => {
     const today = new Date().toISOString().slice(0, 10);
     mockGetThisWeek.mockResolvedValue([
-      meeting({ id: 10, groupId: 5, groupName: 'Book Club', date: today, source: 'MANUAL' }),
+      meeting({
+        id: 10, type: 'GROUP', groupId: 5, groupName: 'Book Club', date: today, source: 'MANUAL',
+      }),
     ]);
 
     renderPage();
@@ -98,7 +100,7 @@ describe('HomePage — week board', () => {
     const today = new Date().toISOString().slice(0, 10);
     mockGetThisWeek.mockResolvedValue([
       meeting({
-        id: 11, connectionFriend1Id: 3, connectionFriend2Id: 7, date: today, source: 'MANUAL',
+        id: 11, type: 'CONNECTION', connectionFriend1Id: 3, connectionFriend2Id: 7, date: today, source: 'MANUAL',
       }),
     ]);
 
