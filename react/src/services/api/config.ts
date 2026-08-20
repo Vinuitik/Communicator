@@ -9,4 +9,10 @@ export const API_BASE = {
   FILES: '/api/fileRepository',
   AI: '/api/ai',
   BACKUP: '/backup',
+  // meeting module's MeetingController is mounted bare at /meetings (no /api
+  // prefix — it doesn't go through PathPrefixConfig like friend/groups/connections
+  // do). NOTE: as of this writing nginx/nginx.conf has no location block proxying
+  // /meetings/ to the monolith yet — that route still needs to be added before this
+  // is reachable through the real gateway; flagged for whoever lands the backend.
+  MEETINGS: '/meetings',
 } as const;
