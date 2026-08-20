@@ -1,5 +1,7 @@
 # Relationship Scheduling — FSRS + Bandit
-Files: ReviewService.java, FsrsService.java, BanditService.java, GradeComputationService.java, ExplanationService.java, LeechService.java, FsrsNeglectService.java, FsrsBackfillService.java, FsrsBackfillRunner.java, ../FriendEntities/Friend.java (fsrs*/pendingBandit*/leech fields), ../FriendEntities/BanditArm.java, ../FriendEntities/BanditArmId.java, ../FriendRepositories/BanditArmRepository.java, ../Config/RoleProperties.java
+Files: ReviewService.java, FsrsService.java, BanditService.java, GradeComputationService.java, ExplanationService.java, LeechService.java, FsrsNeglectService.java, FsrsBackfillService.java, FsrsBackfillRunner.java, OutboxWriteService.java, FriendRescheduledEvent.java, ../FriendEntities/Friend.java (fsrs*/pendingBandit*/leech fields), ../FriendEntities/BanditArm.java, ../FriendEntities/BanditArmId.java, ../FriendRepositories/BanditArmRepository.java, ../Config/RoleProperties.java
+
+See also [FLASHCARDS_FLOWS.md](FLASHCARDS_FLOWS.md) — a separate feature that ports the same `FsrsService` math to a second, independent purpose (reviewing logged facts, not scheduling contact). Don't confuse the two FSRS states.
 
 This is the code that decides `plannedSpeakingTime` — **not** the EMA health numbers (`average_*`), which are a separate cosmetic display signal (see [../PROTO.md](../PROTO.md) §EMA). Ported from ObsidianOptimizer's flashcard spaced-repetition system, re-domained from notes→friends. Entry point is `ReviewService.reviewInteraction()`, called from both `OutboxWriteService.applyTalkedToFriend()` (an existing friend's logged interaction — the delayed-reward/leech path applies) and `OutboxWriteService.applyAddFriend()` (a brand-new friend's first-ever interaction — no prior decision to reward, so `fsrs.initialState()` runs instead of `fsrs.review()`). Both paths run on the live HTTP call and the offline-outbox mailbox consumer identically — see [relationship-lifecycle flow](../../../../../../../flows/relationship-lifecycle.md) for where this sits in the bigger write path.
 
@@ -53,6 +55,24 @@ ReviewService.reviewInteraction(friend, durationHours, experience, inPerson, int
 
 **Why the reward is delayed one interaction, not immediate:** at scheduling time you only know the *predicted* interval; whether it was actually a good interval is only knowable once the next interaction happens (or doesn't). `pendingBanditArm`/`pendingBanditBucket` on `Friend` are exactly this — "the decision we're waiting to grade" — same pattern OO used for `NoteReviewRepository.pendingArm`.
 
+## What OutboxWriteService does with the returned due date
+
+`ReviewService.reviewInteraction()` only computes `due` — it doesn't persist anything or tell anyone. `OutboxWriteService` (the shared apply-path both HTTP controllers and the mailbox consumer call, see [relationship-lifecycle flow](../../../../../../../flows/relationship-lifecycle.md)) is what happens after, in both `applyTalkedToFriend()` and `applyAddFriend()`:
+
+```
+OutboxWriteService.applyTalkedToFriend() / applyAddFriend()
+  due = reviewService.reviewInteraction(...)
+  friend.plannedSpeakingTime = due            — dual-write #1: legacy field, every existing reader still works
+  friendService.save(friend)
+  eventPublisher.publishEvent(FriendRescheduledEvent(friend.id, due))   — dual-write #2: in-process Spring event
+```
+
+**`FriendRescheduledEvent`** (`ApplicationEventPublisher`, plain in-process pub/sub — no queue, no broker, no cross-JVM hop) is how the separate `meeting` module keeps a `Meeting` row's due date in sync without `friend` taking a compile-time dependency on `meeting`. `meeting` already depends on `friend` (its entities FK into `Friend`), so a direct call from `friend` → `meeting` would be circular; the event is the decoupling point. See `FriendRescheduledEvent.java`'s javadoc for the same reasoning, and the `meeting` module's own docs for the listener side (not covered here).
+
+**Why both writes still happen, on purpose:** `friend.plannedSpeakingTime` is the original field every existing reader (API responses, UI, EMA/decay code) already queries. Retiring it in favor of `Meeting` rows is future work (see the `TODO(Feature B, read-side stage)` comment in `OutboxWriteService.applyTalkedToFriend()`) — until every reader has migrated, both must be written or one of them goes stale silently.
+
+**Third touch point, not scheduling-related:** `OutboxWriteService.applyAddKnowledge()` also calls `FlashcardEnrollmentService.enrollFriend(...)` when the friend has `flashcardsEnabled = true` — this is unrelated to contact scheduling (Feature D, a separate FSRS state entirely). See [FLASHCARDS_FLOWS.md](FLASHCARDS_FLOWS.md).
+
 **Per-role retention target:** `desiredRetention` isn't a single global constant — `RoleProperties` (`fsrs.role.desired-retention.<role>` in `application.yml`, e.g. Partner/Close/Casual/Family) resolves per `friend.role`; unset role or unknown key falls back to `fsrs.desired-retention` (default 0.9). Higher target → shorter intervals (recall probability must stay higher).
 
 ## Nightly neglect lapse (chrono cron, separate from the EMA decay pass)
@@ -94,6 +114,7 @@ Idempotent (skips anyone already seeded) and safe to leave running every boot �
 - **All numeric cutoffs are starting guesses, explicitly flagged TBD in the source:** difficulty cutoff 5.5, stability cutoff 90 days, grade bands 0.40/0.70, in-person multiplier 1.15, chronic-neglect threshold 7 days, leech threshold 3 misses. None have been retuned against real usage data yet.
 - **`ExplanationService` calls host-wrapper directly** (not through `ai_agent`) with an 8s timeout and silently falls back to the deterministic template on any failure — a down/misconfigured LLM never blocks or corrupts scheduling, it just loses the "polished sentence" flourish.
 - **The reward-delay window is exactly one interaction, however long that takes.** If a friend goes 3 years without a logged interaction, the bandit reward for the decision made 3 years ago is still sitting in `pendingBanditArm`/`pendingBanditBucket`, waiting. It's ultimately deprived of any credit — `FsrsNeglectService`'s lapse path bypasses the bandit reward entirely rather than crediting a very-late one.
+- **`FriendRescheduledEvent` is in-process only (`ApplicationEventPublisher`), not durable.** It fires inside the same `@Transactional` method that saves `friend` — if the JVM dies between the save and the event listener finishing, or the listener throws, there's no retry/replay (no queue behind it). Fine for keeping one `Meeting` row in sync within the same monolith; would need to become an actual outbox/queue entry if `meeting` ever moved to its own process.
 
 ## Change Index
 
@@ -111,3 +132,5 @@ Idempotent (skips anyone already seeded) and safe to leave running every boot �
 | Cold-start backfill estimate for legacy friends | `FsrsBackfillService.averageGapDays()` / `difficultyFromExcitement()` |
 | Where scheduling state actually lives | `Friend` entity: `fsrsStability`, `fsrsDifficulty`, `lastInteractionDate`, `pendingBanditArm`, `pendingBanditBucket`, `missedDueCount`, `leech` |
 | Bandit posterior storage | Postgres table `bandit_arms` (`BanditArm`/`BanditArmId`/`BanditArmRepository`) |
+| Who gets notified when a friend's due date is recomputed | `OutboxWriteService.applyTalkedToFriend()` / `applyAddFriend()` — publishes `FriendRescheduledEvent`; listener lives in the `meeting` module |
+| Legacy dual-write field (candidate for retirement once all readers move to `Meeting`) | `Friend.plannedSpeakingTime`, set in `OutboxWriteService` alongside the event publish |
