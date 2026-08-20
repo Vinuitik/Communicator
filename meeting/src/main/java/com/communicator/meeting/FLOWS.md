@@ -1,10 +1,18 @@
 # Meeting Module
 
-Files: Meeting.java, MeetingAttendee.java, MeetingSource.java, MeetingStatus.java, ConnectionOutcome.java, MeetingRepository.java, MeetingAttendeeRepository.java, MeetingService.java, GroupMeetingService.java, ConnectionMeetingService.java, MeetingQueryService.java, BirthdayMeetingScheduler.java, MeetingBackfillRunner.java, MeetingController.java, dtos/*.java
+Files: Meeting.java, MeetingAttendee.java, MeetingSource.java, MeetingStatus.java, MeetingType.java, ConnectionOutcome.java, MeetingRepository.java, MeetingAttendeeRepository.java, MeetingService.java, GroupMeetingService.java, ConnectionMeetingService.java, MeetingEditService.java, MeetingTypeDeriver.java, GroupMatchingService.java, MeetingQueryService.java, BirthdayMeetingScheduler.java, MeetingBackfillRunner.java, MeetingController.java, dtos/*.java
 
-Base package `com.communicator.meeting`. This is the one module in the app allowed to depend on `friend`, `group`, and `connections` simultaneously (`meeting/pom.xml`'s module-level comment) — those three never depend on each other or on this module. A `Meeting` row has exactly one subject via real `@ManyToOne` FKs (`friend_id`, `group_id`, or a two-column composite FK into `Connection`'s embedded `ConnectionId` key: `connection_friend1_id`/`connection_friend2_id`) — not a polymorphic subject_type/subject_id pair. Enforced in `Meeting.validateExactlyOneSubject()` (`@PrePersist`/`@PreUpdate`), not a DB CHECK constraint — this repo has no migration tooling beyond Hibernate `ddl-auto: update`.
+Base package `com.communicator.meeting`. This is the one module in the app allowed to depend on `friend`, `group`, and `connections` simultaneously (`meeting/pom.xml`'s module-level comment) — those three never depend on each other or on this module.
 
-For the FSRS/bandit scheduling math that produces the dates this module stores, see [friend/.../FriendService/FLOWS.md](../../../../../../../friend/src/main/java/communicate/Friend/FriendService/FLOWS.md) — not re-explained here.
+**The source of truth for "who a meeting is about" is the attendee list, not the FK fields.** Read this before anything else in this file — it's a real architecture change, not a naming detail. Every `Meeting` still carries `friend`/`group`/`connection` `@ManyToOne` FK columns (the `connection` one a two-column composite FK into `Connection`'s embedded `ConnectionId` key: `connection_friend1_id`/`connection_friend2_id`), but as of the attendee-list-driven edit model (`MeetingEditService`) those FKs are **query-acceleration + backward-compat only**, kept in sync by `MeetingEditService` — not what determines a meeting's type. The real model is:
+
+- `MeetingAttendee` rows (via `MeetingAttendeeRepository.findByMeetingId`) — who's on the meeting, generalized from a Group-only batch-log roster to every `Meeting`.
+- `Meeting.selfAttending` (boolean, default `true`) — whether "I" (the single app user, never a `Friend` row myself) am on it.
+- `MeetingTypeDeriver.derive(selfAttending, attendeeCount)` — a pure function computing `MeetingType` (`FRIEND`/`GROUP`/`CONNECTION`) from those two facts. **Never picked explicitly**, always derived, every time a `MeetingDTO` is built.
+
+At most one of `friend`/`group`/`connection` may be set — enforced in `Meeting.validateAtMostOneSubject()` (`@PrePersist`/`@PreUpdate`, not a DB CHECK constraint — this repo has no migration tooling beyond Hibernate `ddl-auto: update`) — but **an ad-hoc GROUP meeting can have none of the three set**: 2+ attendees (with self) that don't match an existing `SocialGroup` closely enough (`GroupMatchingService`) get `group = null` and stay authoritative purely through their attendee list. `MeetingDTO.groupId` being `null` does **not** mean the type isn't `GROUP` — callers must branch on the DTO's `type` field, never on which FK id is non-null (see `MeetingDTO`'s own javadoc).
+
+For the FSRS/bandit scheduling math that produces the dates this module stores, see [friend/.../FriendService/FLOWS.md](../../../../../../../friend/src/main/java/communicate/Friend/FriendService/FLOWS.md) — not re-explained here. For the frontend-side week-board/modal wiring, see [flows/meeting-scheduling.md](../../../../../../../flows/meeting-scheduling.md) — written before the attendee-list edit model landed (no `MeetingEditService`/`MeetingType`/PATCH endpoints mentioned there), so treat its Stage 1 "card categorization is purely which FK is set" line as stale against this file, not the other way around.
 
 ## Three sources, one entity
 
@@ -16,6 +24,65 @@ MeetingStatus: PROPOSED | DONE | CANCELLED     — no CONFIRMED, single-user loc
 - **FSRS_PROPOSED** — auto-managed, one open row per friend, upserted by `MeetingService.upsertFsrsProposed()`.
 - **BIRTHDAY** — auto-managed, one row per friend with a `dateOfBirth`, rolled forward yearly by `MeetingService.ensureBirthdayMeeting()`.
 - **MANUAL** — everything user-initiated: `GroupMeetingService.createManual()` (Friend or Group, scheduled ahead) and `ConnectionMeetingService.logConnectionMeeting()` (Connection, logged already-`DONE` after the fact — Connections have no scheduling state, see below).
+
+## Type derivation, the unified edit surface, and ad-hoc groups
+
+```
+MeetingTypeDeriver.derive(selfAttending, attendeeCount)
+  selfAttending=true,  attendeeCount<=1  → FRIEND     (self + 1 other)
+  selfAttending=true,  attendeeCount>=2  → GROUP       (self + 2+ others)
+  selfAttending=false, attendeeCount==2  → CONNECTION  (that pair, I wasn't there)
+  selfAttending=false, attendeeCount!=2  → GROUP       (0/1 attendee with no self is invalid —
+                                                          rejected by MeetingEditService before
+                                                          reaching this method; 3+ with no self
+                                                          is just "I wasn't at this group thing")
+```
+
+Pure function, no persistence, called fresh every time a `MeetingDTO` is built (`MeetingDTO.from(meeting, attendees)`) — a meeting's type is never stored, only ever recomputed from its current attendee list.
+
+`MeetingEditService` is the **one unified edit surface** — `PATCH /meetings/{id}` — that replaced separate Friend/Group/Connection create/edit forms:
+
+```
+MeetingEditService.updateMeeting(meetingId, UpdateMeetingRequest{date, time, location,
+                                  attendeeFriendIds, selfAttending, groupId, newGroupName})
+  validate: attendeeFriendIds non-empty; if !selfAttending, need >=2 attendees; at most one
+            of groupId/newGroupName set
+  replaceAttendees(meeting, attendeeFriendIds)   — diff against existing MeetingAttendee rows:
+                                                     delete dropped, insert new, leave the rest
+  meeting.selfAttending = request.selfAttending; date/time/location = request fields (plain edits)
+  type = MeetingTypeDeriver.derive(selfAttending, attendeeFriendIds.size())
+  resolveSubjectForType(meeting, type, attendeeFriendIds, request)   — see below
+  save
+```
+
+`resolveSubjectForType` always clears all three FKs first, then sets at most one back, purely as the query-acceleration/backward-compat sync described above:
+
+- **FRIEND** → `meeting.friend = friendService.getFriendById(attendeeFriendIds.get(0))`.
+- **CONNECTION** → normalize to `(min(id1,id2), max(id1,id2))`, look up `Connection`; if untracked, leave `meeting.connection = null` — **not an error**, the attendee list stays authoritative either way, the FK is only ever a nice-to-have when a tracked `Connection` happens to exist (see `MeetingEditServiceTest.twoAttendeesNoSelf_untrackedConnection_leavesFkNullButStillValid`).
+- **GROUP** → three ways, checked in order:
+  1. `request.groupId` set → use that existing `SocialGroup` explicitly (`404` if it doesn't exist), skip auto-match.
+  2. `request.newGroupName` set (non-blank) → create a new `SocialGroup` with that name, add the attendees as its roster via `GroupMemberService.addFriendsToGroup()`, link the meeting to it.
+  3. Both null (**the default**) → `GroupMatchingService.findBestMatch()`; a match sets `meeting.group`, no match leaves it `null` — **this is the ad-hoc case**: a real `GROUP`-typed meeting with zero subject FKs set, attendee list + `selfAttending` fully authoritative.
+
+`MeetingEditService.previewGroupMatch(attendeeFriendIds)` backs a live "which group would this resolve to" preview in the edit modal (`POST /meetings/group-match-preview`) without saving — calls `GroupMatchingService.findCandidates()` directly.
+
+`MeetingEditService.cancelMeeting(meetingId)` just sets `status = CANCELLED` — no attendee/FK changes.
+
+### GroupMatchingService — "closely enough" is a Jaccard threshold
+
+```
+GroupMatchingService.findBestMatch(attendeeFriendIds) / findCandidates(attendeeFriendIds)
+  for every existing SocialGroup:
+    roster = GroupMemberService.getFriendsByGroupId(group.id) as a Set<Integer>
+    score  = |attendees ∩ roster| / |attendees ∪ roster|     — Jaccard similarity
+  keep only score >= MIN_MATCH_THRESHOLD (0.5)
+  sort by score desc, then groupSize asc (tie-break: prefer the smaller/tighter group)
+  findBestMatch = first of that sorted list, or empty if nothing clears the threshold
+```
+
+An exact attendee-set match always scores `1.0` and wins. A big group that loosely *contains* the meeting's attendees among many others who weren't there scores low automatically — the union grows with every non-attending member — so "prefer the tighter, more specific group" falls out of the Jaccard metric itself, no separate size-penalty term needed. `0.5` is a hardcoded constant, not configurable via `application.yml`. A genuine tie (same score **and** same size) just returns list order, not disambiguated further — callers wanting to show the user multiple options should call `findCandidates()` (plural) rather than `findBestMatch()`.
+
+To change: match threshold/scoring → `GroupMatchingService.MIN_MATCH_THRESHOLD` / `GroupMatchingService.score()`; which of the three GROUP-resolution paths wins → `MeetingEditService.resolveGroup()`; attendee diffing on edit → `MeetingEditService.replaceAttendees()`.
 
 ## The Friend → Meeting bridge (no message broker involved)
 
@@ -137,6 +204,10 @@ MeetingQueryService.upcomingForFriend(friendId) → findByFriendIdOrderByDateDes
 MeetingQueryService.forGroup(groupId)           → findByGroupIdOrderByDateDesc   — GroupDetailsPage
 ```
 
+Every query method routes through `MeetingQueryService.toDtos()`, which loads each `Meeting`'s attendee list (`MeetingAttendeeRepository.findByMeetingId`, one extra query per meeting) before calling `MeetingDTO.from(meeting, attendees)` — `MeetingTypeDeriver` needs the attendee count, so the type can't be computed from the `Meeting` row alone. N+1-shaped, accepted at this app's scale (dozens of meetings, not thousands) — same "no cache, live query" tradeoff made elsewhere in this module.
+
+`MeetingDTO` now carries `type` (`MeetingType`, always derived, never null), `time`, `location`, `selfAttending`, and the full `attendees` list, alongside the historical `friendId`/`groupId`/`connectionFriend1Id`/`connectionFriend2Id`/`friendName`/`groupName` fields. **`groupId` can be `null` while `type == GROUP`** (the ad-hoc case) — frontend code must branch on `type`, not on which id field is populated; see `MeetingDTO`'s own class javadoc for the exact warning.
+
 `MeetingController` (`@RequestMapping("/meetings")`) replaces `FriendController`'s old `thisWeek` endpoint, which only ever read `Friend.plannedSpeakingTime` and structurally couldn't reach across Group/Connection data (friend/group/connections are barred from depending on each other).
 
 | Endpoint | Method | Backing call |
@@ -149,6 +220,9 @@ MeetingQueryService.forGroup(groupId)           → findByGroupIdOrderByDateDesc
 | `POST /meetings/{meetingId}/complete` | write | `GroupMeetingService.completeGroupMeeting()` |
 | `GET /meetings/{meetingId}/connection-candidates` | query | `GroupMeetingService.connectionCandidates()` |
 | `POST /meetings/connection` | write | `ConnectionMeetingService.logConnectionMeeting()` |
+| `PATCH /meetings/{meetingId}` | write | `MeetingEditService.updateMeeting()` — the unified edit surface; also what `CalendarBoard`'s drag-and-drop reschedule calls, sending just a changed `date` with everything else unchanged |
+| `PATCH /meetings/{meetingId}/cancel` | write | `MeetingEditService.cancelMeeting()` |
+| `POST /meetings/group-match-preview` | query | `MeetingEditService.previewGroupMatch()` → `GroupMatchingService.findCandidates()` |
 
 ## Boot-time backfill
 
@@ -159,9 +233,17 @@ MeetingBackfillRunner (ApplicationRunner, runs once every boot)
       → MeetingService.upsertFsrsProposed(friend.id, friend.plannedSpeakingTime)
     friend.dateOfBirth != null
       → MeetingService.ensureBirthdayMeeting(friend)
+  backfillAttendees():
+    for every Meeting with NO existing MeetingAttendee rows (guard, not source-based — safe to re-run):
+      meeting.friend != null      → save 1 MeetingAttendee (selfAttending already defaults true)
+      meeting.connection != null  → save 2 MeetingAttendee rows (both sides of the pair),
+                                       meeting.selfAttending = false, save
+      meeting.group != null       → skipped — Group rows already got real attendee rows at
+                                       creation time (GroupMeetingService.createManual populates
+                                       them from GroupMember)
 ```
 
-Idempotent (checks existence first), safe on every boot — same `ddl-auto: update` reconcile-at-startup convention as `friend`'s `FsrsBackfillRunner`. Seeds `Meeting` rows for friends/data that predate this module's existence.
+Idempotent (checks existence first), safe on every boot — same `ddl-auto: update` reconcile-at-startup convention as `friend`'s `FsrsBackfillRunner`. Seeds `Meeting` rows for friends/data that predate this module's existence, **and separately** backfills `MeetingAttendee` rows + `selfAttending` for every `Meeting` row that predates the attendee-list-driven edit model — every pre-existing Friend-subject row becomes 1 attendee with `selfAttending=true` (unchanged from its actual prior behavior), every pre-existing Connection-subject row becomes its 2 attendees with `selfAttending=false` retrofitted onto it. `Meeting.selfAttending`'s column has a DB-level `columnDefinition = "boolean default true"` (not just a Java-side default) so `ddl-auto: update`'s `ALTER TABLE` on an already-populated table backfills every existing row to `true` at the SQL level first — this runner then specifically flips the Connection rows to `false`, since they need the opposite of the DB default.
 
 ## Wiring: `/meetings` → `/api/meetings/**` → nginx
 
@@ -175,7 +257,9 @@ To change the public URL prefix: `PathPrefixConfig.configurePathMatch()`. To cha
 ## Technology Notes
 
 - **The Friend→Meeting bridge has no durability.** As detailed above: `FriendRescheduledEvent` is in-process Spring pub/sub, not a broker. A crash in the narrow AFTER_COMMIT window loses the event permanently with no automatic re-delivery; only the next real event for that friend (or a birthday-specific nightly sweep) papers over it. At current single-user local-app scale this window is small and the app restarts rarely mid-request, but it is a real, accepted gap, not a theoretical one.
-- **`validateExactlyOneSubject()` is an application-level invariant, not a DB constraint.** Nothing stops a raw SQL script or a future migration tool from writing a `Meeting` row with zero or two subjects set; only the JPA `@PrePersist`/`@PreUpdate` hook catches it, and only for writes that go through Hibernate.
+- **`validateAtMostOneSubject()` is an application-level invariant, not a DB constraint.** Nothing stops a raw SQL script or a future migration tool from writing a `Meeting` row with two or three subject FKs set at once (zero is valid now — the ad-hoc case); only the JPA `@PrePersist`/`@PreUpdate` hook catches it, and only for writes that go through Hibernate.
+- **The FK fields can silently go stale relative to the attendee list.** `MeetingEditService` is the only writer that keeps friend/group/connection in sync with the derived type — any future direct write to `Meeting` (a script, a different service, a raw repository `save()`) that touches attendees without also calling through `MeetingEditService`'s resolution logic will leave the FK columns pointing at the wrong thing, or stale-but-present after attendees changed underneath them. Treat `MeetingEditService.updateMeeting()` as the only correct way to change who's on a meeting.
+- **`GroupMatchingService.score()` does a full `SocialGroupRepository.findAll()` plus one `GroupMemberService.getFriendsByGroupId()` call per group, on every match/preview call** — no caching, recomputed from scratch each time (matches the live-preview use case in the edit modal, which needs fresh data as the user edits attendees). Fine at dozens-of-groups scale; would need rethinking if the group count grows into the hundreds and the preview is called on every keystroke.
 - **`Friend.plannedSpeakingTime` is a deliberate, temporary dual-write.** Every FSRS-driven write (bridge upsert, group batch-log) updates both the `Friend` column and the `Meeting` row. Nothing currently enforces they stay in sync beyond both being written in the same logical operation — if one write path is ever changed without the other, they will silently drift. Retire the `Friend` column only once every reader queries `Meeting` instead (tracked as a known follow-up, not done yet).
 - **Composite FK into `Connection`** (`connection_friend1_id`/`connection_friend2_id` via `@JoinColumns`) mirrors `ConnectionId`'s own embedded composite key. Every lookup into `Connection` from this module must first normalize to `(min(id1,id2), max(id1,id2))` — `ConnectionMeetingService.logConnectionMeeting()` and `GroupMeetingService.connectionCandidates()` both do this by hand; there's no shared helper for it in this module, so a new call site must remember the same normalization or it will silently miss existing rows (Connection is undirected but stored with a canonical low/high ordering).
 - **No message queue anywhere in this module.** All cross-module communication is either an in-process Spring event (`FriendRescheduledEvent`) or a direct repository call (`group`/`connections` repositories, since `meeting` is allowed to depend on them). If a future requirement needs guaranteed delivery across the bridge, that's a structural change (e.g. RabbitMQ), not a tweak to `MeetingService`.
@@ -197,9 +281,17 @@ To change the public URL prefix: `PathPrefixConfig.configurePathMatch()`. To cha
 | Group→Connections nudge pairing | `GroupMeetingService.connectionCandidates()` |
 | Connection meeting logging / outcome / knowledge-append | `ConnectionMeetingService.logConnectionMeeting()` |
 | Week-board / upcoming-meetings queries | `MeetingQueryService` |
-| One-of-three-subject invariant | `Meeting.validateExactlyOneSubject()` |
-| Meeting entity fields / enums | `Meeting`, `MeetingSource`, `MeetingStatus`, `ConnectionOutcome` |
+| Meeting type derivation rules (FRIEND/GROUP/CONNECTION) | `MeetingTypeDeriver.derive()` |
+| The unified edit surface (attendees/selfAttending/date/time/location/subject resolution) | `MeetingEditService.updateMeeting()` |
+| Attendee-list diffing on edit | `MeetingEditService.replaceAttendees()` |
+| Which of groupId/newGroupName/auto-match wins for a GROUP-typed edit | `MeetingEditService.resolveGroup()` |
+| Ad-hoc-group threshold / "closely enough" scoring | `GroupMatchingService.MIN_MATCH_THRESHOLD`, `GroupMatchingService.score()` |
+| Live group-match preview (no save) | `MeetingEditService.previewGroupMatch()` / `GroupMatchingService.findCandidates()` |
+| Cancel a meeting (soft-delete) | `MeetingEditService.cancelMeeting()` |
+| At-most-one-FK-subject invariant | `Meeting.validateAtMostOneSubject()` |
+| Meeting entity fields / enums | `Meeting`, `MeetingSource`, `MeetingStatus`, `MeetingType`, `ConnectionOutcome` |
 | Attendee roster row shape | `MeetingAttendee` |
+| Attendee-rows + selfAttending backfill for pre-existing rows | `MeetingBackfillRunner.backfillAttendees()` |
 | HTTP surface | `MeetingController` (`/meetings/**`, prefixed to `/api/meetings/**` by `PathPrefixConfig`) |
 | Public URL prefix | `bootstrap/.../PathPrefixConfig.configurePathMatch()` |
 | Container-level routing | `nginx/nginx.conf` `meeting_service` upstream + `location /api/meetings/` |
