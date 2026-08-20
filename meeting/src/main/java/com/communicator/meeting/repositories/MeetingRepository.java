@@ -26,4 +26,10 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
         @Param("start") LocalDate start, @Param("end") LocalDate end, MeetingStatus excludedStatus);
 
     List<Meeting> findByFriendIdAndStatusNot(Integer friendId, MeetingStatus excludedStatus);
+
+    /** ProfilePage's "Upcoming meetings" list, most recent history + upcoming for one friend. */
+    List<Meeting> findByFriendIdOrderByDateDesc(Integer friendId);
+
+    /** GroupDetailsPage's meeting list. */
+    List<Meeting> findByGroupIdOrderByDateDesc(Integer groupId);
 }
