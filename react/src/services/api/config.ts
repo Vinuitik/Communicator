@@ -10,8 +10,4 @@ export const API_BASE = {
   FILES: '/api/fileRepository',
   AI: '/api/ai',
   BACKUP: '/backup',
-  // MeetingController (meeting module) is mapped at "/meetings", not
-  // "/api/meetings" — nginx strips the /api/meetings/ prefix down to
-  // /meetings/ on the way to the monolith, same pattern as /api/chrono/.
-  MEETINGS: '/api/meetings',
 } as const;

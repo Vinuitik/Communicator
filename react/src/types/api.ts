@@ -40,35 +40,6 @@ export interface Friend {
     flashcardsEnabled?: boolean;
 }
 
-// Mirrors meeting/.../dtos/MeetingDTO.java — one of friendId/groupId/connection ids
-// is set, matching the entity's exactly-one-subject constraint. Used by ProfilePage's
-// "Upcoming meetings" list/history and by the manual "schedule a meeting" flow.
-export type MeetingSource = 'FSRS_PROPOSED' | 'BIRTHDAY' | 'MANUAL';
-export type MeetingStatus = 'PROPOSED' | 'DONE' | 'CANCELLED';
-
-export interface MeetingDTO {
-    id: number;
-    friendId?: number | null;
-    friendName?: string | null;
-    groupId?: number | null;
-    groupName?: string | null;
-    connectionFriend1Id?: number | null;
-    connectionFriend2Id?: number | null;
-    date: string; // ISO date
-    source: MeetingSource;
-    status: MeetingStatus;
-    note?: string | null;
-}
-
-// Mirrors meeting/.../dtos/ManualMeetingRequest.java — exactly one of
-// friendId/groupId is set; ProfilePage always sets friendId, leaves groupId unset.
-export interface ManualMeetingRequest {
-    friendId?: number | null;
-    groupId?: number | null;
-    date: string; // ISO date
-    note?: string | null;
-}
-
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
 export interface FriendKnowledge {
     id?: number;

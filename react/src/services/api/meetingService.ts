@@ -1,8 +1,9 @@
 import { MeetingDTO, ManualMeetingRequest } from '../../types/api';
 import { API_BASE } from './config';
 
-// MeetingController (meeting module), mapped at /meetings on the monolith;
-// nginx proxies /api/meetings/ -> /meetings/ (see nginx/nginx.conf).
+// MeetingController (meeting module) is mapped at /meetings, prefixed to
+// /api/meetings by PathPrefixConfig (see PathPrefixConfig.java); nginx
+// forwards the /api/meetings/ prefix through unchanged (see nginx/nginx.conf).
 const MEETINGS_API = API_BASE.MEETINGS;
 
 // Create a user-scheduled MANUAL meeting for a Friend (leave groupId unset —
