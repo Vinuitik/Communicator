@@ -424,6 +424,37 @@ export interface FlashcardReviewSettings {
     bankruptcyLimit: number;
 }
 
+// Mirrors ConnectionOutcome.java (meeting module) — outcome of a logged CONNECTION
+// meeting. Only ever set on CONNECTION-subject Meeting rows.
+export type ConnectionOutcome = 'WENT_WELL' | 'NEUTRAL' | 'TENSE';
+
+// Mirrors ConnectionMeetingRequest.java — POST /api/meetings/connection payload.
+// Lighter than Friend/Group's manual log form: no duration, no attendee batch
+// (Connection is a fixed friend1/friend2 pair by schema).
+export interface ConnectionMeetingRequest {
+    friend1Id: number;
+    friend2Id: number;
+    date: string; // ISO date
+    outcome: ConnectionOutcome;
+    note?: string | null;
+}
+
+// Mirrors MeetingDTO.java's flat read view of a Meeting.
+export interface MeetingDTO {
+    id: number;
+    friendId?: number | null;
+    friendName?: string | null;
+    groupId?: number | null;
+    groupName?: string | null;
+    connectionFriend1Id?: number | null;
+    connectionFriend2Id?: number | null;
+    date: string; // ISO date
+    source: 'FSRS_PROPOSED' | 'BIRTHDAY' | 'MANUAL';
+    status: 'PROPOSED' | 'DONE' | 'CANCELLED';
+    note?: string | null;
+    outcome?: ConnectionOutcome | null;
+}
+
 // Response shape from backup service's GET /backup/status
 // (BackupController.status) — fields are only meaningful once clientConfigured
 // && connected are both true; see SettingsPage for the gating logic.

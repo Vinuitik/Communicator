@@ -6,6 +6,7 @@ export const API_BASE = {
   FRIEND: '/api/friend',
   GROUPS: '/api/groups',
   CONNECTIONS: '/api/connections',
+  MEETINGS: '/api/meetings',
   FILES: '/api/fileRepository',
   AI: '/api/ai',
   BACKUP: '/backup',
