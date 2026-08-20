@@ -33,9 +33,12 @@ User opens "/"  →  HomePage mounts, weekOffset=0
 no "overdue, before Monday" bucket anymore (the old endpoint's behavior) — an overdue Friend meeting
 just sits in its own past Mon-Sun window until you page back to it or log it and it reschedules.
 
-**Card categorization** (`CalendarBoard.categoryFor`) is purely which FK is set on the `MeetingDTO`:
-`groupId` → Group card, `connectionFriend1Id`/`connectionFriend2Id` → Connection card,
-`source === 'BIRTHDAY'` → Birthday card (always Friend-subject), else → Friend card.
+**Card categorization** (`CalendarBoard.categoryFor`) branches on `MeetingDTO.type` — the derived
+`MeetingType` (`MeetingTypeDeriver`, see [meeting/.../FLOWS.md](../meeting/src/main/java/com/communicator/meeting/FLOWS.md)),
+not raw FK presence: `source === 'BIRTHDAY'` → Birthday card (checked first, always Friend-subject),
+else `type === 'GROUP'` → Group card, `type === 'CONNECTION'` → Connection card, else Friend card.
+An ad-hoc Group meeting (no matched `SocialGroup`) still renders as a Group card here even though
+`groupId` is null — `type` is what to branch on, `groupId` isn't a reliable presence check anymore.
 
 ---
 
