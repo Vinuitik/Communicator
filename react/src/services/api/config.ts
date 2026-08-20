@@ -9,4 +9,9 @@ export const API_BASE = {
   FILES: '/api/fileRepository',
   AI: '/api/ai',
   BACKUP: '/backup',
+  // No /api prefix: the meeting module has no PathPrefixConfig namespace
+  // (see PathPrefixConfig.java), so MeetingController's own
+  // @RequestMapping("/meetings") is the real path. nginx/nginx.conf routes
+  // /meetings/ straight to the monolith, same as every other prefix here.
+  MEETINGS: '/meetings',
 } as const;

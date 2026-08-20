@@ -40,6 +40,27 @@ export interface Friend {
     flashcardsEnabled?: boolean;
 }
 
+// Mirrors meeting/.../dtos/MeetingDTO.java. Exactly one of friendId/groupId/
+// connectionFriend1Id+2Id is set per row — that's which "subject" the
+// meeting is about. Replaces Friend.plannedSpeakingTime/isBirthdayThisWeek
+// as the week-board data source (GET /meetings/thisWeek).
+export type MeetingSource = 'FSRS_PROPOSED' | 'BIRTHDAY' | 'MANUAL';
+export type MeetingStatus = 'PROPOSED' | 'DONE' | 'CANCELLED';
+
+export interface MeetingDTO {
+    id: number;
+    friendId?: number | null;
+    friendName?: string | null;
+    groupId?: number | null;
+    groupName?: string | null;
+    connectionFriend1Id?: number | null;
+    connectionFriend2Id?: number | null;
+    date: string; // ISO date
+    source: MeetingSource;
+    status: MeetingStatus;
+    note?: string | null;
+}
+
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.
 export interface FriendKnowledge {
     id?: number;
