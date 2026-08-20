@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from models.schemas import SummarizeKnowledgeInput, ErrorResponse
+from models.schemas import SummarizeKnowledgeInput, ErrorResponse, ChunkKnowledgeInput
 from services.knowledge_service import KnowledgeService
-from dependencies.deps import get_knowledge_service
+from services.chunking_service import ChunkingService
+from dependencies.deps import get_knowledge_service, get_chunking_service
 import logging
 
 # Set up logger
@@ -43,6 +44,45 @@ async def summarize_friend_knowledge(
             status_code=500, 
             detail=f"Error in knowledge summarization: {str(e)}"
         )
+
+@router.post("/chunk")
+async def chunk_knowledge(
+    input_data: ChunkKnowledgeInput,
+    chunking_service: ChunkingService = Depends(get_chunking_service)
+):
+    """
+    Eager chunk-trigger target — the JVM's Friend/Group/Connection
+    KnowledgeService's fire a best-effort HTTP call here after their own
+    add/update commits, instead of relying on lazy chunking (which only ran
+    when a friend's "summarize" pipeline happened to fire).
+
+    This must never be the reason a knowledge save fails on the JVM side —
+    the JVM caller wraps its call in try/catch and doesn't wait on/retry a
+    non-2xx or network failure, so errors here are logged and returned as a
+    normal HTTP error status, not silently swallowed.
+    """
+    logger.info(
+        f"Received chunk request for knowledge_id={input_data.knowledge_id} "
+        f"source_type={input_data.source_type}"
+    )
+    try:
+        chunk_ids = await chunking_service.process_knowledge(
+            knowledge_id=input_data.knowledge_id,
+            knowledge_text=input_data.text,
+            source_type=input_data.source_type,
+            friend_id=input_data.friend_id,
+            group_id=input_data.group_id,
+            connection_friend1_id=input_data.connection_friend1_id,
+            connection_friend2_id=input_data.connection_friend2_id,
+        )
+        return {"knowledge_id": input_data.knowledge_id, "chunk_ids": chunk_ids, "chunk_count": len(chunk_ids)}
+    except ValueError as e:
+        logger.error(f"Invalid chunk request for knowledge_id {input_data.knowledge_id}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error chunking knowledge_id {input_data.knowledge_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error chunking knowledge: {str(e)}")
+
 
 @router.get("/tools")
 async def list_knowledge_tools(

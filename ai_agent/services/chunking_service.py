@@ -15,6 +15,8 @@ from .embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
+VALID_SOURCE_TYPES = {"FRIEND", "GROUP", "CONNECTION"}
+
 
 class ChunkingService:
     """Service for chunking knowledge texts and generating embeddings.
@@ -123,40 +125,105 @@ class ChunkingService:
         logger.debug(f"Split text into {len(chunks)} chunks (total {total_words} words)")
         return chunks
 
+    def _validate_subject(
+        self,
+        source_type: str,
+        friend_id: Optional[int],
+        group_id: Optional[int],
+        connection_friend1_id: Optional[int],
+        connection_friend2_id: Optional[int],
+    ) -> None:
+        """Enforce "exactly one subject" — same invariant as the JVM meeting
+        module's Meeting.validateExactlyOneSubject(), applied here since this
+        is raw asyncpg SQL with no ORM entity to hang a DB-level check off of.
+        """
+        if source_type not in VALID_SOURCE_TYPES:
+            raise ValueError(
+                f"Invalid source_type '{source_type}', must be one of {VALID_SOURCE_TYPES}"
+            )
+        if (connection_friend1_id is None) != (connection_friend2_id is None):
+            raise ValueError(
+                "connection_friend1_id and connection_friend2_id must both be set or both be None"
+            )
+        subjects = {
+            "FRIEND": friend_id is not None,
+            "GROUP": group_id is not None,
+            "CONNECTION": connection_friend1_id is not None,
+        }
+        subject_count = sum(subjects.values())
+        if subject_count != 1:
+            raise ValueError(
+                f"Exactly one subject required (friend_id/group_id/connection_friend*_id), "
+                f"got friend_id={friend_id}, group_id={group_id}, "
+                f"connection=({connection_friend1_id}, {connection_friend2_id})"
+            )
+        if not subjects[source_type]:
+            raise ValueError(
+                f"source_type='{source_type}' doesn't match the populated subject id "
+                f"(friend_id={friend_id}, group_id={group_id}, "
+                f"connection=({connection_friend1_id}, {connection_friend2_id}))"
+            )
+
     async def process_knowledge(
-        self, 
-        knowledge_id: int, 
+        self,
+        knowledge_id: int,
         knowledge_text: str,
+        source_type: str = "FRIEND",
+        friend_id: Optional[int] = None,
+        group_id: Optional[int] = None,
+        connection_friend1_id: Optional[int] = None,
+        connection_friend2_id: Optional[int] = None,
         force_regenerate: bool = False
     ) -> List[str]:
         """Process knowledge text into chunks with embeddings.
-        
+
         This is the main public method for chunking. It handles:
         1. Change detection (via text hash)
         2. Chunk regeneration if needed
         3. Embedding generation
         4. Persistence to PostgreSQL
-        
+
         Args:
             knowledge_id: ID of the knowledge item
             knowledge_text: Full text of the knowledge
+            source_type: Which JVM entity owns this knowledge — "FRIEND"
+                (default, backward-compatible with the old Friend-only
+                callers), "GROUP", or "CONNECTION"
+            friend_id: Owning friend id (source_type="FRIEND" only)
+            group_id: Owning group id (source_type="GROUP" only)
+            connection_friend1_id: Owning connection's lower friend id
+                (source_type="CONNECTION" only, canonicalized min/max like
+                the JVM's ConnectionId)
+            connection_friend2_id: Owning connection's higher friend id
+                (source_type="CONNECTION" only)
             force_regenerate: Force regeneration even if text unchanged
-            
+
         Returns:
             List of chunk IDs created
+
+        Raises:
+            ValueError: if source_type/subject-id combination doesn't satisfy
+                the "exactly one subject" invariant
         """
+        self._validate_subject(
+            source_type, friend_id, group_id,
+            connection_friend1_id, connection_friend2_id
+        )
+
         logger.info("=" * 80)
         logger.info(f"CHUNKING SERVICE: Processing knowledge {knowledge_id}")
         logger.info("=" * 80)
         logger.info(f"Knowledge text length: {len(knowledge_text)} characters")
+        logger.info(f"Source: {source_type} friend_id={friend_id} group_id={group_id} "
+                    f"connection=({connection_friend1_id}, {connection_friend2_id})")
         logger.info(f"Force regenerate: {force_regenerate}")
         logger.info(f"Chunk size: {self.chunk_size_words} words")
         logger.info(f"Chunk overlap: {self.chunk_overlap_words} words")
-        
+
         if not self.chunk_repo:
             logger.warning("No PostgreSQL repository configured, skipping persistence")
             return []
-        
+
         # Calculate text hash for change detection
         text_hash = self._calculate_text_hash(knowledge_text)
         
@@ -202,7 +269,12 @@ class ChunkingService:
                 char_start=char_start,
                 char_end=char_end,
                 text_hash=text_hash,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
+                source_type=source_type,
+                friend_id=friend_id,
+                group_id=group_id,
+                connection_friend1_id=connection_friend1_id,
+                connection_friend2_id=connection_friend2_id,
             )
             
             chunk_docs.append(chunk_doc)

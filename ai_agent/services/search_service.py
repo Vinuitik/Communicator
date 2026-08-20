@@ -10,7 +10,7 @@ appears in. RRF needs no score normalization between the two very different
 scales (cosine distance vs. BM25 relevance), which is why it's used instead of
 a weighted blend of raw scores.
 """
-from typing import List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from config.settings import settings
@@ -122,11 +122,32 @@ class SearchService:
                 knowledge_ids, query, self.candidates_per_side
             )
 
+        fused = self._rrf_fuse(vector_rows, bm25_rows)
+        results = fused[:top_k]
+
+        logger.info(f"Found {len(results)} fused results passing threshold")
+        for idx, (chunk_id, score) in enumerate(results[:5], 1):
+            logger.info(f"  {idx}. {chunk_id}: {score:.4f}")
+        logger.info("=" * 80)
+
+        return results
+
+    def _rrf_fuse(self, vector_rows, bm25_rows) -> List[Tuple[str, float]]:
+        """Fuse pgvector cosine-ANN rows and ParadeDB BM25 rows via
+        Reciprocal Rank Fusion. Shared by search() (per-friend) and
+        search_all() (cross-entity) — the fusion math doesn't care what the
+        candidate rows were scoped by, only their `chunk_id` and rank order.
+
+        Returns all fused (chunk_id, score) pairs passing
+        min_relevance_threshold, sorted by score descending. NOT truncated to
+        top_k here — search() truncates by chunk, search_all() needs the
+        fuller candidate set before it groups chunks by owning entity.
+        """
         vector_ranks = {row["chunk_id"]: rank for rank, row in enumerate(vector_rows, start=1)}
         bm25_ranks = {row["chunk_id"]: rank for rank, row in enumerate(bm25_rows, start=1)}
         logger.info(f"Vector candidates: {len(vector_ranks)}, BM25 candidates: {len(bm25_ranks)}")
 
-        fused_scores = {}
+        fused_scores: Dict[str, float] = {}
         for chunk_id, rank in vector_ranks.items():
             fused_scores[chunk_id] = fused_scores.get(chunk_id, 0.0) + 1.0 / (self.rrf_k + rank)
         for chunk_id, rank in bm25_ranks.items():
@@ -137,11 +158,114 @@ class SearchService:
             if score >= self.min_relevance_threshold
         ]
         results.sort(key=lambda x: x[1], reverse=True)
+        return results
+
+    async def search_all(
+        self,
+        query: str,
+        top_k: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Cross-entity hybrid search over every knowledge_chunks row,
+        regardless of owning Friend/Group/Connection — no knowledge_id
+        scoping WHERE clause, unlike search(). Same pgvector + BM25 + RRF
+        mechanics (via _rrf_fuse), then results are grouped/deduped by
+        owning entity (source_type + friend_id/group_id/connection ids),
+        keeping each entity's single best-scoring chunk.
+
+        Args:
+            query: Free-text query (e.g. "loves hiking in Colorado")
+            top_k: Number of distinct entities to return (defaults to config)
+
+        Returns:
+            List of dicts, sorted by score descending, each with:
+            chunk_id, source_type, friend_id, group_id,
+            connection_friend1_id, connection_friend2_id, chunk_text, score
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        logger.info("=" * 80)
+        logger.info(f"SEARCH SERVICE: Starting cross-entity hybrid search")
+        logger.info(f"Query: '{query}', Top K: {top_k}")
+
+        if not self.postgres_repo or not self.postgres_repo.pool:
+            logger.error("PostgreSQL repository not initialized")
+            return []
+
+        query_embedding = await self.embedding_service.embed_query(query)
+
+        async with self.postgres_repo.pool.acquire() as conn:
+            vector_rows = await conn.fetch(
+                """
+                SELECT kc.chunk_id
+                FROM chunk_embeddings ce
+                JOIN knowledge_chunks kc ON kc.chunk_id = ce.chunk_id
+                ORDER BY ce.embedding <=> $1
+                LIMIT $2
+                """,
+                query_embedding, self.candidates_per_side
+            )
+            bm25_rows = await conn.fetch(
+                """
+                SELECT chunk_id
+                FROM knowledge_chunks
+                WHERE chunk_id @@@ paradedb.match('chunk_text', $1)
+                ORDER BY paradedb.score(chunk_id) DESC
+                LIMIT $2
+                """,
+                query, self.candidates_per_side
+            )
+
+        fused = self._rrf_fuse(vector_rows, bm25_rows)
+        if not fused:
+            logger.info("No fused results passing threshold")
+            logger.info("=" * 80)
+            return []
+
+        candidate_ids = [chunk_id for chunk_id, _ in fused]
+        async with self.postgres_repo.pool.acquire() as conn:
+            meta_rows = await conn.fetch(
+                """
+                SELECT chunk_id, source_type, friend_id, group_id,
+                       connection_friend1_id, connection_friend2_id, chunk_text
+                FROM knowledge_chunks
+                WHERE chunk_id = ANY($1)
+                """,
+                candidate_ids
+            )
+        meta_by_chunk = {row["chunk_id"]: row for row in meta_rows}
+
+        # Group/dedupe by owning entity, keeping the best-scoring chunk per
+        # entity (fused is already sorted descending, so the first chunk_id
+        # seen for a given entity key is its best one).
+        best_per_entity: Dict[Tuple, Dict[str, Any]] = {}
+        for chunk_id, score in fused:
+            meta = meta_by_chunk.get(chunk_id)
+            if not meta:
+                continue
+            key = (
+                meta["source_type"], meta["friend_id"], meta["group_id"],
+                meta["connection_friend1_id"], meta["connection_friend2_id"],
+            )
+            if key in best_per_entity:
+                continue
+            best_per_entity[key] = {
+                "chunk_id": chunk_id,
+                "source_type": meta["source_type"],
+                "friend_id": meta["friend_id"],
+                "group_id": meta["group_id"],
+                "connection_friend1_id": meta["connection_friend1_id"],
+                "connection_friend2_id": meta["connection_friend2_id"],
+                "chunk_text": meta["chunk_text"],
+                "score": score,
+            }
+
+        results = sorted(best_per_entity.values(), key=lambda r: r["score"], reverse=True)
         results = results[:top_k]
 
-        logger.info(f"Found {len(results)} fused results passing threshold")
-        for idx, (chunk_id, score) in enumerate(results[:5], 1):
-            logger.info(f"  {idx}. {chunk_id}: {score:.4f}")
+        logger.info(f"Found {len(results)} distinct entities passing threshold")
+        for idx, r in enumerate(results[:5], 1):
+            logger.info(f"  {idx}. {r['source_type']} {r['chunk_id']}: {r['score']:.4f}")
         logger.info("=" * 80)
 
         return results

@@ -13,9 +13,14 @@ const mockedLogConnectionMeeting = logConnectionMeeting as jest.MockedFunction<t
 
 const stubMeeting: MeetingDTO = {
   id: 1,
+  type: 'CONNECTION',
   connectionFriend1Id: 1,
   connectionFriend2Id: 2,
   date: '2026-08-20',
+  time: null,
+  location: null,
+  selfAttending: false,
+  attendees: [],
   source: 'MANUAL',
   status: 'DONE',
   outcome: 'WENT_WELL',

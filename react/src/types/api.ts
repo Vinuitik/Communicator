@@ -437,12 +437,22 @@ export type MeetingStatus = 'PROPOSED' | 'DONE' | 'CANCELLED';
 // meeting. Only ever set on CONNECTION-subject Meeting rows.
 export type ConnectionOutcome = 'WENT_WELL' | 'NEUTRAL' | 'TENSE';
 
+// Mirrors meeting/.../entities/MeetingType.java — the DERIVED subject label
+// (see MeetingTypeDeriver.java): self+1 other -> FRIEND, self+2+ -> GROUP,
+// no-self+2 -> CONNECTION, no-self+3+ -> GROUP. Never picked by the user,
+// only recomputed server-side from attendees/selfAttending on every save.
+export type MeetingType = 'FRIEND' | 'GROUP' | 'CONNECTION';
+
 // Mirrors meeting/.../dtos/MeetingDTO.java — flat read view of a Meeting row.
-// Exactly one of friendId/groupId/connectionFriend*Id is set, matching the
-// entity's "exactly one subject" rule; group rows have friendId and the
-// connection ids null. `outcome` is only ever set on CONNECTION-subject rows.
+// friendId/groupId/connectionFriend*Id are populated when the derived `type`
+// resolved to a real FK — but an ad-hoc GROUP meeting that didn't auto-match
+// any existing SocialGroup has groupId/groupName null despite type === 'GROUP',
+// so UI must branch on `type`, never on which id is non-null (see
+// MeetingEditModal / CalendarBoard's categoryFor). `outcome` is only ever set
+// on CONNECTION-subject rows.
 export interface MeetingDTO {
   id: number;
+  type: MeetingType;
   friendId?: number | null;
   friendName?: string | null;
   groupId?: number | null;
@@ -450,6 +460,10 @@ export interface MeetingDTO {
   connectionFriend1Id?: number | null;
   connectionFriend2Id?: number | null;
   date: string; // ISO date
+  time: string | null; // "HH:mm:ss", optional
+  location: string | null;
+  selfAttending: boolean;
+  attendees: AttendeeDTO[];
   source: MeetingSource;
   status: MeetingStatus;
   note?: string | null;
@@ -478,11 +492,42 @@ export interface ConnectionMeetingRequest {
 
 // Row shape from GET /meetings/{meetingId}/attendees — mirrors AttendeeDTO.java.
 // Pre-filled from GroupMember at meeting creation, all present=true initially.
+// Also the shape embedded in MeetingDTO.attendees; `present` is a holdover
+// from the batch-log presence-toggle flow and is always effectively true in
+// that context — MeetingEditModal's attendee picker ignores it.
 export interface AttendeeDTO {
   id: number;
   friendId: number;
   friendName: string;
   present: boolean;
+}
+
+// Body for PATCH /meetings/{id} — mirrors UpdateMeetingRequest.java. This is
+// a FULL replace, not a sparse patch: every field is read and the meeting's
+// type/subject is re-resolved from attendeeFriendIds/selfAttending on every
+// call, so a drag-and-drop date-only change must still send the meeting's
+// current attendeeFriendIds/selfAttending/location/time unchanged.
+// groupId/newGroupName are optional GROUP-only overrides for the default
+// auto-match behavior — at most one of the two may be set (400 otherwise).
+export interface UpdateMeetingRequest {
+  date: string; // ISO date
+  time: string | null;
+  location: string | null;
+  attendeeFriendIds: number[];
+  selfAttending: boolean;
+  groupId?: number | null;
+  newGroupName?: string | null;
+}
+
+// Response row from POST /meetings/group-match-preview — mirrors
+// GroupMatchDTO.java. Body of that call is a bare number[] of friend ids, not
+// wrapped in an object; response is best-match-first, empty when nothing
+// scores well enough (GroupMatchingService's Jaccard threshold).
+export interface GroupMatchDTO {
+  groupId: number;
+  groupName: string;
+  score: number;
+  groupSize: number;
 }
 
 // One attendee's grading input for POST /meetings/{id}/complete — mirrors

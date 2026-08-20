@@ -28,6 +28,44 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_bm25
     ON knowledge_chunks USING bm25 (chunk_id, chunk_text)
     WITH (key_field='chunk_id');
 
+-- Multi-entity support (2026-08-20): knowledge_chunks used to be Friend-only
+-- (knowledge_id pointed at a friend_knowledge row and that was implicit).
+-- Now also covers GroupKnowledge and ConnectionsKnowledge, so each row is
+-- explicitly tagged with which of the three it came from. Same "exactly one
+-- subject" invariant as the JVM meeting module's Meeting entity
+-- (Meeting.validateExactlyOneSubject()) — there's no ORM here to hang a real
+-- entity validator off of, so it's enforced in the write path instead
+-- (ChunkingService.process_knowledge), not a DB CHECK constraint.
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS source_type TEXT NOT NULL DEFAULT 'FRIEND';
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS friend_id INTEGER;
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS group_id INTEGER;
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS connection_friend1_id BIGINT;
+ALTER TABLE knowledge_chunks ADD COLUMN IF NOT EXISTS connection_friend2_id BIGINT;
+
+-- One-time backfill for rows that predate the columns above: every existing
+-- knowledge_chunks row was implicitly a Friend chunk. knowledge_id is
+-- FriendKnowledge.id (JVM's friend_knowledge.id) — same Postgres instance/
+-- database as this service, so a direct join recovers friend_id without a
+-- one-off script or an HTTP round trip. No-op once every row has been
+-- backfilled (WHERE friend_id IS NULL guards re-runs at every boot).
+UPDATE knowledge_chunks kc
+SET friend_id = fk.friend_id, source_type = 'FRIEND'
+FROM friend_knowledge fk
+WHERE kc.knowledge_id = fk.id
+  AND kc.friend_id IS NULL
+  AND kc.group_id IS NULL
+  AND kc.connection_friend1_id IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_friend_id
+    ON knowledge_chunks (friend_id) WHERE friend_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_group_id
+    ON knowledge_chunks (group_id) WHERE group_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_connection
+    ON knowledge_chunks (connection_friend1_id, connection_friend2_id)
+    WHERE connection_friend1_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS chunk_embeddings (
     chunk_id   TEXT PRIMARY KEY REFERENCES knowledge_chunks(chunk_id) ON DELETE CASCADE,
     embedding  vector(768) NOT NULL,

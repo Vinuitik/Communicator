@@ -53,6 +53,7 @@ const groupList: GroupListResponse = { groups: [] };
 
 const meeting = (overrides: Partial<MeetingDTO>): MeetingDTO => ({
   id: 1,
+  type: 'FRIEND',
   friendId: 7,
   friendName: 'Priya Shah',
   groupId: null,
@@ -60,6 +61,10 @@ const meeting = (overrides: Partial<MeetingDTO>): MeetingDTO => ({
   connectionFriend1Id: null,
   connectionFriend2Id: null,
   date: '2026-09-01',
+  time: null,
+  location: null,
+  selfAttending: true,
+  attendees: [],
   source: 'FSRS_PROPOSED',
   status: 'PROPOSED',
   note: null,

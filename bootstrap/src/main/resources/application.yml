@@ -67,6 +67,15 @@ file:
 # bean with an absolute URI (overrides its fileRepository baseUrl).
 host-wrapper:
   url: ${HOST_WRAPPER_URL:http://host-wrapper:5011}
+# KnowledgeChunkTriggerClient's (knowledge-core) target for the eager chunk
+# trigger fired after Friend/Group/Connection KnowledgeService add/update
+# commits (POST {ai-agent.url}/knowledge/chunk). Direct container-to-container,
+# not via nginx — same convention as host-wrapper.url above and ai_agent's own
+# friend_service.base_url (ai_agent/config/config.yaml), just inverted
+# direction. Best-effort only: see KnowledgeChunkTriggerClient's docstring —
+# ai-agent being down must never fail the knowledge save that triggered this.
+ai-agent:
+  url: ${AI_AGENT_URL:http://ai-agent:8001}
 # EMA coefficients — single source for both the real-time per-interaction
 # update path (newData) and the no-interaction decay path (decay), the
 # latter used by chrono's nightly job AND the friend module's own
