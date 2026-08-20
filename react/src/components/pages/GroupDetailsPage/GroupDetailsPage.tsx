@@ -4,12 +4,15 @@ import Avatar from '../../atoms/Avatar';
 import KnowledgeCrudPanel from '../../organisms/KnowledgeCrudPanel';
 import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
+import GroupBatchLogModal from '../../organisms/GroupBatchLogModal';
+import GroupConnectionsNudge, { ConnectionOutcome } from '../../organisms/GroupConnectionsNudge';
 import {
   getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge,
   getGroupPermissions, addGroupPermission, deleteGroupPermission, deleteGroup,
 } from '../../../services/api/groupService';
 import { getGroupFriends, addFriendsToGroup, removeFriendFromGroup, getShortFriendList } from '../../../services/api/friendService';
-import { Group, KnowledgeCrudItem, Friend, ShortFriend } from '../../../types/api';
+import { getGroupMeetings, createManualMeeting, getConnectionCandidates } from '../../../services/api/groupMeetingService';
+import { Group, KnowledgeCrudItem, Friend, ShortFriend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
 import { ROUTES, profilePath } from '../../../utils/constants';
 import { avatarColor } from '../../../utils/avatar';
 
@@ -54,6 +57,16 @@ const GroupDetailsPage: React.FC = () => {
 
   const [removeTarget, setRemoveTarget] = useState<Friend | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
+
+  // "Log this meeting" flow — batch-log -> Connections nudge, per
+  // SCHEDULING_MEETINGS_PLAN.md Feature B. meetingStage tracks which overlay
+  // (if any) is showing; activeMeetingId is set once a PROPOSED meeting
+  // exists (an already-pending one, or one freshly created via
+  // POST /meetings/manual).
+  const [meetingStage, setMeetingStage] = useState<'closed' | 'batchLog' | 'nudge'>('closed');
+  const [activeMeetingId, setActiveMeetingId] = useState<number | null>(null);
+  const [startingMeeting, setStartingMeeting] = useState(false);
+  const [nudgeCandidates, setNudgeCandidates] = useState<ConnectionCandidateDTO[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +193,60 @@ const GroupDetailsPage: React.FC = () => {
     }
   };
 
+  // POST /meetings/manual has no dedupe of its own — callers check for an
+  // existing PROPOSED group meeting (e.g. auto-scheduled) first, per
+  // MeetingController's contract, so this never creates a duplicate.
+  const handleLogMeeting = async () => {
+    setStartingMeeting(true);
+    try {
+      const existing = await getGroupMeetings(groupId);
+      const pending = existing.find((m) => m.status === 'PROPOSED');
+      const meeting = pending ?? await createManualMeeting({
+        groupId,
+        date: new Date().toISOString().slice(0, 10),
+        note: null,
+      });
+      setActiveMeetingId(meeting.id);
+      setMeetingStage('batchLog');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to start logging this meeting.', 'error');
+    } finally {
+      setStartingMeeting(false);
+    }
+  };
+
+  const handleBatchLogComplete = async (meeting: MeetingDTO) => {
+    try {
+      const candidates = await getConnectionCandidates(meeting.id);
+      if (candidates.length > 0) {
+        setNudgeCandidates(candidates);
+        setMeetingStage('nudge');
+        return;
+      }
+    } catch {
+      // Candidates are a bonus nudge, not the point of the flow — a failure
+      // here shouldn't make a successfully-completed meeting look broken.
+    }
+    setMeetingStage('closed');
+    setActiveMeetingId(null);
+    showToast(`Logged the meeting for ${group?.name}`);
+  };
+
+  const handleCloseMeetingFlow = () => {
+    setMeetingStage('closed');
+    setActiveMeetingId(null);
+    setNudgeCandidates([]);
+  };
+
+  // Stub — the actual save (a Connection outcome endpoint) is being built by
+  // a different agent in a different worktree and doesn't exist here yet.
+  // See GroupConnectionsNudge's own doc comment; a parent wires this up once
+  // that lands.
+  const handleLogConnectionOutcome = (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => {
+    // eslint-disable-next-line no-console
+    console.log('Connection outcome logged (stub, not yet persisted):', { friend1Id, friend2Id, outcome });
+  };
+
   const permissionTag = (value: number): { label: string; color: string } => (
     value >= 3 ? { label: 'High', color: '#46D39A' } : { label: 'Medium', color: '#F5B544' }
   );
@@ -203,6 +270,14 @@ const GroupDetailsPage: React.FC = () => {
           <h1 className="m-0 font-display font-bold text-[22px] text-text-primary">{group.name}</h1>
           <div className="text-text-muted text-[12.5px] mt-[3px]">{members.length} people · {knowledge.length} notes</div>
         </div>
+        <button
+          type="button"
+          onClick={handleLogMeeting}
+          disabled={startingMeeting}
+          className="border-none bg-accent-gradient text-white font-bold text-[12.5px] px-[15px] py-2.5 rounded-input shadow-button-sm hover:brightness-110 disabled:opacity-50 transition-all"
+        >
+          {startingMeeting ? 'Starting…' : 'Log this meeting'}
+        </button>
         <button
           type="button"
           onClick={() => setConfirmDeleteOpen(true)}
@@ -351,6 +426,24 @@ const GroupDetailsPage: React.FC = () => {
         onConfirm={handleRemoveMember}
         onCancel={() => setRemoveTarget(null)}
       />
+
+      {meetingStage === 'batchLog' && activeMeetingId !== null && (
+        <GroupBatchLogModal
+          meetingId={activeMeetingId}
+          groupName={group.name}
+          onClose={handleCloseMeetingFlow}
+          onComplete={handleBatchLogComplete}
+        />
+      )}
+
+      {meetingStage === 'nudge' && (
+        <GroupConnectionsNudge
+          groupName={group.name}
+          candidates={nudgeCandidates}
+          onLogOutcome={handleLogConnectionOutcome}
+          onClose={handleCloseMeetingFlow}
+        />
+      )}
     </div>
   );
 };
