@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import chat, knowledge, settings as settings_router
+from routers import chat, knowledge, search, settings as settings_router
 from models.schemas import HealthResponse
 from dependencies.deps import get_agent_service, get_llm_settings_repository, get_postgres_repository
 from config.settings import settings
@@ -74,6 +74,7 @@ async def shutdown_event():
 # Include routers
 app.include_router(chat.router)
 app.include_router(knowledge.router)
+app.include_router(search.router)
 app.include_router(settings_router.router)
 
 @app.get("/", response_model=HealthResponse)

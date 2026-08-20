@@ -250,3 +250,29 @@ class FriendApiService:
         except Exception as e:
             logger.error(f"Unexpected error fetching knowledge IDs for friend {friend_id}: {e}", exc_info=True)
             return []
+
+    async def fetch_friend_name(self, friend_id: int) -> Optional[str]:
+        """Fetch a friend's display name for cross-entity search result enrichment.
+
+        Calls: GET /{friendId}  (FriendController.getFriend, returns a FriendDTO)
+
+        Args:
+            friend_id: ID of the friend
+
+        Returns:
+            Friend's name, or None if not found/on error (best-effort — a
+            missing name shouldn't fail the whole search response).
+        """
+        url = f"{self.base_url}/{friend_id}"
+
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=self.timeout)) as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        friend = await response.json()
+                        return friend.get("name")
+                    logger.warning(f"Failed to fetch friend name for {friend_id}: HTTP {response.status}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error fetching friend name for {friend_id}: {e}")
+            return None

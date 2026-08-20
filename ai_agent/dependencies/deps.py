@@ -12,6 +12,7 @@ from services.embedding_service import EmbeddingService
 from services.chunking_service import ChunkingService
 from services.search_service import SearchService
 from services.friend_api_service import FriendApiService
+from services.group_api_service import GroupApiService
 from services.knowledge_cache_service import KnowledgeCacheService
 from services.fact_validation_service import FactValidationService
 from services.fact_service import FactService
@@ -34,6 +35,7 @@ _agent_service = None
 _embedding_service = None
 _chunking_service = None
 _friend_api_service = None
+_group_api_service = None
 _knowledge_cache_service = None
 _fact_validation_service = None
 _search_service = None
@@ -187,6 +189,25 @@ async def get_friend_api_service() -> FriendApiService:
         logger.debug("Returning existing friend API service instance")
     
     return _friend_api_service
+
+
+async def get_group_api_service() -> GroupApiService:
+    """Get GroupApiService instance."""
+    global _group_api_service
+    logger.debug("Getting group API service instance")
+
+    if _group_api_service is None:
+        try:
+            logger.info("Initializing new group API service instance")
+            _group_api_service = GroupApiService()
+            logger.info("Group API service initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize group API service: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("Returning existing group API service instance")
+
+    return _group_api_service
 
 
 async def get_knowledge_cache_service(
