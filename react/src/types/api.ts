@@ -424,6 +424,77 @@ export interface FlashcardReviewSettings {
     bankruptcyLimit: number;
 }
 
+// ── Meetings (Feature B: group batch-log + Group→Connections nudge) ────────
+// meeting module is mounted bare at /meetings (no /api prefix, no
+// PathPrefixConfig involved — see MeetingController's own @RequestMapping).
+
+export type MeetingSource = 'FSRS_PROPOSED' | 'BIRTHDAY' | 'MANUAL';
+export type MeetingStatus = 'PROPOSED' | 'DONE' | 'CANCELLED';
+
+// Mirrors meeting/.../dtos/MeetingDTO.java — flat read view of a Meeting row.
+// Exactly one of friendId/groupId/connectionFriend*Id is set, matching the
+// entity's "exactly one subject" rule; group rows have friendId and the
+// connection ids null.
+export interface MeetingDTO {
+  id: number;
+  friendId?: number | null;
+  friendName?: string | null;
+  groupId?: number | null;
+  groupName?: string | null;
+  connectionFriend1Id?: number | null;
+  connectionFriend2Id?: number | null;
+  date: string; // ISO date
+  source: MeetingSource;
+  status: MeetingStatus;
+  note?: string | null;
+}
+
+// Body for POST /meetings/manual — mirrors ManualMeetingRequest.java.
+// Exactly one of friendId/groupId must be set.
+export interface ManualMeetingRequest {
+  friendId?: number | null;
+  groupId?: number | null;
+  date: string; // ISO date
+  note?: string | null;
+}
+
+// Row shape from GET /meetings/{meetingId}/attendees — mirrors AttendeeDTO.java.
+// Pre-filled from GroupMember at meeting creation, all present=true initially.
+export interface AttendeeDTO {
+  id: number;
+  friendId: number;
+  friendName: string;
+  present: boolean;
+}
+
+// One attendee's grading input for POST /meetings/{id}/complete — mirrors
+// CompleteGroupMeetingRequest.AttendeeLog. One entry per attendee: present
+// ones carry durationHours/experience/inPerson (same grading inputs
+// QuickLogModal sends for a 1:1 log); absent ones only need present:false,
+// the rest is left null/omitted and the backend skips grading them.
+export interface AttendeeLog {
+  friendId: number;
+  present: boolean;
+  durationHours?: number | null;
+  experience?: string | null;
+  inPerson?: boolean | null;
+}
+
+export interface CompleteGroupMeetingRequest {
+  attendees: AttendeeLog[];
+}
+
+// Row shape from GET /meetings/{meetingId}/connection-candidates — mirrors
+// ConnectionCandidateDTO.java. Present-attendee pairs from the just-completed
+// meeting that already have a tracked Connection (never the full combinatorial
+// pair set, and never creates new Connections).
+export interface ConnectionCandidateDTO {
+  friend1Id: number;
+  friend1Name: string;
+  friend2Id: number;
+  friend2Name: string;
+}
+
 // Response shape from backup service's GET /backup/status
 // (BackupController.status) — fields are only meaningful once clientConfigured
 // && connected are both true; see SettingsPage for the gating logic.
