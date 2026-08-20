@@ -1,0 +1,37 @@
+import { MeetingDTO, ManualMeetingRequest } from '../../types/api';
+import { API_BASE } from './config';
+
+// MeetingController (meeting module), mapped at /meetings on the monolith;
+// nginx proxies /api/meetings/ -> /meetings/ (see nginx/nginx.conf).
+const MEETINGS_API = API_BASE.MEETINGS;
+
+// Create a user-scheduled MANUAL meeting for a Friend (leave groupId unset —
+// that's the Group-page entry point, owned elsewhere). Returns the created
+// MeetingDTO so the caller can prepend it without a full refetch if desired.
+export const createManualMeeting = async (
+  friendId: number,
+  date: string,
+  note?: string,
+): Promise<MeetingDTO> => {
+  const payload: ManualMeetingRequest = { friendId, groupId: null, date, note: note || null };
+  const response = await fetch(`${MEETINGS_API}/manual`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+// Full Meeting history + upcoming for a friend, ordered by date descending
+// (MeetingController.forFriend). ProfilePage splits this into an upcoming
+// list and a DONE history by status client-side.
+export const getFriendMeetings = async (friendId: number): Promise<MeetingDTO[]> => {
+  const response = await fetch(`${MEETINGS_API}/friend/${friendId}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};

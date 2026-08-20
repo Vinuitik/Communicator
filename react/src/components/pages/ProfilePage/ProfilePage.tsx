@@ -10,6 +10,7 @@ import KnowledgeSummaryTable from '../../organisms/KnowledgeSummaryTable';
 import KnowledgeCrudPanel from '../../organisms/KnowledgeCrudPanel';
 import AiChatWidget from '../../organisms/AiChatWidget';
 import QuickLogModal from '../../organisms/QuickLogModal';
+import ScheduleMeetingModal from '../../organisms/ScheduleMeetingModal';
 import TalkedForm, { TalkedFormValues } from '../../organisms/TalkedForm';
 import { useToast } from '../../molecules/Toast';
 import {
@@ -19,7 +20,8 @@ import {
 import { talkedToFriendOffline, addFriendKnowledgeItemOffline } from '../../../pwa/offlineApi';
 import { getGroups } from '../../../services/api/groupService';
 import { setFriendFlashcardsEnabled } from '../../../services/api/flashcardService';
-import { FriendProfileData, Friend, AnalyticsRecord, Group, KnowledgeCrudItem, NewFriendPayload } from '../../../types/api';
+import { getFriendMeetings } from '../../../services/api/meetingService';
+import { FriendProfileData, Friend, AnalyticsRecord, Group, KnowledgeCrudItem, NewFriendPayload, MeetingDTO } from '../../../types/api';
 import { API_BASE } from '../../../services/api/config';
 import { ROUTES } from '../../../utils/constants';
 import {
@@ -58,6 +60,36 @@ const PlannedCard: React.FC<{ title: string; hint: string; icon: string; childre
   </div>
 );
 
+// One row in the "Upcoming meetings" list/history (Feature B). Label depends
+// on source: FSRS_PROPOSED is the auto-scheduled next contact, BIRTHDAY is
+// the yearly reminder, MANUAL shows its own note (or a generic fallback).
+// DONE/CANCELLED render muted, as history rather than something to act on.
+const meetingLabel = (m: MeetingDTO): string => {
+  if (m.source === 'FSRS_PROPOSED') return 'Next scheduled contact';
+  if (m.source === 'BIRTHDAY') return 'Birthday';
+  return m.note?.trim() || 'Meeting';
+};
+
+const MeetingRow: React.FC<{ meeting: MeetingDTO }> = ({ meeting }) => {
+  const isPast = meeting.status !== 'PROPOSED';
+  const dateLabel = new Date(meeting.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const badgeClass = meeting.status === 'DONE'
+    ? 'text-text-faint bg-white/[.06]'
+    : meeting.status === 'CANCELLED'
+      ? 'text-bad bg-bad/[.14]'
+      : 'text-soon bg-soon/[.14]';
+  const badgeLabel = meeting.status === 'DONE' ? 'Done' : meeting.status === 'CANCELLED' ? 'Cancelled' : 'Upcoming';
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-input px-3 py-2 border ${isPast ? 'border-white/5 opacity-60' : 'border-white/10 bg-input/40'}`}>
+      <div className="min-w-0">
+        <div className={`text-[12.5px] font-semibold truncate ${isPast ? 'text-text-faint' : 'text-text-emphasis'}`}>{meetingLabel(meeting)}</div>
+        <div className="text-[11px] text-text-faint">{dateLabel}</div>
+      </div>
+      <span className={`flex-none text-[10px] font-bold px-2 py-0.5 rounded-pill ${badgeClass}`}>{badgeLabel}</span>
+    </div>
+  );
+};
+
 // The redesign's Profile hub — consolidates what used to be 5 separate pages
 // (Talked, Knowledge, Social, FileUpload, per-friend Analytics) into one
 // friend-scoped view with tabs. See design_handoff_friends_tracker/README.md
@@ -87,6 +119,11 @@ const ProfilePage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  const [meetings, setMeetings] = useState<MeetingDTO[]>([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(true);
+  const [meetingsError, setMeetingsError] = useState<string | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   // Stretch feature (design doc Next Steps #11) — on-demand only, never
   // fetched automatically, so a profile visit never triggers an LLM call.
@@ -142,6 +179,20 @@ const ProfilePage: React.FC = () => {
   }, [friendId]);
 
   useEffect(() => { loadRaw(); }, [loadRaw]);
+
+  const loadMeetings = useCallback(async () => {
+    setMeetingsLoading(true);
+    setMeetingsError(null);
+    try {
+      setMeetings(await getFriendMeetings(friendId));
+    } catch {
+      setMeetingsError('Could not load meetings.');
+    } finally {
+      setMeetingsLoading(false);
+    }
+  }, [friendId]);
+
+  useEffect(() => { loadMeetings(); }, [loadMeetings]);
 
   const handleEditSubmit = async (values: TalkedFormValues) => {
     setEditSubmitting(true);
@@ -213,6 +264,11 @@ const ProfilePage: React.FC = () => {
   const intensityScore = calculateIntensityScore(friend);
   const hasIntensity = !isNaN(intensityScore) && intensityScore > 0;
   const lastMet = interactions[0] ? timeAgo(interactions[0].date) : '—';
+
+  // Upcoming (still PROPOSED) ascending by date; everything else (DONE/CANCELLED)
+  // stays in the API's descending order as history, most recent first.
+  const upcomingMeetings = meetings.filter((m) => m.status === 'PROPOSED').sort((a, b) => a.date.localeCompare(b.date));
+  const pastMeetings = meetings.filter((m) => m.status !== 'PROPOSED');
 
   return (
     <div className="animate-ftfade">
@@ -398,18 +454,45 @@ const ProfilePage: React.FC = () => {
                 )}
               </div>
 
-              <PlannedCard title="Upcoming" hint="Per-friend scheduled events — backend in progress." icon="🗓️">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-input bg-input flex flex-col items-center justify-center flex-none">
-                    <span className="text-[9px] text-accent-light font-bold">SOON</span>
-                    <span className="text-base font-bold leading-none">?</span>
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold text-text-primary">First proper catch-up</div>
-                    <div className="text-[11px] text-text-muted">Suggested · tap to schedule</div>
-                  </div>
+              <div className="bg-surface border border-hairline rounded-card p-5">
+                <div className="flex items-center justify-between mb-3 gap-2.5 flex-wrap">
+                  <h2 className="text-[15px] font-bold text-text-primary m-0">Upcoming meetings</h2>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleOpen(true)}
+                    className="border-none bg-transparent text-accent-light text-[11.5px] font-semibold p-0 hover:underline"
+                  >
+                    + Schedule a meeting
+                  </button>
                 </div>
-              </PlannedCard>
+                {meetingsLoading ? (
+                  <div className="text-center py-6 text-xs text-text-faint">Loading…</div>
+                ) : meetingsError ? (
+                  <div className="text-center py-6 text-xs text-bad">{meetingsError}</div>
+                ) : (
+                  <>
+                    {upcomingMeetings.length === 0 ? (
+                      <div className="text-center py-6 px-3 border border-dashed border-white/10 rounded-card">
+                        <div className="text-[22px] opacity-50 mb-1.5">🗓️</div>
+                        <div className="text-xs text-text-muted font-semibold">Nothing scheduled yet</div>
+                        <div className="text-[11px] text-text-faint mt-1">Hit <b className="text-accent-light">Schedule a meeting</b> to plan one.</div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {upcomingMeetings.map((m) => <MeetingRow key={m.id} meeting={m} />)}
+                      </div>
+                    )}
+                    {pastMeetings.length > 0 && (
+                      <>
+                        <div className="text-[10px] font-bold text-text-faint uppercase tracking-wide mt-4 mb-2">History</div>
+                        <div className="flex flex-col gap-2">
+                          {pastMeetings.slice(0, 5).map((m) => <MeetingRow key={m.id} meeting={m} />)}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
 
               <PlannedCard title="Topics to discuss" hint="Per-friend checklist, persisted — backend in progress." icon="📝" />
             </div>
@@ -434,6 +517,13 @@ const ProfilePage: React.FC = () => {
       <AiChatWidget friendId={friendId} friendName={friend.name} />
 
       <QuickLogModal friend={logOpen ? friend : null} onClose={() => setLogOpen(false)} onSaved={() => loadFriend()} />
+
+      <ScheduleMeetingModal
+        friendId={scheduleOpen ? friendId : null}
+        friendName={friend.name}
+        onClose={() => setScheduleOpen(false)}
+        onScheduled={() => loadMeetings()}
+      />
 
       {editOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-ftfade" onClick={() => setEditOpen(false)}>
