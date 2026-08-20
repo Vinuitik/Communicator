@@ -286,6 +286,8 @@ class KnowledgeService:
                 chunk_ids = await self.chunking_service.process_knowledge(
                     knowledge_id=knowledge_id,
                     knowledge_text=knowledge_text,
+                    source_type="FRIEND",
+                    friend_id=friend_id,
                     force_regenerate=False
                 )
 

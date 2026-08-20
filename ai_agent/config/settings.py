@@ -90,6 +90,11 @@ class Settings:
             "base_url", "http://communicator-app:8080/api/friend")
         self.friend_service_timeout = self.config.get("friend_service", {}).get("timeout", 30)
 
+        # Group service settings (cross-entity search name enrichment)
+        self.group_service_url = self.config.get("group_service", {}).get(
+            "base_url", "http://communicator-app:8080/api/groups")
+        self.group_service_timeout = self.config.get("group_service", {}).get("timeout", 30)
+
         # Embedding settings
         self.embedding_provider = self.config["embedding"]["provider"]
         self.embedding_model = self.config["embedding"]["model"]

@@ -64,6 +64,13 @@ class ChunkDocument(BaseModel):
     reconstructed it on demand from char_start/char_end against the JVM's
     full knowledge text) because pg_search's BM25 index needs real text in
     a real column.
+
+    source_type + exactly one of friend_id/group_id/(connection_friend1_id,
+    connection_friend2_id) tags which JVM entity this chunk belongs to — same
+    "exactly one subject" invariant as the JVM meeting module's Meeting
+    entity. Enforced in ChunkingService.process_knowledge, not here (pydantic
+    validation here would apply to the pre-migration/default-FRIEND shape too
+    readily; the cross-field check belongs with the write path that owns it).
     """
     chunk_id: str
     knowledge_id: int  # Single FK - 1:1 relationship with knowledge
@@ -74,6 +81,31 @@ class ChunkDocument(BaseModel):
     char_end: int  # End position in original knowledge text
     text_hash: str  # MD5 hash of original knowledge text for invalidation detection
     created_at: datetime
+    source_type: str = "FRIEND"  # FRIEND | GROUP | CONNECTION
+    friend_id: Optional[int] = None
+    group_id: Optional[int] = None
+    connection_friend1_id: Optional[int] = None
+    connection_friend2_id: Optional[int] = None
+
+
+class ChunkKnowledgeInput(BaseModel):
+    """Input schema for POST /knowledge/chunk — the eager chunk-trigger the
+    JVM's Friend/Group/Connection KnowledgeService's fire (best-effort, after
+    their own save commits) instead of relying on lazy chunking.
+    """
+    knowledge_id: int
+    source_type: Literal["FRIEND", "GROUP", "CONNECTION"]
+    friend_id: Optional[int] = None
+    group_id: Optional[int] = None
+    connection_friend1_id: Optional[int] = None
+    connection_friend2_id: Optional[int] = None
+    text: str
+
+
+class SearchAllInput(BaseModel):
+    """Input schema for POST /search — cross-entity hybrid search."""
+    query: str
+    top_k: Optional[int] = None
 
 class EmbeddingDocument(BaseModel):
     """Schema for embedding document stored in MongoDB"""

@@ -2,10 +2,12 @@ package communicate.Friend.FriendService;
 
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 
+import com.communicator.knowledgecore.event.KnowledgeChunkTriggerEvent;
 import com.communicator.knowledgecore.service.AbstractFactService;
 
 import communicate.Friend.FriendEntities.Friend;
@@ -19,10 +21,45 @@ import lombok.RequiredArgsConstructor;
 public class FriendKnowledgeService extends AbstractFactService<FriendKnowledge, Integer> {
 
     private final FriendKnowledgeRepository knowledgeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     protected JpaRepository<FriendKnowledge, Integer> repository() {
         return knowledgeRepository;
+    }
+
+    // Overriding save/saveAll/update (rather than hooking each call site individually)
+    // is the one choke point every current AND future add/update path funnels through —
+    // OutboxWriteService's applyTalkedToFriend/applyAddFriend/applyAddKnowledge all end
+    // up calling one of these three, as does FriendKnowledgeController's updateKnowledge.
+    // Published event is picked up by knowledge-core's KnowledgeChunkTriggerListener
+    // (AFTER_COMMIT) — see that class for why eager chunking is dispatched there and not
+    // inline here.
+    @Override
+    public FriendKnowledge save(FriendKnowledge item) {
+        FriendKnowledge saved = super.save(item);
+        publishChunkTrigger(saved);
+        return saved;
+    }
+
+    @Override
+    public List<FriendKnowledge> saveAll(List<FriendKnowledge> items) {
+        List<FriendKnowledge> saved = super.saveAll(items);
+        saved.forEach(this::publishChunkTrigger);
+        return saved;
+    }
+
+    @Override
+    public FriendKnowledge update(Integer id, FriendKnowledge changes) {
+        FriendKnowledge saved = super.update(id, changes);
+        publishChunkTrigger(saved);
+        return saved;
+    }
+
+    private void publishChunkTrigger(FriendKnowledge knowledge) {
+        Integer friendId = knowledge.getFriend() != null ? knowledge.getFriend().getId() : null;
+        eventPublisher.publishEvent(new KnowledgeChunkTriggerEvent(
+                knowledge.getId(), "FRIEND", friendId, null, null, null, knowledge.getText()));
     }
 
     @Transactional

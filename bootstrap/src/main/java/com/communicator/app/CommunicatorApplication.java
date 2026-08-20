@@ -31,6 +31,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.communicator.meeting",     // meeting (Meeting/MeetingAttendee + FriendRescheduledEvent listener)
         "com.communicator.chrono",      // chrono (scheduled jobs; no JPA entities)
         "com.communicator.outboxcore",  // outbox-core (shared idempotency ledger)
+        "com.communicator.knowledgecore", // knowledge-core (KnowledgeChunkTriggerClient/Listener beans;
+                                           // AbstractFactService itself is abstract, not a bean, so this
+                                           // package was never scanned before it had one)
 })
 @EntityScan(basePackages = {
         "communicate",                  // friend + backup

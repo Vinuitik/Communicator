@@ -67,6 +67,15 @@ friend_service:
   base_url: "http://communicator-app:8080/api/friend"
   timeout: 30
 
+# Group Service Configuration — same communicator-app monolith as friend_service
+# above, different PathPrefixConfig prefix (/api/groups, plural — matches
+# GroupApiController + the nginx /api/groups/ location). Used only for
+# cross-entity search result enrichment (GroupApiService.fetch_group_name)
+# for now.
+group_service:
+  base_url: "http://communicator-app:8080/api/groups"
+  timeout: 30
+
 # Database Configurations
 databases:
   # Redis Configuration (from docker-compose: redis service)

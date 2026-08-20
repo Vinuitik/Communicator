@@ -25,6 +25,8 @@ _TABLES = {
     "knowledge_chunks": [
         "chunk_id", "knowledge_id", "chunk_index", "chunk_text",
         "word_count", "char_start", "char_end", "text_hash", "created_at",
+        "source_type", "friend_id", "group_id",
+        "connection_friend1_id", "connection_friend2_id",
     ],
     "chunk_embeddings": [
         "chunk_id", "embedding", "model_name", "dimension", "created_at",
