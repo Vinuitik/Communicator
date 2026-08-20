@@ -20,9 +20,14 @@ const attendees: AttendeeDTO[] = [
 
 const doneMeeting: MeetingDTO = {
   id: 5,
+  type: 'GROUP',
   groupId: 1,
   groupName: 'Book Club',
   date: '2026-08-20',
+  time: null,
+  location: null,
+  selfAttending: true,
+  attendees: [],
   source: 'MANUAL',
   status: 'DONE',
 };
