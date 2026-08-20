@@ -16,6 +16,7 @@ const mockGetThisWeek = getThisWeek as jest.Mock;
 
 const meeting = (overrides: Partial<MeetingDTO>): MeetingDTO => ({
   id: 1,
+  type: 'FRIEND',
   friendId: null,
   friendName: null,
   groupId: null,
@@ -23,6 +24,10 @@ const meeting = (overrides: Partial<MeetingDTO>): MeetingDTO => ({
   connectionFriend1Id: null,
   connectionFriend2Id: null,
   date: new Date().toISOString().slice(0, 10),
+  time: null,
+  location: null,
+  selfAttending: true,
+  attendees: [],
   source: 'FSRS_PROPOSED',
   status: 'PROPOSED',
   note: null,

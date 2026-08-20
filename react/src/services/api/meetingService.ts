@@ -1,4 +1,6 @@
-import { MeetingDTO, ManualMeetingRequest } from '../../types/api';
+import {
+  MeetingDTO, ManualMeetingRequest, UpdateMeetingRequest, GroupMatchDTO,
+} from '../../types/api';
 import { API_BASE } from './config';
 
 // MeetingController (meeting module) is mapped at /meetings, prefixed to
@@ -46,6 +48,51 @@ export const createManualMeeting = async (
 // list and a DONE history by status client-side.
 export const getFriendMeetings = async (friendId: number): Promise<MeetingDTO[]> => {
   const response = await fetch(`${MEETINGS_API}/friend/${friendId}`);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+// The one unified edit/reschedule surface (MeetingController.updateMeeting) —
+// a FULL replace, not a sparse patch, so callers must send the meeting's
+// entire current state with only the field(s) they're changing different
+// (see UpdateMeetingRequest's doc comment). Backs both MeetingEditModal's
+// Save and CalendarBoard's drag-and-drop reschedule.
+export const updateMeeting = async (meetingId: number, payload: UpdateMeetingRequest): Promise<MeetingDTO> => {
+  const response = await fetch(`${MEETINGS_API}/${meetingId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+// Soft-delete: sets status to CANCELLED (MeetingController.cancelMeeting).
+// No hard delete exists.
+export const cancelMeeting = async (meetingId: number): Promise<MeetingDTO> => {
+  const response = await fetch(`${MEETINGS_API}/${meetingId}/cancel`, { method: 'PATCH' });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
+// Live "which existing SocialGroup would this attendee set resolve to"
+// preview (MeetingController.previewGroupMatch) — body is a bare array of
+// friend ids, not wrapped in an object. Only meaningful when the edited
+// attendee set would derive to GROUP; empty array back means no good match
+// (falls back to ad-hoc/unlinked). Called debounced as MeetingEditModal's
+// attendee list changes.
+export const previewGroupMatch = async (attendeeFriendIds: number[]): Promise<GroupMatchDTO[]> => {
+  const response = await fetch(`${MEETINGS_API}/group-match-preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(attendeeFriendIds),
+  });
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
