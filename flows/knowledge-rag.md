@@ -6,6 +6,8 @@ Protos for mechanics: [ai_agent](../ai_agent/PROTO.md) · [embedder](../embedder
 
 > **2026-07-23: Mongo + FAISS + Ollama retired from this pipeline.** Chunks, embeddings, facts, and fact-references all moved to Postgres/ParadeDB (same instance the JVM app uses). Search is now hybrid pgvector + BM25 (RRF-fused) instead of an in-memory FAISS index. Embeddings come from a new standalone `embedder` service (ONNX EmbeddingGemma, 768-dim) instead of Ollama — the Ollama container itself still runs, just unused by this pipeline; a privacy-motivated Ollama-for-chat decision is a separate, not-yet-had conversation.
 
+> **2026-08-20: `knowledge_chunks` is no longer Friend-only.** Group and Connection knowledge now feed the same table (tagged by `source_type`), populated by a *second*, separate multi-module flow — see [Eager multi-entity chunking](#eager-multi-entity-chunking) below. That flow also adds cross-entity search (`POST /api/ai/search`), which finds a Friend/Group/Connection by its recorded facts instead of by name. It reuses this pipeline's chunk/embedding/RRF machinery but is not part of the summarize-a-friend walkthrough below — kept in this file rather than a new one because it shares the exact same Postgres tables and hybrid-search math. Deep mechanics for both live in [ai_agent PROTO.md](../ai_agent/PROTO.md#internal-wiring--cross-entity-search-2026-08-20).
+
 ---
 
 ## The pipeline
@@ -79,3 +81,68 @@ User clicks "summarize {friendId}"  (validation page)
 | Which friend endpoints supply text | `FriendApiService` (friend `FriendKnowledgeController`) |
 | Re-summarize freshness | `config.yaml cache.friend_summary_ttl` |
 | Public route | `nginx/nginx.conf location /api/ai/` |
+
+---
+
+## Eager multi-entity chunking
+
+*(and cross-entity search — 2026-08-20)*. Unlike the summarize pipeline above, which is UI-triggered and Friend-only, this flow is triggered by the JVM apps themselves, covers all three knowledge-bearing entities, and has no UI consumer yet. Protos for mechanics: [ai_agent](../ai_agent/PROTO.md#internal-wiring--cross-entity-search-2026-08-20).
+
+**Why it exists:** the summarize pipeline's chunking is *lazy* and *Friend-only* — a knowledge item only gets chunked when someone summarizes that friend. Group and Connection knowledge have no summarize pipeline of their own, so without this, they'd never be searchable at all. The fix: every Friend/Group/Connection knowledge save fires an event that chunks it *eagerly*, right after the JVM commit, regardless of which entity it belongs to or whether anyone ever asks for a summary.
+
+```
+User adds/edits knowledge on a Friend, Group, or Connection   (any of the three JVM modules)
+ → Friend/Group/ConnectionKnowledgeService.save/saveAll/update()   (knowledge-core AbstractFactService override point)
+ → ApplicationEventPublisher.publishEvent(KnowledgeChunkTriggerEvent)
+      {knowledgeId, sourceType: FRIEND|GROUP|CONNECTION, friendId|groupId|(connFriend1Id,connFriend2Id), text}
+ → KnowledgeChunkTriggerListener   @TransactionalEventListener(phase = AFTER_COMMIT)
+      — only fires once the DB transaction has actually committed, so a rolled-back save never chunks
+ → KnowledgeChunkTriggerClient.triggerChunk()   JDK HttpClient.sendAsync — FIRE AND FORGET
+      POST {ai-agent.url}/knowledge/chunk  (default http://ai-agent:8001, direct — not via nginx)
+      timeouts: 5s connect / 15s request / 20s outer — failure or non-2xx is only logged, never
+      thrown, never blocks or fails the knowledge save (self-hosted ai-agent "goes down often")
+ → ai_agent  POST /knowledge/chunk   (routers/knowledge.py chunk_knowledge)
+ → ChunkingService.process_knowledge(source_type, friend_id|group_id|connection_friend*_id, text)
+      word-window chunks + embeddings, persisted to Postgres knowledge_chunks/chunk_embeddings
+      tagged with the owning entity (same tables the summarize pipeline reads/writes)
+```
+
+Independently, anything can now ask **"who/what do I have notes about that mention X"** across all three entities in one call:
+
+```
+POST http://localhost:8090/api/ai/search  {query, top_k}
+ → nginx location /api/ai/ ─► ai-agent:8001/search
+ → SearchService.search_all(query, top_k)
+      pgvector `<=>` + pg_search `@@@` BM25 over ALL of knowledge_chunks (no knowledge_id scoping)
+      RRF-fused (same _rrf_fuse() the per-friend search() uses)
+      grouped/deduped by owning entity, keeping each entity's single best-scoring chunk
+      truncated to top_k DISTINCT ENTITIES (not top_k chunks)
+ → routers/search.py enriches each hit with a display name (best-effort, HTTP)
+      FRIEND    → FriendApiService.fetch_friend_name()      → communicator-app:8080/api/friend/{id}
+      GROUP     → GroupApiService.fetch_group_name()        → communicator-app:8080/api/groups/{id}
+      CONNECTION→ both friend names via fetch_friend_name()
+ → JSON: {query, count, results:[{source_type, friend_id|group_id|connection_friend*_id,
+            friend_name|group_name|friend1_name/friend2_name, matched_text, score}]}
+```
+
+**Achieves:** a knowledge_chunks table that stays current for Group/Connection knowledge without anyone summarizing anything, plus a way to search across all three entity types by content rather than name.
+
+### Trust & failure notes
+
+- **No lazy fallback for Group/Connection.** The summarize pipeline's `_ensure_knowledge_chunked()` step only ever chunks Friend knowledge (`source_type="FRIEND"` hardcoded). If the eager POST above is dropped — ai-agent restarting/down at the exact save moment — that Group/Connection item has zero chunks and is invisible to search until it's saved again. No retry, no reconciliation sweep.
+- **Fire-and-forget by design, not by oversight.** The JVM side explicitly never lets a chunk-trigger failure affect the knowledge save itself — same "server goes down often" tradeoff as the rest of this self-hosted deployment. The cost is silent, unbounded staleness for chunks rather than a failed save.
+- **Cross-entity search has no caller yet.** No MCP tool wraps it (the chat agent can't use it), and no React code calls `/api/ai/search`. It's a complete, tested capability sitting unused pending a UI or agent-tool integration.
+- **No new auth surface.** `POST /api/ai/search` and `POST /knowledge/chunk` inherit the service's existing no-auth posture — anything that can reach `ai-agent:8001` (or `/api/ai/` via nginx) can call either.
+
+### Change Index
+
+| Want to change | Where |
+|---|---|
+| Trigger publish sites (Friend/Group/Connection save paths) | `*KnowledgeService.save/saveAll/update()` (knowledge-core `AbstractFactService` override), `publishChunkTrigger()` |
+| Trigger delivery (timing, timeouts, fire-and-forget behavior) | `knowledge-core` `KnowledgeChunkTriggerListener`/`KnowledgeChunkTriggerClient` |
+| ai-agent URL as seen by the JVM trigger client | `bootstrap/src/main/resources/application.yml ai-agent.url` (env `AI_AGENT_URL`) |
+| Chunk ingestion endpoint | `ai_agent routers/knowledge.py POST /knowledge/chunk` → `ChunkingService.process_knowledge()` |
+| "Exactly one subject" validation | `ChunkingService._validate_subject()` |
+| Cross-entity search grouping/dedup/top_k | `ai_agent SearchService.search_all()` |
+| Cross-entity search endpoint/response shape | `ai_agent routers/search.py`, `models/schemas.py SearchAllInput` |
+| Group name enrichment | `ai_agent GroupApiService.fetch_group_name()`, `config.yaml group_service.base_url` |
