@@ -8,6 +8,8 @@
 *~
 .DS_Store
 Thumbs.db
+# Stray VS Code debug-tool instance file (host-specific pid/port/path)
+/config.json
 
 # OS generated files
 *.log

@@ -9,7 +9,7 @@ export default defineConfig({
   testDir: './tests',
   // Generous: each test does a real container stop + restart (JVM boot + Drive round trip
   // for the warm-bridge case), and this suite runs right after the full Maven reactor build
-  // in run-all-tests.sh, which can still have the Docker daemon under load.
+  // in scripts/run-all-tests.sh, which can still have the Docker daemon under load.
   timeout: 180_000,
   expect: { timeout: 10_000 },
   retries: 0,

@@ -51,7 +51,7 @@ No `docker exec`/`psql` anywhere in this suite. Every assertion goes through the
 write actually landed in Postgres, and avoids needing DB credentials inside the test container.
 
 ## Technology Notes
-- **Runs LAST in `run-all-tests.sh`, sequentially, never parallel** — it's disruptive (stops
+- **Runs LAST in `scripts/run-all-tests.sh`, sequentially, never parallel** — it's disruptive (stops
   the real app) and both tests here share that one container, so `playwright.config.ts` also
   sets `workers: 1` to stop them overlapping with each other.
 - **`test.afterEach` always restarts `communicator-app`**, regardless of pass/fail — a safety
@@ -74,5 +74,5 @@ write actually landed in Postgres, and avoids needing DB credentials inside the 
 | Which container gets stopped/started | `docker.ts`'s `stopContainer`/`startContainer` calls + the `APP_CONTAINER` const in the spec |
 | Health-check polling / timeouts | `wait.ts` (`waitForServerUp`/`waitForServerDown`) |
 | Add a new offline-write scenario | new `test()` in `tests/offline-outbox.spec.ts`, reuse `fillAndSubmitAddFriendForm`/`readOutboxStore` |
-| Docker image / Playwright version | `e2e/package.json`'s exact version **and** the image tag in `run-all-tests.sh`'s e2e block — must match |
-| Suite ordering / disruptiveness | `run-all-tests.sh`'s `# ── Whole-system E2E ──` block (always last) |
+| Docker image / Playwright version | `e2e/package.json`'s exact version **and** the image tag in `scripts/run-all-tests.sh`'s e2e block — must match |
+| Suite ordering / disruptiveness | `scripts/run-all-tests.sh`'s `# ── Whole-system E2E ──` block (always last) |

@@ -1,7 +1,7 @@
 import http from 'http';
 
 // Talks to the host's Docker daemon over the socket mounted into the test container
-// (-v /var/run/docker.sock:/var/run/docker.sock in run-all-tests.sh) — no docker CLI
+// (-v /var/run/docker.sock:/var/run/docker.sock in scripts/run-all-tests.sh) — no docker CLI
 // needed inside the test image, just this one raw HTTP call.
 const SOCKET_PATH = '/var/run/docker.sock';
 
