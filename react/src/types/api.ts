@@ -471,10 +471,14 @@ export interface MeetingDTO {
 }
 
 // Body for POST /meetings/manual — mirrors ManualMeetingRequest.java.
-// Exactly one of friendId/groupId must be set.
+// Exactly one of friendId/groupId/(connectionFriend1Id+connectionFriend2Id) must be set —
+// the connection pair must both be set together (order doesn't matter, backend normalizes)
+// and must already be a tracked Connection (404 otherwise).
 export interface ManualMeetingRequest {
   friendId?: number | null;
   groupId?: number | null;
+  connectionFriend1Id?: number | null;
+  connectionFriend2Id?: number | null;
   date: string; // ISO date
   note?: string | null;
 }

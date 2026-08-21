@@ -22,6 +22,15 @@ interface CalendarBoardProps {
   onGroupMeetingClick?: (meeting: MeetingDTO) => void;
   onConnectionMeetingClick?: (meeting: MeetingDTO) => void;
   /**
+   * DONE Connection card body click — navigate to the connection's own page
+   * (ConnectionDetailsPage) to show history, instead of reopening the
+   * outcome-logging form. Group/Friend cards don't need an equivalent: a
+   * DONE Friend card body click already just opens the profile (a view, not
+   * a write), and a DONE Group card body click is a no-op below rather than
+   * inventing a new navigation target.
+   */
+  onViewConnection?: (meeting: MeetingDTO) => void;
+  /**
    * Pencil affordance on any PROPOSED card — opens MeetingEditModal. Separate
    * from onCardClick/onAction above (those are "log what happened" flows for
    * a meeting that already occurred; this is "change the not-yet-happened
@@ -157,7 +166,7 @@ const friendFromMeeting = (meeting: MeetingDTO): Friend => ({
 // coincide with the FSRS date (see SCHEDULING_MEETINGS_PLAN.md Feature B).
 const CalendarBoard: React.FC<CalendarBoardProps> = ({
   meetings, loading, error, weekOffset, onOpenFriend, onLogChat, onAddFriend,
-  onGroupMeetingClick, onConnectionMeetingClick, onEditMeeting, onDropOnDate,
+  onGroupMeetingClick, onConnectionMeetingClick, onViewConnection, onEditMeeting, onDropOnDate,
 }) => {
   const columns = useWeekColumns(meetings, weekOffset);
   // Tracked in component state rather than read back off dataTransfer on
@@ -218,12 +227,20 @@ const CalendarBoard: React.FC<CalendarBoardProps> = ({
 
     if (category === 'group') {
       title = meeting.groupName ?? 'Group';
-      onCardClick = () => handleGroupClick(meeting);
+      // DONE gating mirrors the action button below (which becomes "✓ Done", no click at all,
+      // once isDone) — clicking a completed Group card body must not reopen the batch-log modal
+      // and re-run completeGroupMeeting against an already-DONE row.
+      onCardClick = isDone ? () => {} : () => handleGroupClick(meeting);
       actionLabel = 'Log meeting';
       onAction = () => handleGroupClick(meeting);
     } else if (category === 'connection') {
       title = `Connection #${meeting.connectionFriend1Id ?? '?'}–#${meeting.connectionFriend2Id ?? '?'}`;
-      onCardClick = () => handleConnectionClick(meeting);
+      // Same DONE gating as Group above — a completed Connection card must show history
+      // (ConnectionDetailsPage) rather than reopening ConnectionOutcomeForm and creating a
+      // second Meeting row for the same pair.
+      onCardClick = isDone
+        ? () => onViewConnection?.(meeting)
+        : () => handleConnectionClick(meeting);
       actionLabel = 'Log outcome';
       onAction = () => handleConnectionClick(meeting);
     } else {

@@ -126,6 +126,93 @@ describe('CalendarBoard drag-and-drop reschedule', () => {
   });
 });
 
+describe('CalendarBoard DONE-status click gating (card body)', () => {
+  const connectionMeeting = (overrides: Partial<MeetingDTO> = {}): MeetingDTO => ({
+    ...baseMeeting,
+    id: 60,
+    type: 'CONNECTION',
+    friendId: null,
+    friendName: null,
+    connectionFriend1Id: 3,
+    connectionFriend2Id: 7,
+    attendees: [
+      { id: 1, friendId: 3, friendName: 'Ada', present: true },
+      { id: 2, friendId: 7, friendName: 'Grace', present: true },
+    ],
+    selfAttending: false,
+    ...overrides,
+  });
+
+  it('a PROPOSED connection card body click opens the outcome-logging flow', () => {
+    const onConnectionMeetingClick = jest.fn();
+    const onViewConnection = jest.fn();
+    renderBoard([connectionMeeting({ status: 'PROPOSED' })], { onConnectionMeetingClick, onViewConnection });
+
+    fireEvent.click(screen.getByText('Connection #3–#7'));
+
+    expect(onConnectionMeetingClick).toHaveBeenCalledTimes(1);
+    expect(onViewConnection).not.toHaveBeenCalled();
+  });
+
+  it('a DONE connection card body click shows history instead of reopening the log form', () => {
+    const onConnectionMeetingClick = jest.fn();
+    const onViewConnection = jest.fn();
+    const meeting = connectionMeeting({ status: 'DONE' });
+    renderBoard([meeting], { onConnectionMeetingClick, onViewConnection });
+
+    fireEvent.click(screen.getByText('Connection #3–#7'));
+
+    expect(onViewConnection).toHaveBeenCalledWith(meeting);
+    expect(onConnectionMeetingClick).not.toHaveBeenCalled();
+  });
+
+  it('a DONE group card body click is a no-op, not a reopened batch-log modal', () => {
+    const onGroupMeetingClick = jest.fn();
+    const doneGroup: MeetingDTO = {
+      ...baseMeeting,
+      id: 61,
+      type: 'GROUP',
+      friendId: null,
+      friendName: null,
+      groupId: 5,
+      groupName: 'Book Club',
+      status: 'DONE',
+      attendees: [
+        { id: 1, friendId: 7, friendName: 'Ada Lovelace', present: true },
+        { id: 2, friendId: 8, friendName: 'Grace Hopper', present: true },
+      ],
+    };
+    renderBoard([doneGroup], { onGroupMeetingClick });
+
+    fireEvent.click(screen.getByText('Book Club'));
+
+    expect(onGroupMeetingClick).not.toHaveBeenCalled();
+  });
+
+  it('a PROPOSED group card body click still opens the batch-log modal', () => {
+    const onGroupMeetingClick = jest.fn();
+    const proposedGroup: MeetingDTO = {
+      ...baseMeeting,
+      id: 62,
+      type: 'GROUP',
+      friendId: null,
+      friendName: null,
+      groupId: 5,
+      groupName: 'Book Club',
+      status: 'PROPOSED',
+      attendees: [
+        { id: 1, friendId: 7, friendName: 'Ada Lovelace', present: true },
+        { id: 2, friendId: 8, friendName: 'Grace Hopper', present: true },
+      ],
+    };
+    renderBoard([proposedGroup], { onGroupMeetingClick });
+
+    fireEvent.click(screen.getByText('Book Club'));
+
+    expect(onGroupMeetingClick).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('CalendarBoard categoryFor', () => {
   it('renders an ad-hoc GROUP meeting (groupId null, type GROUP) with the group category, not friend', () => {
     const adHocGroup: MeetingDTO = {

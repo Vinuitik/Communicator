@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import Avatar from '../../atoms/Avatar';
-import { ConnectionCandidateDTO } from '../../../types/api';
+import { ConnectionCandidateDTO, ConnectionOutcome } from '../../../types/api';
+import { logConnectionMeeting } from '../../../services/api/connectionMeetingService';
 
-// Wire values are a local guess (WENT_WELL/NEUTRAL/TENSE) — the real
-// ConnectionOutcomeForm/endpoint is being built by a different agent in a
-// different worktree and isn't in this codebase yet. Whatever parent wires
-// onLogOutcome up to that endpoint owns translating/renaming these if the
-// landed contract differs; this component never calls anything itself.
-export type ConnectionOutcome = 'WENT_WELL' | 'NEUTRAL' | 'TENSE';
+export type { ConnectionOutcome };
 
 const OUTCOME_OPTIONS: { value: ConnectionOutcome; label: string; color: string }[] = [
   { value: 'WENT_WELL', label: 'Went well', color: '#46D39A' },
@@ -15,17 +11,19 @@ const OUTCOME_OPTIONS: { value: ConnectionOutcome; label: string; color: string 
   { value: 'TENSE', label: 'Tense', color: '#F4676E' },
 ];
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 interface GroupConnectionsNudgeProps {
   groupName: string;
   /** From GET /meetings/{meetingId}/connection-candidates after a successful complete. */
   candidates: ConnectionCandidateDTO[];
   /**
-   * Stub — no save happens here. The real save (a Connection outcome
-   * endpoint) is being built in parallel elsewhere; a parent component wires
-   * this once that lands. This component only renders the tap targets and
-   * locally marks a pair as handled so it doesn't nag twice in the same pass.
+   * Optional post-save notification (e.g. for a toast) — the save itself
+   * (POST /meetings/connection via logConnectionMeeting, same endpoint
+   * ConnectionOutcomeForm uses, note field included) happens inside this
+   * component now. Called once per pair, after that pair's save succeeds.
    */
-  onLogOutcome: (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => void;
+  onLogged?: (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => void;
   /** Skip-all, or finishing after every pair is handled — either way closes back to the caller. */
   onClose: () => void;
 }
@@ -35,13 +33,45 @@ const pairKey = (a: number, b: number) => `${a}-${b}`;
 // Shown right after GroupBatchLogModal's /complete succeeds. Scoped narrow on
 // purpose (Decisions Log): only present-attendee pairs that already have a
 // tracked Connection, never the full combinatorial pair set, and never
-// creates a new Connection mid-flow — a few taps or one skip, not a form.
-const GroupConnectionsNudge: React.FC<GroupConnectionsNudgeProps> = ({ groupName, candidates, onLogOutcome, onClose }) => {
+// creates a new Connection mid-flow — a few taps (each with an optional note)
+// or one skip, not a full form.
+const GroupConnectionsNudge: React.FC<GroupConnectionsNudgeProps> = ({ groupName, candidates, onLogged, onClose }) => {
   const [logged, setLogged] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleTap = (pair: ConnectionCandidateDTO, outcome: ConnectionOutcome) => {
-    onLogOutcome(pair.friend1Id, pair.friend2Id, outcome);
-    setLogged((prev) => new Set(prev).add(pairKey(pair.friend1Id, pair.friend2Id)));
+  const handleTap = async (pair: ConnectionCandidateDTO, outcome: ConnectionOutcome) => {
+    const key = pairKey(pair.friend1Id, pair.friend2Id);
+    setSaving((prev) => new Set(prev).add(key));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    try {
+      const note = notes[key]?.trim();
+      await logConnectionMeeting({
+        friend1Id: pair.friend1Id,
+        friend2Id: pair.friend2Id,
+        date: today(),
+        outcome,
+        note: note || undefined,
+      });
+      setLogged((prev) => new Set(prev).add(key));
+      onLogged?.(pair.friend1Id, pair.friend2Id, outcome);
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        [key]: err instanceof Error ? err.message : 'Failed to log that connection outcome.',
+      }));
+    } finally {
+      setSaving((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   };
 
   const remaining = candidates.filter((c) => !logged.has(pairKey(c.friend1Id, c.friend2Id)));
@@ -66,30 +96,45 @@ const GroupConnectionsNudge: React.FC<GroupConnectionsNudgeProps> = ({ groupName
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto flex flex-col gap-3 mb-5">
-            {remaining.map((pair) => (
-              <div key={pairKey(pair.friend1Id, pair.friend2Id)} className="border border-white/10 rounded-lg p-3.5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Avatar id={pair.friend1Id} name={pair.friend1Name} size={24} />
-                  <span className="text-[13px] font-semibold text-text-emphasis">{pair.friend1Name}</span>
-                  <span className="text-text-faint">×</span>
-                  <Avatar id={pair.friend2Id} name={pair.friend2Name} size={24} />
-                  <span className="text-[13px] font-semibold text-text-emphasis">{pair.friend2Name}</span>
+            {remaining.map((pair) => {
+              const key = pairKey(pair.friend1Id, pair.friend2Id);
+              const isSaving = saving.has(key);
+              return (
+                <div key={key} className="border border-white/10 rounded-lg p-3.5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Avatar id={pair.friend1Id} name={pair.friend1Name} size={24} />
+                    <span className="text-[13px] font-semibold text-text-emphasis">{pair.friend1Name}</span>
+                    <span className="text-text-faint">×</span>
+                    <Avatar id={pair.friend2Id} name={pair.friend2Name} size={24} />
+                    <span className="text-[13px] font-semibold text-text-emphasis">{pair.friend2Name}</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={notes[key] ?? ''}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [key]: e.target.value }))}
+                    placeholder="Note (optional)"
+                    disabled={isSaving}
+                    aria-label={`Note for ${pair.friend1Name} × ${pair.friend2Name}`}
+                    className="w-full mb-2.5 bg-input border border-white/10 rounded-input px-3 py-2 text-[12.5px] text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/60 disabled:opacity-50"
+                  />
+                  {errors[key] && <p className="m-0 mb-2 text-[11.5px] text-bad">{errors[key]}</p>}
+                  <div className="flex gap-2">
+                    {OUTCOME_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleTap(pair, opt.value)}
+                        disabled={isSaving}
+                        className="flex-1 py-2 rounded-input font-bold text-xs border transition-colors hover:brightness-125 disabled:opacity-50"
+                        style={{ borderColor: `${opt.color}55`, background: `${opt.color}15`, color: opt.color }}
+                      >
+                        {isSaving ? '…' : opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {OUTCOME_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleTap(pair, opt.value)}
-                      className="flex-1 py-2 rounded-input font-bold text-xs border transition-colors hover:brightness-125"
-                      style={{ borderColor: `${opt.color}55`, background: `${opt.color}15`, color: opt.color }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

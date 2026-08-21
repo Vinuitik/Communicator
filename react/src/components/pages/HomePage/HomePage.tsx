@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import CalendarBoard, { CATEGORY_LEGEND } from '../../organisms/CalendarBoard';
 import QuickLogModal from '../../organisms/QuickLogModal';
 import GroupBatchLogModal from '../../organisms/GroupBatchLogModal';
-import GroupConnectionsNudge, { ConnectionOutcome } from '../../organisms/GroupConnectionsNudge';
+import GroupConnectionsNudge from '../../organisms/GroupConnectionsNudge';
 import ConnectionOutcomeForm from '../../organisms/ConnectionOutcomeForm';
 import MeetingEditModal from '../../organisms/MeetingEditModal';
 import { useToast } from '../../molecules/Toast';
 import { Friend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
 import { getThisWeek, updateMeeting } from '../../../services/api/meetingService';
 import { getConnectionCandidates } from '../../../services/api/groupMeetingService';
-import { logConnectionMeeting } from '../../../services/api/connectionMeetingService';
-import { ROUTES, profilePath } from '../../../utils/constants';
+import { ROUTES, profilePath, connectionDetailsPath } from '../../../utils/constants';
 
 // "Week" — the new home (see design_handoff_friends_tracker/README.md). Was
 // CalendarPage/CalendarBoard's job; HomePage inherits it since '/' already
@@ -81,19 +80,6 @@ const HomePage: React.FC = () => {
     setGroupMeetingTarget(null);
     setNudgeCandidates([]);
     load(weekOffset);
-  };
-
-  const handleLogConnectionOutcome = async (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => {
-    try {
-      await logConnectionMeeting({
-        friend1Id,
-        friend2Id,
-        date: new Date().toISOString().slice(0, 10),
-        outcome,
-      });
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to log that connection outcome.', 'error');
-    }
   };
 
   // Drag-and-drop reschedule (CalendarBoard, day-columns only — no
@@ -178,6 +164,9 @@ const HomePage: React.FC = () => {
         onAddFriend={() => navigate(ROUTES.ADD_FRIEND)}
         onGroupMeetingClick={(meeting) => { setGroupMeetingTarget(meeting); setGroupMeetingStage('batchLog'); }}
         onConnectionMeetingClick={(meeting) => setConnectionMeetingTarget(meeting)}
+        onViewConnection={(meeting) => navigate(connectionDetailsPath(
+          meeting.connectionFriend1Id as number, meeting.connectionFriend2Id as number,
+        ))}
         onEditMeeting={(meeting) => setEditTarget(meeting)}
         onDropOnDate={handleDropOnDate}
       />
@@ -204,7 +193,7 @@ const HomePage: React.FC = () => {
         <GroupConnectionsNudge
           groupName={groupMeetingTarget.groupName ?? 'Group'}
           candidates={nudgeCandidates}
-          onLogOutcome={handleLogConnectionOutcome}
+          onLogged={() => showToast('Logged that connection outcome')}
           onClose={handleCloseGroupFlow}
         />
       )}

@@ -5,14 +5,13 @@ import KnowledgeCrudPanel from '../../organisms/KnowledgeCrudPanel';
 import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
 import GroupBatchLogModal from '../../organisms/GroupBatchLogModal';
-import GroupConnectionsNudge, { ConnectionOutcome } from '../../organisms/GroupConnectionsNudge';
+import GroupConnectionsNudge from '../../organisms/GroupConnectionsNudge';
 import {
   getGroup, getGroupKnowledge, addGroupKnowledge, deleteGroupKnowledge,
   getGroupPermissions, addGroupPermission, deleteGroupPermission, deleteGroup,
 } from '../../../services/api/groupService';
 import { getGroupFriends, addFriendsToGroup, removeFriendFromGroup, getShortFriendList } from '../../../services/api/friendService';
 import { getGroupMeetings, createManualMeeting, getConnectionCandidates } from '../../../services/api/groupMeetingService';
-import { logConnectionMeeting } from '../../../services/api/connectionMeetingService';
 import { Group, KnowledgeCrudItem, Friend, ShortFriend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
 import { ROUTES, profilePath } from '../../../utils/constants';
 import { avatarColor } from '../../../utils/avatar';
@@ -239,21 +238,6 @@ const GroupDetailsPage: React.FC = () => {
     setNudgeCandidates([]);
   };
 
-  // GroupConnectionsNudge's own ConnectionOutcome values (WENT_WELL/NEUTRAL/TENSE)
-  // already match ConnectionMeetingRequest.outcome 1:1, no translation needed.
-  const handleLogConnectionOutcome = async (friend1Id: number, friend2Id: number, outcome: ConnectionOutcome) => {
-    try {
-      await logConnectionMeeting({
-        friend1Id,
-        friend2Id,
-        date: new Date().toISOString().slice(0, 10),
-        outcome,
-      });
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to log that connection outcome.', 'error');
-    }
-  };
-
   const permissionTag = (value: number): { label: string; color: string } => (
     value >= 3 ? { label: 'High', color: '#46D39A' } : { label: 'Medium', color: '#F5B544' }
   );
@@ -447,7 +431,7 @@ const GroupDetailsPage: React.FC = () => {
         <GroupConnectionsNudge
           groupName={group.name}
           candidates={nudgeCandidates}
-          onLogOutcome={handleLogConnectionOutcome}
+          onLogged={() => showToast('Logged that connection outcome')}
           onClose={handleCloseMeetingFlow}
         />
       )}
