@@ -10,7 +10,7 @@ The **core of the CRM**. Owns the `Friend` aggregate (name, birthday, next-conta
 
 `FriendKnowledge`/`FriendPermission` extend `knowledge-core`'s `AbstractFact` (shared with group's/connections' equivalents — see knowledge-core/PROTO.md); `FriendKnowledgeService`/`FriendPermissionService` extend its `AbstractFactService`.
 
-Sibling controllers not expanded here (same pattern): `FriendKnowledgeController`, `FriendAnalyticsController`, `SocialController`, `FileController`, `GroupMemberController`, `FriendPermissionController`. Media write/read lives in `FileWriteService` / `FileMetaDataReadService` and proxies to `fileRepository` (env `FILE_REPOSITORY_SERVICE_URL`).
+Sibling controllers not expanded here (same pattern): `FriendKnowledgeController`, `FriendAnalyticsController`, `SocialController`, `FileController`, `GroupMemberController`, `FriendPermissionController`. Media write/read lives in `FileWriteService` / `FileMetaDataReadService` and proxies to `fileRepository` (env `FILE_REPOSITORY_SERVICE_URL`) — see [resourceRepository/flask-template/FLOWS.md](../../../../../../resourceRepository/flask-template/FLOWS.md) for the two-store (Postgres metadata / disk bytes) hazard this implies.
 
 ---
 

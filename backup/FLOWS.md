@@ -2,7 +2,7 @@
 
 Off-box data protection. Two independent daemons dump the DB and the media, compress, and push to Google Drive. **backup service → Postgres + fileRepository → Google Drive.** No UI, no nginx — this flow runs entirely on the docker network + one cloud egress.
 
-Protos: [backup](../backup/PROTO.md) · [resourceRepository](../resourceRepository/flask-template/PROTO.md)
+Protos: [backup](PROTO.md) · [resourceRepository](../resourceRepository/flask-template/PROTO.md)
 
 ---
 
@@ -20,7 +20,7 @@ startup.sh
         → python3 upload_to_drive.py  ─► same Drive folder (service-account-key.json, scope drive.file)
 ```
 
-**Achieves:** a daily off-site copy of both the relational data (friends, knowledge, analytics, groups) and the media blobs. Note it backs up **Postgres only** — **Redis** is **NOT** backed up (it's derived/cache, regenerable by the [knowledge-RAG flow](knowledge-rag.md) at Gemini cost). The `pg_dump` has no schema/table filter, so it captures whatever's in `my_database` wholesale — since ai_agent's RAG data (chunks, embeddings, facts, references) moved from a separate unbacked-up MongoDB into this same Postgres database (2026-07-23, see [knowledge-rag.md](knowledge-rag.md)), it's now covered by this same nightly backup for free, closing a gap that used to exist.
+**Achieves:** a daily off-site copy of both the relational data (friends, knowledge, analytics, groups) and the media blobs. Note it backs up **Postgres only** — **Redis** is **NOT** backed up (it's derived/cache, regenerable by the [knowledge-RAG flow](../ai_agent/FLOWS.md#knowledge--validated-facts-the-rag--fact-checking-pipeline) at Gemini cost). The `pg_dump` has no schema/table filter, so it captures whatever's in `my_database` wholesale — since ai_agent's RAG data (chunks, embeddings, facts, references) moved from a separate unbacked-up MongoDB into this same Postgres database (2026-07-23, see [ai_agent FLOWS.md](../ai_agent/FLOWS.md#knowledge--validated-facts-the-rag--fact-checking-pipeline)), it's now covered by this same nightly backup for free, closing a gap that used to exist.
 
 ---
 

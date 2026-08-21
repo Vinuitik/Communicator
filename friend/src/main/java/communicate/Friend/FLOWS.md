@@ -2,17 +2,17 @@
 
 The **core CRM loop**. What the whole product is about: you meet someone, you log it, the system scores the relationship's "health" and schedules the next contact, surfaces who's due this week, and quietly lets neglected relationships decay so they resurface. This one loop spans **UI → nginx → friend → Postgres** on the write side and **chrono → friend → Postgres** on the nightly side — chrono and friend have run in the same JVM since the JVM-monolith merge, so the nightly side has no nginx hop despite the module boundary.
 
-Protos for mechanics: [friend](../friend/src/main/java/communicate/Friend/PROTO.md) · [chrono](../chrono/src/main/java/com/communicator/chrono/PROTO.md) · [nginx spine](../nginx/PROTO.md)
+Protos for mechanics: [friend](PROTO.md) · [chrono](../../../../../../chrono/src/main/java/com/communicator/chrono/PROTO.md) · [nginx spine](../../../../../../nginx/PROTO.md)
 
-Deep dive on the scheduler itself (FSRS-6 + Thompson-sampling bandit — the part that actually picks `plannedSpeakingTime`): [FriendService/FLOWS.md](../friend/src/main/java/communicate/Friend/FriendService/FLOWS.md)
+Deep dive on the scheduler itself (FSRS-6 + Thompson-sampling bandit — the part that actually picks `plannedSpeakingTime`): [FriendService/FLOWS.md](FriendService/FLOWS.md)
 
-**Sibling flow:** [meeting-scheduling.md](meeting-scheduling.md) covers how this scheduling decision now *surfaces* — the home screen described in Stage 2 below has moved off `plannedSpeakingTime` reads entirely, onto a `Meeting` row per subject (Friend/Group/Connection). This doc still owns the actual scheduling math (Stage 1); meeting-scheduling.md owns the UI-facing week board, Group batch-logging, and Connection outcome logging.
+**Sibling flow:** [meeting-scheduling.md](../../../../../../flows/meeting-scheduling.md) covers how this scheduling decision now *surfaces* — the home screen described in Stage 2 below has moved off `plannedSpeakingTime` reads entirely, onto a `Meeting` row per subject (Friend/Group/Connection). This doc still owns the actual scheduling math (Stage 1); meeting-scheduling.md owns the UI-facing week board, Group batch-logging, and Connection outcome logging.
 
 ---
 
 ## Stage 1 — Log an interaction ("I talked to X")
 
-The single most important write. Today this is the **legacy MPA** page `updateForm/talkedForm` (React's version is a [scaffold](../react/src/PROTO.md)). Both the live HTTP call and the offline-outbox mailbox consumer funnel through the same `OutboxWriteService.applyTalkedToFriend()`, so scheduling behaves identically whether the write lands immediately or syncs later.
+The single most important write. Today this is the **legacy MPA** page `updateForm/talkedForm` (React's version is a [scaffold](../../../../../../react/src/PROTO.md)). Both the live HTTP call and the offline-outbox mailbox consumer funnel through the same `OutboxWriteService.applyTalkedToFriend()`, so scheduling behaves identically whether the write lands immediately or syncs later.
 
 ```
 User fills "talked to" form (experience stars, duration, in-person?, new facts) and submits
@@ -49,7 +49,7 @@ User fills "talked to" form (experience stars, duration, in-person?, new facts) 
  → 200 OK
 ```
 
-**Achieves:** the friend now has an updated "health" (3 EMAs, display-only), a freshly scheduled `plannedSpeakingTime` chosen by FSRS+bandit (not the EMAs), new interaction history, new facts (feed the [knowledge-RAG flow](knowledge-rag.md)), and a human-readable reason for the chosen date.
+**Achieves:** the friend now has an updated "health" (3 EMAs, display-only), a freshly scheduled `plannedSpeakingTime` chosen by FSRS+bandit (not the EMAs), new interaction history, new facts (feed the [knowledge-RAG flow](../../../../../../ai_agent/FLOWS.md#knowledge--validated-facts-the-rag--fact-checking-pipeline)), and a human-readable reason for the chosen date.
 
 **Note — desiredRetention is per-role**, not a single global constant: `RoleProperties` (`fsrs.role.desired-retention` in `application.yml`) maps a friend's `role` (Partner/Close/Casual/Family, free-form string) to a target retention probability; unknown/missing role falls back to `fsrs.desired-retention` (default 0.9).
 
@@ -63,7 +63,7 @@ User fills "talked to" form (experience stars, duration, in-person?, new facts) 
 
 **No longer the home screen's own query.** `GET /api/friend/thisWeek` / `FriendService.findThisWeek()`
 still exist and still work exactly as described below, but as of the Meeting-scheduling feature
-(see [meeting-scheduling.md](meeting-scheduling.md)) the actual home screen (`HomePage`, route `/`)
+(see [meeting-scheduling.md](../../../../../../flows/meeting-scheduling.md)) the actual home screen (`HomePage`, route `/`)
 reads `GET /api/meetings/thisWeek` (the `meeting` module) instead — a `Meeting` row per subject
 (Friend/Group/Connection/Birthday), not a Friend-only, `plannedSpeakingTime`-only list. A Friend's
 `plannedSpeakingTime` still drives what the board shows, just indirectly: `ReviewService` sets it
@@ -116,7 +116,7 @@ Every midnight, chrono runs **two independent passes** in the same job: the lega
 
 **Achieves:** two separate signals move independently. The EMAs are a cosmetic "closeness" number (Stage 1 raises it, Pass A lowers it) — they no longer drive scheduling. The actual due date (`plannedSpeakingTime`) is FSRS+bandit state, set in Stage 1 and, if you go silent for over a week past due, force-lapsed and rescheduled by Pass B here — independent of what the EMAs say.
 
-**Resolved:** this flow used to warn that "EMA" was computed in four independently-drifting places (friend's up-path, chrono's down-path with a hardcoded rating-ignoring alpha, an unwired `MovingAverageCalculationService`, and a client-side recompute in `analyticsMath.ts`). That's fixed — `EmaMathService` is now the single shared arithmetic primitive both the up-path (`EmaUpdateService`) and down-path (`ChronoJobService.applyDecayToFriend`, which now also reads the real per-rating alpha via `EmaProperties.getDecayAlpha`) call into; `analyticsMath.ts`'s client-side recompute was retired in favor of a server-computed `GET analyticsSeries` endpoint. `knowledgeMCP`'s `calculate_friend_moving_averages` tool only reads the already-computed `average_*` fields (plus a plain non-EMA arithmetic mean for raw-data context) — it was never an independent EMA computation. See the [code-reuse report](../CODE_REUSE_REPORT.md) for the historical record of what this fixed.
+**Resolved:** this flow used to warn that "EMA" was computed in four independently-drifting places (friend's up-path, chrono's down-path with a hardcoded rating-ignoring alpha, an unwired `MovingAverageCalculationService`, and a client-side recompute in `analyticsMath.ts`). That's fixed — `EmaMathService` is now the single shared arithmetic primitive both the up-path (`EmaUpdateService`) and down-path (`ChronoJobService.applyDecayToFriend`, which now also reads the real per-rating alpha via `EmaProperties.getDecayAlpha`) call into; `analyticsMath.ts`'s client-side recompute was retired in favor of a server-computed `GET analyticsSeries` endpoint. `knowledgeMCP`'s `calculate_friend_moving_averages` tool only reads the already-computed `average_*` fields (plus a plain non-EMA arithmetic mean for raw-data context) — it was never an independent EMA computation.
 
 ---
 
@@ -139,10 +139,10 @@ Every midnight, chrono runs **two independent passes** in the same job: the lega
 | Want to change | Where |
 |---|---|
 | What "logging an interaction" does | `OutboxWriteService.applyTalkedToFriend()` (called from `FriendController.talkedToFriend/{id}` and the offline-outbox mailbox consumer) |
-| Next-contact cadence | `ReviewService.reviewInteraction()` / `FsrsService` / `BanditService` / `RoleProperties` — see [FriendService/FLOWS.md](../friend/src/main/java/communicate/Friend/FriendService/FLOWS.md) |
+| Next-contact cadence | `ReviewService.reviewInteraction()` / `FsrsService` / `BanditService` / `RoleProperties` — see [FriendService/FLOWS.md](FriendService/FLOWS.md) |
 | How a meeting raises health | `EmaProperties` + `EmaUpdateService` (friend) |
 | How silence lowers health | `ChronoJobService.applyDecayToFriend()` + `application.yml ema.coefficients.decay` |
 | Nightly schedule | `ChronoJobService.@Scheduled(cron)` (hardcoded — not the yaml) |
 | Weekly list inclusion rule (Friend-only widgets: FriendsPage/InsightsPage) | `FriendService.findThisWeek()` |
-| Home screen's week board (all subject types) | `MeetingQueryService.thisWeek()` — see [meeting-scheduling.md](meeting-scheduling.md) |
+| Home screen's week board (all subject types) | `MeetingQueryService.thisWeek()` — see [meeting-scheduling.md](../../../../../../flows/meeting-scheduling.md) |
 | Shared EMA arithmetic (both up/down paths) | `EmaMathService` |

@@ -2,7 +2,7 @@
 
 Attach photos, videos, voice notes and documents to a friend (or group). The twist: **bytes and metadata live in different stores with no transaction between them.** **UI → nginx → friend/group → fileRepository (bytes)** + **→ Postgres (metadata)**.
 
-Protos: [resourceRepository](../resourceRepository/flask-template/PROTO.md) · [friend](../friend/src/main/java/communicate/Friend/PROTO.md) · [nginx spine](../nginx/PROTO.md)
+Protos: [resourceRepository](PROTO.md) · [friend](../../friend/src/main/java/communicate/Friend/PROTO.md) · [nginx spine](../../nginx/PROTO.md)
 
 ---
 
@@ -35,7 +35,7 @@ Serve: `GET /api/fileRepository/file/<friendId>/<filename>` → `send_file` from
 - **Deleting a friend cascades the DB rows** (friend proto: `CascadeType.ALL`) but **does NOT delete the disk bytes** → orphaned files accumulate forever.
 - The destination folder is derived from **file extension**, so a renamed extension can put a "video" in `personal/` and desync the two views.
 
-**Achieves:** per-friend media galleries (the profile page pulls them via `PaginationLogicService` + `FileMetaDataReadService`). **Backed up nightly** by the [backup flow](backup.md) (`FileBackupService` pulls a zip from `/backup`).
+**Achieves:** per-friend media galleries (the profile page pulls them via `PaginationLogicService` + `FileMetaDataReadService`). **Backed up nightly** by the [backup flow](../../backup/FLOWS.md) (`FileBackupService` pulls a zip from `/backup`).
 
 ## Change Index (flow-level)
 

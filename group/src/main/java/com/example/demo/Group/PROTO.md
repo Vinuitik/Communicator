@@ -27,6 +27,8 @@ GroupFileController  → GroupFileService        → fileRepository (media bytes
 GroupWebController    → Thymeleaf pages (createGroup, groupDetails, groupKnowledge)  [LEGACY MPA]
 ```
 
+Media write/read (`GroupFileController`/`GroupFileService`) proxies to `fileRepository` the same way friend does — see [resourceRepository/flask-template/FLOWS.md](../../../../../../../../resourceRepository/flask-template/FLOWS.md) for the two-store (Postgres metadata / disk bytes) hazard this implies.
+
 Key endpoints (`GroupApiController`): `POST /create`, `GET /{id}`, `DELETE /{id}`, `POST /addKnowledge/{groupId}`, `GET /getKnowledge/{groupId}[/page/{page}]`, `PUT /updateKnowledge`, `DELETE /deleteKnowledge/{id}`.
 
 `addKnowledge` guards: nulls the incoming id (force insert), defaults `priority=5L`, rejects blank text with `IllegalArgumentException`. Knowledge pagination sorts by priority DESC, size 10 — same convention as friend.
