@@ -51,6 +51,13 @@ class Settings:
         # POSTGRES_DSN (set via docker-compose, see .env.example) overrides config.yaml's
         # dsn — single source of truth for the Postgres credentials, matches host-wrapper.
         self.postgres_dsn = os.getenv("POSTGRES_DSN", self.config["databases"]["postgres"]["dsn"])
+
+        # RABBITMQ_URL (set via docker-compose) overrides config.yaml's fallback — same
+        # single-source-of-truth pattern as postgres_dsn above. Used by
+        # services/rabbitmq_consumer.py (KnowledgeChunkConsumer).
+        self.rabbitmq_url = os.getenv(
+            "RABBITMQ_URL", self.config.get("databases", {}).get("rabbitmq", {}).get(
+                "url", "amqp://communicator:example@rabbitmq:5672/"))
         
         # Cache settings
         self.cache_default_ttl = self.config["cache"]["default_ttl"]

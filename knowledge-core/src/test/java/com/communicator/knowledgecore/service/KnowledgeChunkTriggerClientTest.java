@@ -1,58 +1,112 @@
 package com.communicator.knowledgecore.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.amqp.AmqpConnectException;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+
+import com.communicator.knowledgecore.config.RabbitMqConfig;
 import com.communicator.knowledgecore.event.KnowledgeChunkTriggerEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 
 /**
- * The resilience requirement from the eager-chunking feature spec: ai_agent going down
- * (this repo's server is self-hosted and goes down often — a genuine, common case, not a
- * rare edge case) must NEVER fail or block the knowledge save that triggered the chunk
- * request. triggerChunk() uses JDK HttpClient's async send, so the network round trip
- * (or a fully unreachable target) happens off-thread — these tests confirm the call
- * returns promptly and never throws, regardless of whether the target is reachable.
+ * Publish-side test for the RabbitMQ path (replaces the old fire-and-forget HTTP-only
+ * behavior). Resilience requirement is unchanged from before: nothing here may ever throw
+ * or block the AFTER_COMMIT listener that calls triggerChunk(), whether the broker is
+ * reachable, unreachable, or confirms negatively.
+ *
+ * Note: every convertAndSend(...) matcher below pins the message-body argument to
+ * any(Object.class)/ArgumentCaptor.forClass(Object.class) rather than String — RabbitTemplate
+ * has both convertAndSend(queue, Object message, CorrelationData) and convertAndSend(exchange,
+ * routingKey, Object message) overloads, which are ambiguous for a String-typed matcher/captor
+ * (the production code casts the body to (Object) for the same reason — see
+ * KnowledgeChunkTriggerClient.triggerChunk).
  */
+@ExtendWith(MockitoExtension.class)
 class KnowledgeChunkTriggerClientTest {
 
     private static final KnowledgeChunkTriggerEvent EVENT = new KnowledgeChunkTriggerEvent(
             1, "FRIEND", 2, null, null, null, "some knowledge text"
     );
 
-    @Test
-    void triggerChunk_neverThrowsWhenTargetUnreachable() {
-        // Port 1 on loopback: nothing listens there, connection is refused almost
-        // immediately — simulates ai-agent's container being down.
-        KnowledgeChunkTriggerClient client =
-                new KnowledgeChunkTriggerClient(new ObjectMapper(), "http://127.0.0.1:1");
-
-        assertThatCode(() -> client.triggerChunk(EVENT)).doesNotThrowAnyException();
-    }
+    @Mock RabbitTemplate rabbitTemplate;
 
     @Test
-    void triggerChunk_neverThrowsOnMalformedBaseUrl() {
-        // Deliberately invalid URI — exercises the synchronous try/catch path (request
-        // building fails before sendAsync is ever reached).
+    void triggerChunk_publishesToTheDurableQueue() {
         KnowledgeChunkTriggerClient client =
-                new KnowledgeChunkTriggerClient(new ObjectMapper(), "not a valid url ::");
+                new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://ai-agent:8001");
 
-        assertThatCode(() -> client.triggerChunk(EVENT)).doesNotThrowAnyException();
-    }
-
-    @Test
-    void triggerChunk_returnsWithoutWaitingForNetworkRoundTrip() {
-        KnowledgeChunkTriggerClient client =
-                new KnowledgeChunkTriggerClient(new ObjectMapper(), "http://127.0.0.1:1");
-
-        long start = System.nanoTime();
         client.triggerChunk(EVENT);
-        long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
 
-        // sendAsync must return control immediately; this is generous (a genuinely
-        // blocking implementation connecting to a closed port would take much longer
-        // once OS-level connection-refused/timeout behavior kicks in).
-        org.assertj.core.api.Assertions.assertThat(elapsedMillis).isLessThan(2000);
+        ArgumentCaptor<Object> bodyCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(rabbitTemplate).convertAndSend(
+                eq(RabbitMqConfig.KNOWLEDGE_CHUNK_TRIGGER_QUEUE), bodyCaptor.capture(), any(CorrelationData.class));
+        assertThat((String) bodyCaptor.getValue()).contains("\"knowledge_id\":1", "\"source_type\":\"FRIEND\"");
+    }
+
+    @Test
+    void triggerChunk_neverThrowsWhenBrokerUnreachable() {
+        doThrow(new AmqpConnectException(new RuntimeException("connection refused")))
+                .when(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), any(CorrelationData.class));
+        KnowledgeChunkTriggerClient client =
+                new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://127.0.0.1:1");
+
+        assertThatCode(() -> client.triggerChunk(EVENT)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void handleConfirm_negativeAckFallsBackToHttp_andNeverThrows() {
+        KnowledgeChunkTriggerClient client =
+                new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://127.0.0.1:1");
+
+        client.triggerChunk(EVENT);
+        ArgumentCaptor<CorrelationData> correlationCaptor = ArgumentCaptor.forClass(CorrelationData.class);
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), correlationCaptor.capture());
+
+        // Simulate the broker nacking the publish — must not throw, and (best-effort,
+        // fire-and-forget) attempts the HTTP fallback rather than silently dropping the event.
+        assertThatCode(() ->
+                client.handleConfirm(correlationCaptor.getValue(), false, "channel closed"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void handleConfirm_positiveAckDoesNotFallBackToHttp() {
+        KnowledgeChunkTriggerClient client =
+                new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://127.0.0.1:1");
+
+        client.triggerChunk(EVENT);
+        ArgumentCaptor<CorrelationData> correlationCaptor = ArgumentCaptor.forClass(CorrelationData.class);
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), correlationCaptor.capture());
+
+        assertThatCode(() ->
+                client.handleConfirm(correlationCaptor.getValue(), true, null))
+                .doesNotThrowAnyException();
+
+        // A positive confirm is the happy path — the only convertAndSend call is the
+        // original publish (captured above); no second call is made on this path.
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), any(CorrelationData.class));
+    }
+
+    @Test
+    void handleConfirm_unknownCorrelationIdIsIgnored() {
+        KnowledgeChunkTriggerClient client =
+                new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://127.0.0.1:1");
+
+        assertThatCode(() ->
+                client.handleConfirm(new CorrelationData("never-published"), false, "n/a"))
+                .doesNotThrowAnyException();
     }
 }

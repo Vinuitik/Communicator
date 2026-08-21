@@ -26,6 +26,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- Publishes KnowledgeChunkTriggerEvent onto RabbitMQ (durable queue
+             knowledge.chunk.trigger) instead of the old fire-and-forget HTTP POST.
+             Pulled transitively into bootstrap the same way spring-boot-starter-data-jpa
+             already is (via friend/group/connections -> knowledge-core), no bootstrap
+             pom.xml change needed. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -40,6 +49,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Only used for CorrelationData/Message test fixtures — the publish-side
+             test mocks RabbitTemplate itself rather than spinning up a broker
+             (this repo has no test-container pattern, see chrono's reconciliation
+             test for the same call). -->
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

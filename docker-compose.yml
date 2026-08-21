@@ -51,10 +51,17 @@ services:
       SYNC_PASSPHRASE: ${SYNC_PASSPHRASE:-}
       BACKUP_KEEP: ${BACKUP_KEEP:-3}
       BACKUP_CRON: ${BACKUP_CRON:-0 0 3 * * *}
+      # KnowledgeChunkTriggerClient (knowledge-core) publish target — see
+      # bootstrap application.yml spring.rabbitmq.*
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-communicator}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-example}
       TZ: ${HOST_TIMEZONE:-UTC}
     depends_on:
       - postgres
       - fileRepository
+      - rabbitmq
     restart: unless-stopped
 
 
@@ -200,10 +207,15 @@ services:
        PYTHONUNBUFFERED: 1
        # Overrides config.yaml's dsn (single source of truth, see .env.example)
        POSTGRES_DSN: postgresql://${POSTGRES_USER:-myapp_user}:${POSTGRES_PASSWORD:-example}@postgresDB:5432/${POSTGRES_DB:-my_database}
+       # KnowledgeChunkConsumer (services/rabbitmq_consumer.py) — consumes the
+       # same knowledge.chunk.trigger queue the JVM's KnowledgeChunkTriggerClient
+       # publishes onto. Overrides config.yaml's rabbitmq.url fallback.
+       RABBITMQ_URL: amqp://${RABBITMQ_USER:-communicator}:${RABBITMQ_PASS:-example}@rabbitmq:5672/
      depends_on:
        - postgres      # knowledge_chunks / chunk_embeddings hybrid search + llm_settings
        - embedder      # ONNX EmbeddingGemma (replaces Ollama for embeddings)
        - host-wrapper  # cloud LLM mode (start-order only — chat still works if this is down and mode=ollama)
+       - rabbitmq      # start-order only — KnowledgeChunkConsumer retries its own connection at startup
      restart: unless-stopped
 
   react-ui:
@@ -224,10 +236,14 @@ services:
   # `generated-data` volume is left un-mounted (not deleted) below in case it's
   # ever needed again; the container itself is gone from this file.
 
-  # Durable task queue for async/background work (backups, indexing, decay
-  # triggers). Right-sized for a single-user app: real retry + dead-letter
-  # semantics + a management UI, without Kafka's operational weight.
-  # Replaced Kafka (which was provisioned but unwired).
+  # Durable task queue for async/background work. Right-sized for a
+  # single-user app: real retry + dead-letter semantics + a management UI,
+  # without Kafka's operational weight. Replaced Kafka (which was provisioned
+  # but unwired). First real producer/consumer wired onto it (2026-08-21):
+  # knowledge.chunk.trigger — KnowledgeChunkTriggerClient (knowledge-core,
+  # JVM) publishes, ai_agent's aio-pika consumer (rabbitmq_consumer.py)
+  # consumes; knowledge.chunk.trigger.dlq is the dead-letter queue after 3
+  # failed attempts. See flows/knowledge-rag.md#eager-multi-entity-chunking.
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq

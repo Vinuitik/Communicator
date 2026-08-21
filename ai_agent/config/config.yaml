@@ -94,6 +94,13 @@ databases:
   postgres:
     dsn: "postgresql://myapp_user:example@postgresDB:5432/my_database"
 
+  # RabbitMQ (from docker-compose: rabbitmq service). Fallback only — RABBITMQ_URL
+  # (docker-compose env) overrides this, same pattern as postgres.dsn above.
+  # Consumed by KnowledgeChunkConsumer (services/rabbitmq_consumer.py), which listens
+  # on the knowledge.chunk.trigger queue the JVM's KnowledgeChunkTriggerClient publishes.
+  rabbitmq:
+    url: "amqp://communicator:example@rabbitmq:5672/"
+
 # Cache Configuration
 cache:
   default_ttl: 3600  # 1 hour in seconds
