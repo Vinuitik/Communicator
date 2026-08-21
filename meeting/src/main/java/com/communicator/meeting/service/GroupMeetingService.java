@@ -22,6 +22,7 @@ import com.example.demo.Group.GroupEntities.SocialGroup;
 import com.example.demo.Group.GroupRepositories.SocialGroupRepository;
 
 import coommunicator.connections.Connections.ConnectionsEntities.Connection;
+import coommunicator.connections.Connections.ConnectionsEntities.ConnectionId;
 import coommunicator.connections.Connections.ConnectionsRepositories.ConnectionRepository;
 
 import communicate.Friend.FriendEntities.Friend;
@@ -33,9 +34,12 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 /**
- * MANUAL meeting creation (Friend or Group) and the Group batch-log complete flow — the two
- * later-stage pieces MeetingService's own javadoc calls out as separate from the FSRS_PROPOSED/
- * BIRTHDAY auto-managed sources.
+ * MANUAL meeting creation (Friend, Group, or Connection — scheduling ahead) and the Group
+ * batch-log complete flow — the two later-stage pieces MeetingService's own javadoc calls out as
+ * separate from the FSRS_PROPOSED/BIRTHDAY auto-managed sources. The Connection branch requires an
+ * already-tracked Connection row for the pair (404 otherwise, same rule ConnectionMeetingService
+ * enforces for logging) — scheduling ahead is still about a pair the app already tracks, just not
+ * yet contacted.
  */
 @Service
 @RequiredArgsConstructor
@@ -54,8 +58,15 @@ public class GroupMeetingService {
     public Meeting createManual(ManualMeetingRequest request) {
         boolean hasFriend = request.friendId() != null;
         boolean hasGroup = request.groupId() != null;
-        if (hasFriend == hasGroup) {
-            throw new IllegalArgumentException("Exactly one of friendId/groupId must be set");
+        boolean hasConnection = request.connectionFriend1Id() != null || request.connectionFriend2Id() != null;
+        if (hasConnection && (request.connectionFriend1Id() == null || request.connectionFriend2Id() == null)) {
+            throw new IllegalArgumentException(
+                "Both connectionFriend1Id and connectionFriend2Id are required to schedule a connection meeting");
+        }
+        int subjectCount = (hasFriend ? 1 : 0) + (hasGroup ? 1 : 0) + (hasConnection ? 1 : 0);
+        if (subjectCount != 1) {
+            throw new IllegalArgumentException(
+                "Exactly one of friendId/groupId/(connectionFriend1Id+connectionFriend2Id) must be set");
         }
 
         Meeting meeting = new Meeting();
@@ -68,7 +79,7 @@ public class GroupMeetingService {
             Friend friend = friendService.getFriendById(request.friendId());
             meeting.setFriend(friend);
             meeting = meetingRepository.save(meeting);
-        } else {
+        } else if (hasGroup) {
             SocialGroup group = groupRepository.findById(request.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("Group not found: " + request.groupId()));
             meeting.setGroup(group);
@@ -77,6 +88,17 @@ public class GroupMeetingService {
             for (Friend member : groupMemberRepository.findFriendsByGroupId(request.groupId())) {
                 attendeeRepository.save(new MeetingAttendee(meeting, member));
             }
+        } else {
+            long id1 = Math.min(request.connectionFriend1Id(), request.connectionFriend2Id());
+            long id2 = Math.max(request.connectionFriend1Id(), request.connectionFriend2Id());
+            Connection connection = connectionRepository.findById(new ConnectionId(id1, id2))
+                .orElseThrow(() -> new EntityNotFoundException("Connection not found: " + id1 + "/" + id2));
+            meeting.setConnection(connection);
+            meeting.setSelfAttending(false);
+            meeting = meetingRepository.save(meeting);
+
+            attendeeRepository.save(new MeetingAttendee(meeting, friendService.getFriendById((int) id1)));
+            attendeeRepository.save(new MeetingAttendee(meeting, friendService.getFriendById((int) id2)));
         }
         return meeting;
     }

@@ -11,6 +11,8 @@ import com.communicator.meeting.entities.Meeting;
 import com.communicator.meeting.entities.MeetingSource;
 import com.communicator.meeting.entities.MeetingStatus;
 
+import coommunicator.connections.Connections.ConnectionsEntities.Connection;
+
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     /** The friend's single open (not DONE/CANCELLED) FSRS_PROPOSED row, if any — upsert target. */
@@ -32,4 +34,11 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
     /** GroupDetailsPage's meeting list. */
     List<Meeting> findByGroupIdOrderByDateDesc(Integer groupId);
+
+    /**
+     * The connection pair's open scheduled-ahead row, if one exists — ConnectionMeetingService's
+     * PROPOSED->DONE transition target. Ordered/first-of in case more than one PROPOSED row was
+     * ever created for the same pair (not deduped server-side, same as Group's own MANUAL create).
+     */
+    Optional<Meeting> findFirstByConnectionAndStatusOrderByDateDesc(Connection connection, MeetingStatus status);
 }
