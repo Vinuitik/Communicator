@@ -3,9 +3,9 @@
 **/target
 **/node_modules
 react
-ai_agent
-resourceRepository
-data-extraction
+services/ai_agent
+services/resourceRepository
+services/data-extraction
 ollama
 nginx
 flows

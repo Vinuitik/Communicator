@@ -101,7 +101,7 @@ services:
 
   fileRepository:
     build:
-      context: ./resourceRepository
+      context: ./services/resourceRepository
       dockerfile: Dockerfile
     image: communicator-filerepository  # <-- This forces a lowercase name
     container_name: fileRepository
@@ -126,7 +126,7 @@ services:
   # the same day (ai_agent/services/embedding_service.py calls this).
   embedder:
     build:
-      context: ./embedder
+      context: ./services/embedder
       dockerfile: Dockerfile
     container_name: embedder
     ports:
@@ -146,13 +146,13 @@ services:
   # this service's own .env as fallback.
   host-wrapper:
     build:
-      context: ./host-wrapper
+      context: ./services/host-wrapper
       dockerfile: Dockerfile
     container_name: host-wrapper
     ports:
       - "5011:5011"  # Exposed on host for standalone verification (curl /health, /providers)
     env_file:
-      - ./host-wrapper/.env
+      - ./services/host-wrapper/.env
     environment:
       TZ: ${HOST_TIMEZONE:-UTC}
       # Overrides .env's hardcoded copy (single source of truth, see .env.example)
@@ -195,13 +195,13 @@ services:
 
   ai-agent:
      build:
-       context: ./ai_agent
+       context: ./services/ai_agent
        dockerfile: Dockerfile
      container_name: ai-agent
      expose:
        - "8001"  # Internal exposure only, no external port mapping
      env_file:
-       - ./ai_agent/.env  # Load environment variables from .env file
+       - ./services/ai_agent/.env  # Load environment variables from .env file
      environment:
        TZ: ${HOST_TIMEZONE:-UTC}
        PYTHONUNBUFFERED: 1

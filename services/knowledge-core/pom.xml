@@ -8,7 +8,7 @@
         <groupId>com.communicator</groupId>
         <artifactId>communicator-parent</artifactId>
         <version>1.0.0</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <!-- Shared "fact" (Knowledge/Permission) base entity + service, extracted from the

@@ -8,36 +8,36 @@
         <groupId>com.communicator</groupId>
         <artifactId>communicator-parent</artifactId>
         <version>1.0.0</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <!-- Meeting domain module (library). Base package: com.communicator.meeting.*
-         Depends on friend/group/connections for real @ManyToOne FKs into Friend/
-         SocialGroup/Connection — those three modules deliberately do NOT depend
-         on each other or on this module, so anything in friend/group/connections
-         that needs to react to a Meeting-side change does so via a Spring
-         application event (see FriendRescheduledEvent in the friend module),
-         never a direct call into this module. -->
-    <artifactId>meeting</artifactId>
-    <name>meeting</name>
+    <!-- Friend domain module (library). Base package: communicate.Friend.* -->
+    <artifactId>friend</artifactId>
+    <name>friend</name>
 
     <dependencies>
         <dependency>
             <groupId>com.communicator</groupId>
-            <artifactId>friend</artifactId>
+            <artifactId>knowledge-core</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.communicator</groupId>
+            <artifactId>outbox-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Flashcard-review enrollment (FlashcardEnrollmentService) reads
+             GroupKnowledge/SocialGroup to inherit group facts into a starred
+             friend's folder. group does not depend on friend (checked — no
+             cross-refs either direction previously), so this stays a clean,
+             acyclic addition; it mirrors chrono's own friend-module
+             dependency for cross-module JPA reads within the merged
+             monolith's single datasource (see PathPrefixConfig). -->
         <dependency>
             <groupId>com.communicator</groupId>
             <artifactId>group</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.communicator</groupId>
-            <artifactId>connections</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -48,7 +48,16 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- WebClient for calling other internal services -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <dependency>
@@ -60,6 +69,13 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- FlatLaf (not Spring-managed; keep explicit version) -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.3</version>
         </dependency>
 
         <dependency>

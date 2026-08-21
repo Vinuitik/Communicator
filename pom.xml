@@ -31,15 +31,15 @@
     </properties>
 
     <modules>
-        <module>knowledge-core</module>
-        <module>outbox-core</module>
-        <module>friend</module>
-        <module>group</module>
-        <module>connections</module>
-        <module>meeting</module>
-        <module>chrono</module>
-        <module>backup</module>
-        <module>bootstrap</module>
+        <module>services/knowledge-core</module>
+        <module>services/outbox-core</module>
+        <module>services/friend</module>
+        <module>services/group</module>
+        <module>services/connections</module>
+        <module>services/meeting</module>
+        <module>services/chrono</module>
+        <module>services/backup</module>
+        <module>services/bootstrap</module>
     </modules>
 
 </project>

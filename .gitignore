@@ -27,9 +27,9 @@ Thumbs.db
 .env.*.local
 
 # Service account keys and secrets
-backup/service-account-key.json
-ai_agent/.env
-ai_agent/service-account-key.json
+services/backup/service-account-key.json
+services/ai_agent/.env
+services/ai_agent/service-account-key.json
 **/service-account-key.json
 **/*.key
 **/*.pem
@@ -66,10 +66,10 @@ ai_agent/service-account-key.json
 **/yarn-error.log*
 
 # Resource files (as you already have)
-resourceRepository/photos/**
-resourceRepository/videos/**
-resourceRepository/voice/**
-resourceRepository/personalResources/**
+services/resourceRepository/photos/**
+services/resourceRepository/videos/**
+services/resourceRepository/voice/**
+services/resourceRepository/personalResources/**
 
 # Log files
 **/*.log

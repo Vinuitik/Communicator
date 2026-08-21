@@ -8,7 +8,7 @@
         <groupId>com.communicator</groupId>
         <artifactId>communicator-parent</artifactId>
         <version>1.0.0</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <!-- Idempotency ledger for the offline-write outbox (react/src/pwa/outbox.ts), shared

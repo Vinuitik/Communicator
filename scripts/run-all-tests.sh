@@ -17,7 +17,7 @@
 # Exit code: 0 if everything passed or had no tests, 1 if anything failed.
 
 set -u
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 VERBOSE=0
 [ "${1:-}" = "-v" ] && VERBOSE=1
@@ -70,7 +70,7 @@ run_component "java-reactor" \
         mvn -B -q test
 
 # ── Python microservices (only if real, non-vendored test files exist) ──
-for svc in ai_agent host-wrapper embedder resourceRepository data-extraction; do
+for svc in services/ai_agent services/host-wrapper services/embedder services/resourceRepository services/data-extraction; do
     [ -d "$svc" ] || continue
     tests_found="$(find_test_files "$svc" "test_*.py" "*_test.py")"
     if [ -z "$tests_found" ]; then
@@ -95,8 +95,7 @@ fi
 
 # ── Whole-system E2E: offline-outbox sync engine ──
 # Drives a real headless browser against the live docker-compose stack and stops/restarts
-# the real communicator-app container mid-run to simulate an outage — see e2e/README's
-# sibling doc, tasks/SYNC_ENGINE_TESTING_HANDOFF.md. Runs LAST and never in parallel with
+# the real communicator-app container mid-run to simulate an outage — see e2e/README. Runs LAST and never in parallel with
 # anything above: it's disruptive to the live app, and both its own tests share that one
 # container so they can't overlap with each other either (playwright.config.ts: workers 1).
 if [ -d e2e ]; then
