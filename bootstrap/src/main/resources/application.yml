@@ -43,6 +43,19 @@ spring:
   session:
     store-type: none
 
+  # KnowledgeChunkTriggerClient's (knowledge-core) publish target — durable
+  # knowledge.chunk.trigger queue, consumed by ai_agent's aio-pika consumer.
+  # publisher-confirm-type: correlated + publisher-returns: true so
+  # KnowledgeChunkTriggerClient's confirm callback can distinguish "broker
+  # durably has it" from "never arrived" and fall back to HTTP on the latter.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:communicator}
+    password: ${RABBITMQ_PASS:example}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+
 server:
   port: 8080
 
