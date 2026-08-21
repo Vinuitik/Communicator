@@ -67,7 +67,7 @@ services:
 
   nginx:
     build:
-      context: ./nginx
+      context: ./infra/nginx
       dockerfile: Dockerfile
     container_name: nginx
     environment:
@@ -92,7 +92,7 @@ services:
   # HabitTracker's sibling setup. credentials.json is gitignored (real secret).
   cloudflared:
     build:
-      context: ./cloudflared
+      context: ./infra/cloudflared
       dockerfile: Dockerfile
     container_name: communicator-cloudflared
     depends_on:
@@ -171,7 +171,7 @@ services:
       OLLAMA_HOST: 0.0.0.0
     volumes:
       - ollama-data:/root/.ollama  # Persist models and cache
-      - ./ollama/startup.sh:/startup.sh  # Startup script to pull model
+      - ./infra/ollama/startup.sh:/startup.sh  # Startup script to pull model
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |

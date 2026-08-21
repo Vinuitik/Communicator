@@ -6,8 +6,8 @@ frontend/react
 services/ai_agent
 services/resourceRepository
 services/data-extraction
-ollama
-nginx
+infra/ollama
+infra/nginx
 flows
 **/__pycache__
 **/*.pyc
