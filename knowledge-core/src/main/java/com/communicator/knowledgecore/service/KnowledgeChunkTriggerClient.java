@@ -86,7 +86,10 @@ public class KnowledgeChunkTriggerClient {
             CorrelationData correlationData = new CorrelationData(correlationId);
             pendingConfirms.put(correlationId, event);
 
-            rabbitTemplate.convertAndSend(RabbitMqConfig.KNOWLEDGE_CHUNK_TRIGGER_QUEUE, body, correlationData);
+            // Explicit (Object) cast: RabbitTemplate overloads convertAndSend(queue, message,
+            // correlationData) and convertAndSend(exchange, routingKey, message) both accept
+            // (String, String-compatible-Object) and are otherwise ambiguous for a String body.
+            rabbitTemplate.convertAndSend(RabbitMqConfig.KNOWLEDGE_CHUNK_TRIGGER_QUEUE, (Object) body, correlationData);
         } catch (Exception e) {
             // Covers JSON serialization failures, a fully-unreachable broker (convertAndSend
             // throws AmqpException synchronously when there's no connection at all), and any

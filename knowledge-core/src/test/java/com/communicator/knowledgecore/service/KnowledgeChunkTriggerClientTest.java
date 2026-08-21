@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -27,6 +26,13 @@ import static org.mockito.Mockito.verify;
  * behavior). Resilience requirement is unchanged from before: nothing here may ever throw
  * or block the AFTER_COMMIT listener that calls triggerChunk(), whether the broker is
  * reachable, unreachable, or confirms negatively.
+ *
+ * Note: every convertAndSend(...) matcher below pins the message-body argument to
+ * any(Object.class)/ArgumentCaptor.forClass(Object.class) rather than String — RabbitTemplate
+ * has both convertAndSend(queue, Object message, CorrelationData) and convertAndSend(exchange,
+ * routingKey, Object message) overloads, which are ambiguous for a String-typed matcher/captor
+ * (the production code casts the body to (Object) for the same reason — see
+ * KnowledgeChunkTriggerClient.triggerChunk).
  */
 @ExtendWith(MockitoExtension.class)
 class KnowledgeChunkTriggerClientTest {
@@ -44,16 +50,16 @@ class KnowledgeChunkTriggerClientTest {
 
         client.triggerChunk(EVENT);
 
-        ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object> bodyCaptor = ArgumentCaptor.forClass(Object.class);
         verify(rabbitTemplate).convertAndSend(
                 eq(RabbitMqConfig.KNOWLEDGE_CHUNK_TRIGGER_QUEUE), bodyCaptor.capture(), any(CorrelationData.class));
-        assertThat(bodyCaptor.getValue()).contains("\"knowledge_id\":1", "\"source_type\":\"FRIEND\"");
+        assertThat((String) bodyCaptor.getValue()).contains("\"knowledge_id\":1", "\"source_type\":\"FRIEND\"");
     }
 
     @Test
     void triggerChunk_neverThrowsWhenBrokerUnreachable() {
         doThrow(new AmqpConnectException(new RuntimeException("connection refused")))
-                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CorrelationData.class));
+                .when(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), any(CorrelationData.class));
         KnowledgeChunkTriggerClient client =
                 new KnowledgeChunkTriggerClient(rabbitTemplate, new ObjectMapper(), "http://127.0.0.1:1");
 
@@ -67,7 +73,7 @@ class KnowledgeChunkTriggerClientTest {
 
         client.triggerChunk(EVENT);
         ArgumentCaptor<CorrelationData> correlationCaptor = ArgumentCaptor.forClass(CorrelationData.class);
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), correlationCaptor.capture());
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), correlationCaptor.capture());
 
         // Simulate the broker nacking the publish — must not throw, and (best-effort,
         // fire-and-forget) attempts the HTTP fallback rather than silently dropping the event.
@@ -83,7 +89,7 @@ class KnowledgeChunkTriggerClientTest {
 
         client.triggerChunk(EVENT);
         ArgumentCaptor<CorrelationData> correlationCaptor = ArgumentCaptor.forClass(CorrelationData.class);
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), correlationCaptor.capture());
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), correlationCaptor.capture());
 
         assertThatCode(() ->
                 client.handleConfirm(correlationCaptor.getValue(), true, null))
@@ -91,7 +97,7 @@ class KnowledgeChunkTriggerClientTest {
 
         // A positive confirm is the happy path — the only convertAndSend call is the
         // original publish (captured above); no second call is made on this path.
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(CorrelationData.class));
+        verify(rabbitTemplate).convertAndSend(any(String.class), any(Object.class), any(CorrelationData.class));
     }
 
     @Test
