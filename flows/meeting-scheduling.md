@@ -84,21 +84,30 @@ group-level scheduling decision, each friend's stability/difficulty/bandit state
 exactly as if you'd logged N individual 1:1 chats. `GroupMeetingService` has direct access to
 `ReviewService`/`FriendService` beans (same JVM since the monolith merge) — no HTTP hop.
 
-### 2b-continued. `GroupConnectionsNudge` — a display-only stub, wired independently by each caller
+### 2b-continued. `GroupConnectionsNudge` — calls the endpoint itself, note field included
 ```
-GroupConnectionsNudge renders each candidate pair with Went well / Neutral / Tense buttons
- → tap  →  onLogOutcome(friend1Id, friend2Id, outcome)   — nudge itself makes NO network call
+GroupConnectionsNudge renders each candidate pair with a note input + Went well / Neutral / Tense
+buttons
+ → tap  →  logConnectionMeeting({ friend1Id, friend2Id, date: today(), outcome, note })
+              [connectionMeetingService.logConnectionMeeting — same endpoint ConnectionOutcomeForm
+               uses]
+     success → pair marked logged (removed from the remaining list), onLogged?.(...) fires
+               (optional — callers use it for a toast, nothing more)
+     failure → inline error shown under that pair, pair stays in the remaining list (retryable)
 ```
-Read `GroupConnectionsNudge.tsx`'s own doc comment closely: it was built as a stub against a
-not-yet-landed backend, with the expectation that "a parent component wires this once that lands."
-**That wiring landed, but not through `ConnectionOutcomeForm`** — both `HomePage` and
-`GroupDetailsPage` independently define their own `handleLogConnectionOutcome`, each calling
-`logConnectionMeeting()` directly with `date: today()` and no note. `ConnectionOutcomeForm` (the
-richer date+note form) is a separate component, not used by the nudge at all — see 2c.
+Previously a display-only stub (`onLogOutcome` prop, no network call inside it) — `HomePage` and
+`GroupDetailsPage` each independently defined their own `handleLogConnectionOutcome`, calling
+`logConnectionMeeting()` directly with `date: today()` and **no note field**, since the nudge itself
+never exposed one. Both duplicates are gone: the nudge now owns the call and the note input, and
+both pages just render `<GroupConnectionsNudge onLogged={...} onClose={...} />` — `onLogged` is
+purely a post-save notification hook (both pages use it only to fire a toast), not a place to
+duplicate the save. `ConnectionOutcomeForm` (2c below) is still a separate, richer component
+(date picker, multi-line note) — the nudge's inline note field is intentionally lighter (single
+line, no date picker, always logs as "today") to keep the nudge a few taps, not a form.
 
-### 2c. Connection card → `ConnectionOutcomeForm` (HomePage only)
+### 2c. Connection card → `ConnectionOutcomeForm` (HomePage only) — PROPOSED, or DONE→history
 ```
-Click Connection card  →  HomePage: setConnectionMeetingTarget(meeting)
+Click Connection card, status PROPOSED  →  HomePage: setConnectionMeetingTarget(meeting)
  → ConnectionOutcomeForm mounts (friend1Id/friend2Id from the MeetingDTO's connection FKs)
      date (defaults today) + outcome (SegmentedControl) + optional note
  → Save
@@ -106,19 +115,32 @@ Click Connection card  →  HomePage: setConnectionMeetingTarget(meeting)
        [connectionMeetingService.logConnectionMeeting]
      → ConnectionMeetingService.logConnectionMeeting()
          requires an existing Connection row for (friend1Id,friend2Id) — 404 if untracked
-         Meeting saved with status=DONE immediately (no PROPOSED state for Connections at all)
+         finds this pair's open PROPOSED Meeting (the one this card represents) and transitions
+           it to DONE with this request's date/outcome/note — does NOT create a second row
          note (if any) → ConnectionKnowledgeService.addKnowledge() → ConnectionsKnowledge row
  → onSaved  →  close + refetch week
+
+Click Connection card, status DONE  →  HomePage: onViewConnection(meeting)
+     navigate(connectionDetailsPath(connectionFriend1Id, connectionFriend2Id))
+       [utils/constants.ts] — ConnectionDetailsPage, not the log form again
 ```
-**This path currently has no live entry point on the backend.** `POST /meetings/manual` only accepts
-`friendId`/`groupId` (`GroupMeetingService.createManual` throws if both or neither are set — there's
-no third option for a connection pair), and `POST /meetings/connection` itself always saves the row
-as `DONE`. Nothing in the current backend ever creates a `PROPOSED`-status, Connection-subject
-`Meeting` row, so `GET /meetings/thisWeek` can never actually return one for `CalendarBoard` to render
-as a "Log outcome" card in practice — this path is real, tested-looking code with no way to reach it
-yet. (Also: `CalendarBoard`'s card-body `onClick` isn't gated on `isDone` the way the action button
-is — clicking a `DONE` Connection card, if one ever existed, would reopen `ConnectionOutcomeForm` and
-create a second `Meeting` row rather than showing/editing the first.)
+**A live entry point now exists on the backend.** `POST /meetings/manual` accepts
+`connectionFriend1Id`/`connectionFriend2Id` as a third option alongside `friendId`/`groupId`
+(`GroupMeetingService.createManual`, see [meeting/.../FLOWS.md](../meeting/src/main/java/com/communicator/meeting/FLOWS.md))
+— it creates a `PROPOSED`-status, Connection-subject `Meeting` row the same way Friend/Group manual
+scheduling always could, so `GET /meetings/thisWeek` can return one for `CalendarBoard` to render as
+a "Log outcome" card, and `logConnectionMeeting` above transitions that exact row instead of always
+creating a fresh `DONE` one. **No frontend UI calls this yet** — there is no "schedule a connection
+meeting ahead" button anywhere in `react/`; the backend capability landed as part of fixing the
+duplicate-row bug below, but wiring an entry point (e.g. from `ConnectionDetailsPage`) is still open.
+Logging a Connection meeting with nothing scheduled ahead still works exactly as before
+(create-and-close, immediately `DONE`) — that path is unchanged, just no longer the *only* path.
+
+`CalendarBoard`'s card-body `onClick` is now gated on `status === 'DONE'` the same way the action
+button already was (see `CalendarBoard.tsx`'s `meetingCard()`): a `DONE` Connection card body click
+calls `onViewConnection` (→ `ConnectionDetailsPage`) instead of reopening `ConnectionOutcomeForm` and
+creating a second `Meeting` row. A `DONE` Group card body click is similarly gated to a no-op (no
+group-level "view history" navigation exists yet, so it just doesn't reopen the batch-log modal).
 
 ---
 
@@ -199,39 +221,48 @@ BirthdayMeetingScheduler.rolloverPassedBirthdays()   @Scheduled(cron "0 0 0 * * 
 | | Friend | Group | Connection |
 |---|---|---|---|
 | Auto-scheduled rows | `FSRS_PROPOSED` + `BIRTHDAY` | none | none |
-| Manual creation | `POST /meetings/manual` (friendId) | `POST /meetings/manual` (groupId) — auto-creates attendee rows | **none** — see Stage 2c gap |
-| Logging UI | `QuickLogModal` (1:1) or `ScheduleMeetingModal` (schedule only) | `GroupBatchLogModal` (presence → per-attendee grade) | `ConnectionOutcomeForm` (date+outcome+note) |
-| Completes via | `OutboxWriteService.applyTalkedToFriend` | `POST /meetings/{id}/complete` | `POST /meetings/connection` |
+| Manual creation | `POST /meetings/manual` (friendId) | `POST /meetings/manual` (groupId) — auto-creates attendee rows | `POST /meetings/manual` (connectionFriend1Id+connectionFriend2Id) — auto-creates 2 attendee rows; **backend-only, no UI entry point yet** (see Stage 2c) |
+| Logging UI | `QuickLogModal` (1:1) or `ScheduleMeetingModal` (schedule only) | `GroupBatchLogModal` (presence → per-attendee grade) | `ConnectionOutcomeForm` (date+outcome+note) or `GroupConnectionsNudge` (outcome+single-line note) |
+| Completes via | `OutboxWriteService.applyTalkedToFriend` | `POST /meetings/{id}/complete` | `POST /meetings/connection` — transitions a scheduled-ahead row if one exists, else create-and-close |
 | FSRS side effect | yes, 1 friend | yes, N friends (fan-out) | **none** — record-only |
-| Resulting status | stays `PROPOSED` until logged | `DONE` | always created as `DONE` |
+| Resulting status | stays `PROPOSED` until logged | `DONE` | `PROPOSED` if scheduled ahead via `POST /meetings/manual`, `DONE` once logged (or immediately `DONE` if never scheduled) |
 
 ---
 
 ## Technology Notes
 
-- **`GroupConnectionsNudge` is genuinely stateless** — it holds only a local `Set` of already-tapped
-  pairs so it doesn't nag twice in one pass. Every actual save is the caller's responsibility; `HomePage`
-  and `GroupDetailsPage` each reimplement the identical `handleLogConnectionOutcome` (same
-  `logConnectionMeeting` call, same `date: today()`, no note field exposed by the nudge). A future
-  edit to that wiring (e.g. adding a note) has to be made in both places — there's no shared hook.
-- **Two different Connection-logging UIs exist with different capabilities.** `GroupConnectionsNudge`'s
-  inline buttons: outcome only, today's date, no note. `ConnectionOutcomeForm`: date picker + outcome +
-  optional note (which appends to `ConnectionsKnowledge`). Only the latter can attach a note — the
-  nudge path can never produce a `ConnectionsKnowledge` row.
+- **`GroupConnectionsNudge` now owns its own save** — it calls `logConnectionMeeting` directly (same
+  endpoint `ConnectionOutcomeForm` uses) instead of delegating to a caller-supplied handler. It still
+  holds local `Set`/`Record` state (`logged`, `saving`, `notes`, `errors`) per pair so a failed save
+  leaves that pair retryable without losing what was typed, and a successful one is removed from the
+  remaining list so it doesn't nag twice in one pass. `HomePage` and `GroupDetailsPage` no longer
+  reimplement anything — both just render `<GroupConnectionsNudge onLogged={...} onClose={...} />`,
+  where `onLogged` is an optional post-save hook (both pages use it only to fire a toast).
+- **Two different Connection-logging UIs still exist, now closer in capability.**
+  `GroupConnectionsNudge`'s inline form: outcome + a single-line optional note, always logs as today.
+  `ConnectionOutcomeForm`: date picker + outcome + a multi-line optional note. Both call the same
+  `logConnectionMeeting` endpoint and both can append a `ConnectionsKnowledge` row now — the nudge no
+  longer lacks a note field, it just keeps a lighter single-line one on purpose (Decisions Log: "a few
+  taps, not a form").
 - **The FSRS fan-out in `completeGroupMeeting` is not atomic per-friend in the eyes of the caller.**
   The whole method is one `@Transactional` block, so a mid-loop exception rolls back every attendee's
   reschedule and the meeting's `DONE` status together — but the `FriendRescheduledEvent`s are only
   actually delivered `AFTER_COMMIT`, so if the transaction *does* commit, all N events fire together
   right after, not incrementally as each attendee is processed.
-- **`ManualMeetingRequest` structurally cannot target a Connection** (`friendId`/`groupId`, exactly
-  one) and `ConnectionMeetingRequest` always saves `DONE` — there is no code path today that produces
-  a `PROPOSED` Connection meeting, which is what `CalendarBoard`'s Connection-card click handler and
-  `ConnectionOutcomeForm` are built to react to. Not broken, just unreachable until/unless a
-  connection gets a `PROPOSED`-creating entry point.
+- **`ManualMeetingRequest` can now target a Connection** (`connectionFriend1Id`+`connectionFriend2Id`,
+  a third mutually-exclusive option alongside `friendId`/`groupId`) and `ConnectionMeetingRequest`
+  transitions a matching `PROPOSED` row to `DONE` if one exists rather than always creating a fresh
+  one. `CalendarBoard`'s Connection-card click handler and `ConnectionOutcomeForm` can now actually
+  receive a `PROPOSED` Connection meeting — but no frontend flow calls the manual-creation endpoint's
+  connection branch yet, so in practice every Connection card on the board today is still created via
+  create-and-close (already `DONE` the moment it appears). The backend path is real and tested; wiring
+  a "schedule a connection meeting ahead" entry point (e.g. from `ConnectionDetailsPage`) is open.
 - **`CalendarBoard`'s `onGroupMeetingClick`/`onConnectionMeetingClick` default to a `console.log`
   TODO** if the parent doesn't supply a handler — only `HomePage` renders `CalendarBoard`, and it
   supplies both, so this default path is currently dead but still there as the documented contract
-  for any future page that reuses the board.
+  for any future page that reuses the board. `onViewConnection` (new, for the DONE-card-body gating)
+  has the same "optional, only `HomePage` supplies it" shape but no `console.log` default — a DONE
+  Connection card body click silently no-ops if a future page reuses `CalendarBoard` without wiring it.
 
 ## Change Index
 
@@ -243,9 +274,13 @@ BirthdayMeetingScheduler.rolloverPassedBirthdays()   @Scheduled(cron "0 0 0 * * 
 | What grading inputs a Group attendee gets | `GroupBatchLogModal.tsx` `GradeState`/`defaultGrade()` — mirrors `QuickLogModal`'s fields |
 | Group meeting completion + FSRS fan-out | `GroupMeetingService.completeGroupMeeting()` (backend) |
 | Which pairs trigger the Connections nudge | `GroupMeetingService.connectionCandidates()` (backend) — present attendees × already-tracked `Connection` rows only |
-| Connections-nudge outcome wiring | `HomePage.handleLogConnectionOutcome()` / `GroupDetailsPage.handleLogConnectionOutcome()` (frontend, duplicated) |
+| Connections-nudge outcome wiring / note field / per-pair retry | `GroupConnectionsNudge.tsx` (`handleTap`) → `connectionMeetingService.logConnectionMeeting()` — owns the call itself now, `HomePage`/`GroupDetailsPage` just render it with an `onLogged` toast hook |
 | Connection outcome form (date+note capable) | `ConnectionOutcomeForm.tsx` → `ConnectionMeetingService.logConnectionMeeting()` (backend) |
-| Manual "schedule a meeting" (Friend only) | `ScheduleMeetingModal.tsx` → `GroupMeetingService.createManual()` (backend) |
+| DONE-card-body gating (Group no-op / Connection → history) | `CalendarBoard.tsx` `meetingCard()` — `onCardClick` branches on `isDone`, mirroring the action button |
+| DONE Connection card → show history | `CalendarBoard`'s `onViewConnection` prop → `HomePage` → `navigate(connectionDetailsPath(...))` → `ConnectionDetailsPage` |
+| Manual "schedule a meeting" (Friend only, UI) | `ScheduleMeetingModal.tsx` → `GroupMeetingService.createManual()` (backend) |
+| Manual "schedule a Connection meeting" (backend only, no UI entry point) | `GroupMeetingService.createManual()`'s connection branch (backend) — see [meeting/.../FLOWS.md](../meeting/src/main/java/com/communicator/meeting/FLOWS.md) |
+| PROPOSED→DONE transition for a scheduled-ahead Connection meeting | `ConnectionMeetingService.logConnectionMeeting()` (backend) — `findFirstByConnectionAndStatusOrderByDateDesc` picks the row |
 | Group "Log this meeting" entry / dedupe-before-create | `GroupDetailsPage.handleLogMeeting()` |
 | Friend reschedule → Meeting row upsert | `MeetingService.onFriendRescheduled()` / `upsertFsrsProposed()` (backend, listens for `FriendRescheduledEvent`) |
 | Birthday row creation/rollover | `MeetingService.ensureBirthdayMeeting()` (immediate) / `BirthdayMeetingScheduler` (nightly) |

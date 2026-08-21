@@ -23,7 +23,7 @@ MeetingStatus: PROPOSED | DONE | CANCELLED     — no CONFIRMED, single-user loc
 
 - **FSRS_PROPOSED** — auto-managed, one open row per friend, upserted by `MeetingService.upsertFsrsProposed()`.
 - **BIRTHDAY** — auto-managed, one row per friend with a `dateOfBirth`, rolled forward yearly by `MeetingService.ensureBirthdayMeeting()`.
-- **MANUAL** — everything user-initiated: `GroupMeetingService.createManual()` (Friend or Group, scheduled ahead) and `ConnectionMeetingService.logConnectionMeeting()` (Connection, logged already-`DONE` after the fact — Connections have no scheduling state, see below).
+- **MANUAL** — everything user-initiated: `GroupMeetingService.createManual()` (Friend, Group, or Connection — all three can be scheduled ahead as a `PROPOSED` row) and `ConnectionMeetingService.logConnectionMeeting()` (Connection, either transitions an existing scheduled-ahead row to `DONE` or, if nothing was scheduled, creates one already-`DONE` — see below).
 
 ## Type derivation, the unified edit surface, and ad-hoc groups
 
@@ -134,14 +134,36 @@ Two callers, no duplicated logic:
 
 To change the rollover cadence: `BirthdayMeetingScheduler`'s `@Scheduled` cron. To change occurrence math: `MeetingService.nextOccurrence()`.
 
-## Group flow — MANUAL creation → batch-log → Connections nudge
+## MANUAL creation — Friend, Group, or Connection, all scheduled-ahead
 
 ```
-GroupMeetingService.createManual(ManualMeetingRequest{groupId, date, note})
-  new Meeting{source=MANUAL, status=PROPOSED, group}
-  save, then for every GroupMemberRepository.findFriendsByGroupId(groupId):
-    save new MeetingAttendee(meeting, member, present=true)   — roster pre-filled, editable before DONE
+GroupMeetingService.createManual(ManualMeetingRequest{friendId, groupId,
+                                  connectionFriend1Id, connectionFriend2Id, date, note})
+  exactly one of friendId / groupId / (connectionFriend1Id+connectionFriend2Id) must be set
+  new Meeting{source=MANUAL, status=PROPOSED, date, note}
 
+  friendId set     → meeting.friend = friendService.getFriendById(friendId); save
+  groupId set      → meeting.group = group (404 if missing); save, then for every
+                      GroupMemberRepository.findFriendsByGroupId(groupId):
+                        save new MeetingAttendee(meeting, member, present=true)
+                          — roster pre-filled, editable before DONE
+  connection pair   → normalize to (min(id1,id2), max(id1,id2)), look up Connection
+  set               (404 if untracked — same "must already be a tracked pair" rule
+                      ConnectionMeetingService.logConnectionMeeting enforces for logging);
+                      meeting.connection = connection; meeting.selfAttending = false; save,
+                      then save 2 MeetingAttendee rows (one per friend in the pair) — filled
+                      in immediately, not left for MeetingBackfillRunner, so the row derives
+                      as type CONNECTION right away
+```
+
+This lives on `GroupMeetingService` (named for its original Friend/Group scope before the
+Connection branch was added — not renamed, to avoid a mechanical rename touching every caller)
+and is now the single entry point for scheduling *any* subject type ahead of time. The name is a
+known small inconsistency, not a boundary: `ConnectionMeetingService` still owns *logging* a
+Connection meeting's outcome (including transitioning a row this method created — see below).
+`GroupMeetingService` is also still the only Group-batch-log entry point:
+
+```
 GroupMeetingService.completeGroupMeeting(meetingId, CompleteGroupMeetingRequest{attendees[]})
   for each AttendeeLog{friendId, present, durationHours, experience, inPerson}:
     find that friend's MeetingAttendee row, set .present, save
@@ -171,24 +193,34 @@ Backs the post-complete "Connections nudge" UI (`GroupConnectionsNudge`) — a l
 
 To change: batch-log grading logic → `GroupMeetingService.completeGroupMeeting()`; roster pre-fill → `GroupMeetingService.createManual()` + `GroupMemberRepository.findFriendsByGroupId()`; nudge pairing logic → `GroupMeetingService.connectionCandidates()`.
 
-## Connection flow — record-only, no scheduling
+## Connection flow — schedule ahead (optional) → log outcome, two modes
 
 ```
 ConnectionMeetingService.logConnectionMeeting(ConnectionMeetingRequest{friend1Id, friend2Id, date, outcome, note})
   validate: both ids present, outcome present, date present
   normalize to (min(friend1Id,friend2Id), max(...)) — matches ConnectionId's canonical ordering
   lookup Connection by that ConnectionId, 404 if untracked
-  new Meeting{connection, source=MANUAL, status=DONE, date, outcome, note}   — already DONE, not PROPOSED
-  save
-  note present & non-blank?
+
+  MeetingRepository.findFirstByConnectionAndStatusOrderByDateDesc(connection, PROPOSED)
+    found  → TRANSITION: that row's status=DONE, date/outcome/note = this request's — no new
+             Meeting row, no new MeetingAttendee rows (already set when it was scheduled via
+             GroupMeetingService.createManual's connection branch)
+    absent → CREATE-AND-CLOSE: new Meeting{connection, source=MANUAL, status=DONE, date, outcome,
+             note, selfAttending=false}, save, then save 2 MeetingAttendee rows (one per friend)
+             immediately — same reasoning as the createManual connection branch: don't wait for
+             MeetingBackfillRunner's next boot pass to make this row derive as type CONNECTION
+
+  either way: note present & non-blank?
     → ConnectionKnowledgeService.addKnowledge(id1, id2, [new ConnectionsKnowledge{text=note, priority=1}])
        — reuses the existing knowledge-append path, no duplicated logic (same pattern QuickLogModal
          uses for FriendKnowledge)
 ```
 
-Connections are a fixed friend1/friend2 pair by schema (`ConnectionId`, no roster) — there's nothing to batch and nothing to schedule ahead of time, so unlike Friend/Group there's no PROPOSED state: you weren't there to schedule it, only to record what you heard about it after the fact. No FSRS, no `FriendRescheduledEvent`, no `plannedSpeakingTime` touch — confirmed by `ConnectionMeetingServiceTest.logConnectionMeeting_noFsrsOrSchedulingSideEffect()`.
+Connections are a fixed friend1/friend2 pair by schema (`ConnectionId`, no roster) — there's nothing to batch, but as of this flow there *is* something to schedule ahead of time (via `GroupMeetingService.createManual`, above): a `PROPOSED` Connection meeting works the same way Friend/Group's do. `logConnectionMeeting` is purely the "what happened" write — it never creates the `PROPOSED` row itself, only ever finds-and-transitions one if it exists, or falls back to create-and-close for "I never scheduled this, just record it." No FSRS, no `FriendRescheduledEvent`, no `plannedSpeakingTime` touch in either mode — confirmed by `ConnectionMeetingServiceTest.logConnectionMeeting_noFsrsOrSchedulingSideEffect()`.
 
-To change: `ConnectionMeetingService.logConnectionMeeting()`. `outcome` (`ConnectionOutcome`: `WENT_WELL`/`NEUTRAL`/`TENSE`) and `note` are both nullable/optional on the `Meeting` entity and only ever populated on CONNECTION-subject rows — unused by Friend/Group rows.
+Both `logConnectionMeeting` and `createManual`'s connection branch independently require an already-tracked `Connection` row for the pair (404 otherwise) — scheduling ahead is still about a pair the app already tracks, just not yet contacted; it does not create a new `Connection`.
+
+To change: `ConnectionMeetingService.logConnectionMeeting()`; which mode wins → the `findFirstByConnectionAndStatusOrderByDateDesc` lookup at the top of that method. `outcome` (`ConnectionOutcome`: `WENT_WELL`/`NEUTRAL`/`TENSE`) and `note` are both nullable/optional on the `Meeting` entity and only ever populated on CONNECTION-subject rows — unused by Friend/Group rows.
 
 ## Read side
 
@@ -215,11 +247,11 @@ Every query method routes through `MeetingQueryService.toDtos()`, which loads ea
 | `GET /meetings/thisWeek?weekOffset=` | query | `MeetingQueryService.thisWeek()` |
 | `GET /meetings/friend/{friendId}` | query | `MeetingQueryService.upcomingForFriend()` |
 | `GET /meetings/group/{groupId}` | query | `MeetingQueryService.forGroup()` |
-| `POST /meetings/manual` | write | `GroupMeetingService.createManual()` |
+| `POST /meetings/manual` | write | `GroupMeetingService.createManual()` — Friend, Group, or Connection |
 | `GET /meetings/{meetingId}/attendees` | query | `MeetingAttendeeRepository.findByMeetingId()` |
 | `POST /meetings/{meetingId}/complete` | write | `GroupMeetingService.completeGroupMeeting()` |
 | `GET /meetings/{meetingId}/connection-candidates` | query | `GroupMeetingService.connectionCandidates()` |
-| `POST /meetings/connection` | write | `ConnectionMeetingService.logConnectionMeeting()` |
+| `POST /meetings/connection` | write | `ConnectionMeetingService.logConnectionMeeting()` — transitions an existing `PROPOSED` row to `DONE`, or create-and-close if none exists |
 | `PATCH /meetings/{meetingId}` | write | `MeetingEditService.updateMeeting()` — the unified edit surface; also what `CalendarBoard`'s drag-and-drop reschedule calls, sending just a changed `date` with everything else unchanged |
 | `PATCH /meetings/{meetingId}/cancel` | write | `MeetingEditService.cancelMeeting()` |
 | `POST /meetings/group-match-preview` | query | `MeetingEditService.previewGroupMatch()` → `GroupMatchingService.findCandidates()` |
@@ -245,6 +277,8 @@ MeetingBackfillRunner (ApplicationRunner, runs once every boot)
 
 Idempotent (checks existence first), safe on every boot — same `ddl-auto: update` reconcile-at-startup convention as `friend`'s `FsrsBackfillRunner`. Seeds `Meeting` rows for friends/data that predate this module's existence, **and separately** backfills `MeetingAttendee` rows + `selfAttending` for every `Meeting` row that predates the attendee-list-driven edit model — every pre-existing Friend-subject row becomes 1 attendee with `selfAttending=true` (unchanged from its actual prior behavior), every pre-existing Connection-subject row becomes its 2 attendees with `selfAttending=false` retrofitted onto it. `Meeting.selfAttending`'s column has a DB-level `columnDefinition = "boolean default true"` (not just a Java-side default) so `ddl-auto: update`'s `ALTER TABLE` on an already-populated table backfills every existing row to `true` at the SQL level first — this runner then specifically flips the Connection rows to `false`, since they need the opposite of the DB default.
 
+Both live Connection-meeting write paths (`GroupMeetingService.createManual`'s connection branch and `ConnectionMeetingService.logConnectionMeeting`'s create-and-close branch) now fill in their 2 `MeetingAttendee` rows + `selfAttending=false` themselves, at write time — this runner's `meeting.connection != null` branch exists purely as a legacy-data safety net for rows written before that was true (or by some future direct-write path that bypasses both services), not as the primary mechanism anymore.
+
 ## Wiring: `/meetings` → `/api/meetings/**` → nginx
 
 `MeetingController` maps its own paths at plain `/meetings` (e.g. `/meetings/thisWeek`), same convention as `chrono`/`backup`. Two more pieces make that reachable at `/api/meetings/**` from the browser:
@@ -261,7 +295,8 @@ To change the public URL prefix: `PathPrefixConfig.configurePathMatch()`. To cha
 - **The FK fields can silently go stale relative to the attendee list.** `MeetingEditService` is the only writer that keeps friend/group/connection in sync with the derived type — any future direct write to `Meeting` (a script, a different service, a raw repository `save()`) that touches attendees without also calling through `MeetingEditService`'s resolution logic will leave the FK columns pointing at the wrong thing, or stale-but-present after attendees changed underneath them. Treat `MeetingEditService.updateMeeting()` as the only correct way to change who's on a meeting.
 - **`GroupMatchingService.score()` does a full `SocialGroupRepository.findAll()` plus one `GroupMemberService.getFriendsByGroupId()` call per group, on every match/preview call** — no caching, recomputed from scratch each time (matches the live-preview use case in the edit modal, which needs fresh data as the user edits attendees). Fine at dozens-of-groups scale; would need rethinking if the group count grows into the hundreds and the preview is called on every keystroke.
 - **`Friend.plannedSpeakingTime` is a deliberate, temporary dual-write.** Every FSRS-driven write (bridge upsert, group batch-log) updates both the `Friend` column and the `Meeting` row. Nothing currently enforces they stay in sync beyond both being written in the same logical operation — if one write path is ever changed without the other, they will silently drift. Retire the `Friend` column only once every reader queries `Meeting` instead (tracked as a known follow-up, not done yet).
-- **Composite FK into `Connection`** (`connection_friend1_id`/`connection_friend2_id` via `@JoinColumns`) mirrors `ConnectionId`'s own embedded composite key. Every lookup into `Connection` from this module must first normalize to `(min(id1,id2), max(id1,id2))` — `ConnectionMeetingService.logConnectionMeeting()` and `GroupMeetingService.connectionCandidates()` both do this by hand; there's no shared helper for it in this module, so a new call site must remember the same normalization or it will silently miss existing rows (Connection is undirected but stored with a canonical low/high ordering).
+- **Composite FK into `Connection`** (`connection_friend1_id`/`connection_friend2_id` via `@JoinColumns`) mirrors `ConnectionId`'s own embedded composite key. Every lookup into `Connection` from this module must first normalize to `(min(id1,id2), max(id1,id2))` — `ConnectionMeetingService.logConnectionMeeting()`, `GroupMeetingService.createManual()`'s connection branch, and `GroupMeetingService.connectionCandidates()` all do this by hand; there's no shared helper for it in this module, so a new call site must remember the same normalization or it will silently miss existing rows (Connection is undirected but stored with a canonical low/high ordering).
+- **A Connection pair can end up with more than one `PROPOSED` row** if `createManual`'s connection branch is called twice for the same pair before either is logged — nothing server-side dedupes this (same "no dedupe, client's job" contract `POST /meetings/manual` already has for Group, see its own doc comment). `findFirstByConnectionAndStatusOrderByDateDesc` picks the most-recently-dated one to transition if that happens; the other(s) stay `PROPOSED` and orphaned until manually cancelled or logged separately. No UI currently calls this connection branch (see `flows/meeting-scheduling.md` for the frontend surface, which doesn't yet expose a "schedule a connection meeting ahead" entry point — only the backend capability landed).
 - **No message queue anywhere in this module.** All cross-module communication is either an in-process Spring event (`FriendRescheduledEvent`) or a direct repository call (`group`/`connections` repositories, since `meeting` is allowed to depend on them). If a future requirement needs guaranteed delivery across the bridge, that's a structural change (e.g. RabbitMQ), not a tweak to `MeetingService`.
 - **Birthday leap-day handling**: `nextOccurrence()` relies on `LocalDate.withYear()`'s own Feb-29-in-a-non-leap-year clamp-to-Feb-28 behavior — not custom logic. Verify this is still the desired behavior if `java.time` semantics ever change (they won't, but it's worth knowing this isn't hand-rolled).
 
@@ -275,11 +310,13 @@ To change the public URL prefix: `PathPrefixConfig.configurePathMatch()`. To cha
 | Boot-time backfill for legacy friends | `MeetingBackfillRunner` |
 | What triggers the Friend→Meeting bridge | `OutboxWriteService` (friend module) — only publisher of `FriendRescheduledEvent` |
 | How the bridge is consumed | `MeetingService.onFriendRescheduled()` (`@TransactionalEventListener(AFTER_COMMIT)`) |
-| MANUAL meeting creation (Friend or Group) | `GroupMeetingService.createManual()` |
+| MANUAL meeting creation (Friend, Group, or Connection) | `GroupMeetingService.createManual()` |
 | Group roster pre-fill | `GroupMeetingService.createManual()` + `GroupMemberRepository.findFriendsByGroupId()` |
+| Connection scheduled-ahead attendee-row fill | `GroupMeetingService.createManual()`'s connection branch |
 | Group batch-log grading / presence semantics | `GroupMeetingService.completeGroupMeeting()` |
 | Group→Connections nudge pairing | `GroupMeetingService.connectionCandidates()` |
-| Connection meeting logging / outcome / knowledge-append | `ConnectionMeetingService.logConnectionMeeting()` |
+| Connection meeting logging / outcome / knowledge-append / PROPOSED→DONE transition | `ConnectionMeetingService.logConnectionMeeting()` |
+| Finding a Connection pair's open scheduled-ahead row | `MeetingRepository.findFirstByConnectionAndStatusOrderByDateDesc()` |
 | Week-board / upcoming-meetings queries | `MeetingQueryService` |
 | Meeting type derivation rules (FRIEND/GROUP/CONNECTION) | `MeetingTypeDeriver.derive()` |
 | The unified edit surface (attendees/selfAttending/date/time/location/subject resolution) | `MeetingEditService.updateMeeting()` |
