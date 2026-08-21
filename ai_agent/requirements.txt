@@ -19,3 +19,5 @@ ortools>=9.10
 # In-process MCP tools (knowledgeMCP/knowledgeMCP.py runs as a stdio subprocess)
 fastmcp
 requests
+# Async-native RabbitMQ client — services/rabbitmq_consumer.py (knowledge.chunk.trigger queue)
+aio-pika>=9.4.0

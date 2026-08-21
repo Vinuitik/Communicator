@@ -17,6 +17,7 @@ from services.knowledge_cache_service import KnowledgeCacheService
 from services.fact_validation_service import FactValidationService
 from services.fact_service import FactService
 from services.knowledge_service import KnowledgeService
+from services.rabbitmq_consumer import KnowledgeChunkConsumer
 
 # Repository imports
 from repositories.redis_repository import RedisRepository
@@ -42,6 +43,7 @@ _search_service = None
 _fact_service = None
 _knowledge_service = None
 _prompt_service = None
+_knowledge_chunk_consumer = None
 
 # Repository instances
 _redis_repo: RedisRepository | None = None
@@ -293,6 +295,25 @@ async def get_chunking_service(
         logger.debug("Returning existing chunking service instance")
     
     return _chunking_service
+
+
+async def get_knowledge_chunk_consumer(
+    chunking_service: ChunkingService = Depends(get_chunking_service)
+) -> KnowledgeChunkConsumer:
+    """Get the shared KnowledgeChunkConsumer instance (RabbitMQ consumer for the
+    knowledge.chunk.trigger queue). Does NOT start it — main.py's startup_event calls
+    .start() explicitly, same manual-DI-chain pattern it already uses to build
+    AgentService before FastAPI's own Depends() resolution is available."""
+    global _knowledge_chunk_consumer
+    logger.debug("Getting knowledge chunk consumer instance")
+
+    if _knowledge_chunk_consumer is None:
+        logger.info("Initializing new knowledge chunk consumer instance")
+        _knowledge_chunk_consumer = KnowledgeChunkConsumer(chunking_service)
+    else:
+        logger.debug("Returning existing knowledge chunk consumer instance")
+
+    return _knowledge_chunk_consumer
 
 
 async def get_search_service(

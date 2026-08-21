@@ -2,8 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import chat, knowledge, search, settings as settings_router
 from models.schemas import HealthResponse
-from dependencies.deps import get_agent_service, get_llm_settings_repository, get_postgres_repository
+from dependencies.deps import (
+    get_agent_service, get_llm_settings_repository, get_postgres_repository,
+    get_embedding_service, get_chunking_service, get_knowledge_chunk_consumer,
+)
 from config.settings import settings
+import asyncio
 import logging
 import sys
 import os
@@ -66,10 +70,31 @@ async def startup_event():
         logger.error(f"Failed to start AI Agent Service: {e}", exc_info=True)
         raise
 
+    # Knowledge chunk-trigger RabbitMQ consumer (knowledge.chunk.trigger queue) — started
+    # as a background task, NOT awaited inline like the agent chain above. Unlike MCP init
+    # (which fails startup hard if it can't init), a RabbitMQ outage must not delay or block
+    # ai-agent becoming ready to serve chat/summarize, which don't depend on this queue at
+    # all — KnowledgeChunkConsumer.start() already retries internally and degrades to a loud
+    # log rather than raising, so it's safe to fire-and-forget here.
+    try:
+        embedding_service = await get_embedding_service()
+        chunking_service = await get_chunking_service(embedding_service, postgres_repo)
+        knowledge_chunk_consumer = await get_knowledge_chunk_consumer(chunking_service)
+        asyncio.create_task(knowledge_chunk_consumer.start())
+        logger.info("Knowledge chunk-trigger consumer connect task scheduled")
+    except Exception as e:
+        logger.error(f"Failed to schedule knowledge chunk-trigger consumer: {e}", exc_info=True)
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
     logger.info("Shutting down AI Agent Service...")
+    try:
+        consumer = await get_knowledge_chunk_consumer(await get_chunking_service(
+            await get_embedding_service(), await get_postgres_repository()))
+        await consumer.stop()
+    except Exception as e:
+        logger.warning(f"Error stopping knowledge chunk-trigger consumer: {e}")
 
 # Include routers
 app.include_router(chat.router)
