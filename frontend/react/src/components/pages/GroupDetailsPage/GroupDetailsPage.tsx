@@ -11,7 +11,7 @@ import {
   getGroupPermissions, addGroupPermission, deleteGroupPermission, deleteGroup,
 } from '../../../services/api/groupService';
 import { getGroupFriends, addFriendsToGroup, removeFriendFromGroup, getShortFriendList } from '../../../services/api/friendService';
-import { getGroupMeetings, createManualMeeting, getConnectionCandidates } from '../../../services/api/groupMeetingService';
+import { getGroupMeetings, createManualGroupMeeting, getConnectionCandidates } from '../../../services/api/groupMeetingService';
 import { Group, KnowledgeCrudItem, Friend, ShortFriend, MeetingDTO, ConnectionCandidateDTO } from '../../../types/api';
 import { ROUTES, profilePath } from '../../../utils/constants';
 import { avatarColor } from '../../../utils/avatar';
@@ -201,7 +201,7 @@ const GroupDetailsPage: React.FC = () => {
     try {
       const existing = await getGroupMeetings(groupId);
       const pending = existing.find((m) => m.status === 'PROPOSED');
-      const meeting = pending ?? await createManualMeeting({
+      const meeting = pending ?? await createManualGroupMeeting({
         groupId,
         date: new Date().toISOString().slice(0, 10),
         note: null,

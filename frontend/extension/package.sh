@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-OUT="../nginx/static/downloads/communicator-extension.zip"
+OUT="../../infra/nginx/static/downloads/communicator-extension.zip"
 rm -f "$OUT"
 zip -r "$OUT" . -x ".*" -x "package.sh" -x "*.md" \
   -x "manifest.firefox.overlay.json" -x "build-firefox-extension.sh" -x "deploy-extension.sh"

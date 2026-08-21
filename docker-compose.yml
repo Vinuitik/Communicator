@@ -220,7 +220,7 @@ services:
 
   react-ui:
      build:
-       context: ./react
+       context: ./frontend/react
        dockerfile: Dockerfile
      container_name: react-ui
      expose:

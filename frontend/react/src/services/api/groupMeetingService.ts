@@ -14,7 +14,7 @@ const API_URL = API_BASE.MEETINGS;
 // For a group, the backend auto-creates a MeetingAttendee row (present=true)
 // for every current member. Callers should check getGroupMeetings first —
 // this does not dedupe against an existing PROPOSED meeting itself.
-export const createManualMeeting = async (payload: ManualMeetingRequest): Promise<MeetingDTO> => {
+export const createManualGroupMeeting = async (payload: ManualMeetingRequest): Promise<MeetingDTO> => {
     const response = await fetch(`${API_URL}/manual`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -49,7 +49,7 @@ const profile: FriendProfileData = {
   mainPhotoName: null,
 };
 
-const groupList: GroupListResponse = { groups: [] };
+const groupList: GroupListResponse = { success: true, groups: [], knowledgeCounts: {}, permissionCounts: {} };
 
 const meeting = (overrides: Partial<MeetingDTO>): MeetingDTO => ({
   id: 1,

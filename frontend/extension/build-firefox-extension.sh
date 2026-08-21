@@ -18,7 +18,7 @@
 #
 # Run after any edit to extension/, then in Firefox:
 #   about:debugging#/runtime/this-firefox -> Load Temporary Add-on -> pick
-#   extension-firefox/manifest.json
+#   frontend/extension-firefox/manifest.json
 # (This is a per-session load — it disappears on browser restart until the
 # extension is signed via AMO. That's the next step, not done yet.)
 #
@@ -43,4 +43,4 @@ rm -f "$OUT/manifest.firefox.overlay.json" "$OUT/build-firefox-extension.sh" "$O
 jq -s '.[0] + .[1]' "$SRC/manifest.json" "$SRC/manifest.firefox.overlay.json" > "$OUT/manifest.json"
 
 echo "Firefox extension ready: $OUT"
-echo "Load it: about:debugging#/runtime/this-firefox -> Load Temporary Add-on -> select extension-firefox/manifest.json"
+echo "Load it: about:debugging#/runtime/this-firefox -> Load Temporary Add-on -> select frontend/extension-firefox/manifest.json"

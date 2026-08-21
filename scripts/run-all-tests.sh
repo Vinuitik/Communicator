@@ -86,11 +86,11 @@ for svc in services/ai_agent services/host-wrapper services/embedder services/re
 done
 
 # ── React ──
-tests_found="$(find_test_files react/src "*.test.ts" "*.test.tsx")"
+tests_found="$(find_test_files frontend/react/src "*.test.ts" "*.test.tsx")"
 if [ -z "$tests_found" ]; then
     SUMMARY+=("[SKIP] react (no test files)")
 else
-    run_component "react" bash -c "cd react && npm install --no-audit --no-fund && CI=true npm test -- --watchAll=false"
+    run_component "react" bash -c "cd frontend/react && npm install --no-audit --no-fund && CI=true npm test -- --watchAll=false"
 fi
 
 # ── Whole-system E2E: offline-outbox sync engine ──

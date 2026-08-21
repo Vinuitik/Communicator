@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # One-command Firefox extension deploy: edit code → run this → Firefox auto-updates.
 #
-# Pipeline: bump patch version → build extension-firefox/ → sign via AMO (unlisted,
+# Pipeline: bump patch version → build ../extension-firefox/ → sign via AMO (unlisted,
 # in a throwaway node container) → publish the signed .xpi + a regenerated
-# updates.json into ../ext-dist/, which nginx serves at /ext/. The installed add-on
+# updates.json into ../../ext-dist/, which nginx serves at /ext/. The installed add-on
 # polls .../ext/updates.json (its gecko.update_url) and upgrades itself — no manual
 # "Install Add-on From File" after the first time.
 #
@@ -28,18 +28,19 @@
 #   * --timeout=240000 keeps the signing JWT under AMO's 5-min exp cap (sign-addon#1273).
 #   * AMO refuses a duplicate version, so the patch bump is mandatory each run.
 #   * The node container runs as YOU (--user) so artifacts aren't root-owned;
-#     the npx/web-ext download is cached in ../.web-ext-cache to keep re-signs fast.
+#     the npx/web-ext download is cached in ../../.web-ext-cache to keep re-signs fast.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 cd "$ROOT_DIR"
 
-MANIFEST="extension/manifest.firefox.overlay.json"
+MANIFEST="frontend/extension/manifest.firefox.overlay.json"
 EXT_ID="communicator-extension@communicator.work"
 BASE_URL="https://communicator.work/ext"
 DIST="ext-dist"
+EXT_FIREFOX="frontend/extension-firefox"
 
 # AMO creds: prefer a value already exported in the shell, otherwise pull it from
 # .env. We read ONLY these two keys (not `source .env`) because .env holds values
@@ -64,17 +65,17 @@ echo "▶ version $CUR → $NEW"
 
 # ── 2. build the Firefox-loadable folder from extension/ ─────────────────────
 bash "$SCRIPT_DIR/build-firefox-extension.sh" >/dev/null
-echo "▶ built extension-firefox/"
+echo "▶ built $EXT_FIREFOX/"
 
 # ── 3. sign via AMO (unlisted) in a throwaway node container ─────────────────
-rm -rf extension-firefox/web-ext-artifacts
+rm -rf "$EXT_FIREFOX/web-ext-artifacts"
 # Pre-create the cache dir as us — otherwise Docker auto-creates a missing bind
 # mount source as root, and the container's non-root --user then can't write to it.
 mkdir -p "$ROOT_DIR/.web-ext-cache"
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   -e HOME=/tmp -e AMO_KEY -e AMO_SECRET \
-  -v "$ROOT_DIR/extension-firefox":/ext -w /ext \
+  -v "$ROOT_DIR/$EXT_FIREFOX":/ext -w /ext \
   -v "$ROOT_DIR/.web-ext-cache":/tmp/.npm \
   node:20-alpine \
   npx --yes web-ext@latest sign \
@@ -83,7 +84,7 @@ docker run --rm \
   --api-key="$AMO_KEY" \
   --api-secret="$AMO_SECRET"
 
-XPI=$(ls -t extension-firefox/web-ext-artifacts/*.xpi 2>/dev/null | head -1 || true)
+XPI=$(ls -t "$EXT_FIREFOX"/web-ext-artifacts/*.xpi 2>/dev/null | head -1 || true)
 [ -n "$XPI" ] || {
   echo "✖ no .xpi produced — signing failed (see output above)"
   exit 1
