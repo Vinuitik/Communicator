@@ -32,7 +32,9 @@ export async function isAvailable(): Promise<boolean> {
 
 export interface MailboxRequest {
   requestId: string;
-  kind: 'talkedToFriend' | 'addFriend' | 'addKnowledge';
+  // Opaque, same as db.ts's QueuedIntent.kind post-registry-refactor — the mailbox relay
+  // just serializes whatever kind outbox.ts hands it, never branches on it itself.
+  kind: string;
   friendId?: number;
   payload: unknown;
 }
@@ -76,5 +78,46 @@ async function uploadToMailbox(accessToken: string, folderId: string, name: stri
   });
   if (!resp.ok) {
     throw new Error(`Drive upload failed: ${resp.status}`);
+  }
+}
+
+// Filename BundleExportService (services/backup) writes the read-tier snapshot bundle
+// under — same folder as the mailbox (bridge.mailboxFolderId), different name, so the two
+// never collide. See docs/designs/offline-pwa-plan.md's T0 section for the bundle shape.
+const BUNDLE_FILE_NAME = 'offline-bundle.json.enc';
+
+// Read-tier counterpart to pushBatch() above — used only by drivePull.ts, only when both
+// the server AND the local `cache` store have missed. Returns null (not a throw) for every
+// "nothing to pull" case (no bridge, file not found, request failed) so callers can treat
+// it as a plain cache miss rather than an error.
+export async function pullBundle(): Promise<Uint8Array | null> {
+  const bridge = await getBridge();
+  if (!bridge) return null;
+
+  let listResp: Response;
+  try {
+    listResp = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        `name='${BUNDLE_FILE_NAME}' and '${bridge.mailboxFolderId}' in parents and trashed=false`,
+      )}&fields=files(id)`,
+      { headers: { Authorization: `Bearer ${bridge.accessToken}` } },
+    );
+  } catch {
+    return null;
+  }
+  if (!listResp.ok) return null;
+
+  const { files } = (await listResp.json()) as { files?: { id: string }[] };
+  const fileId = files?.[0]?.id;
+  if (!fileId) return null;
+
+  try {
+    const fileResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${bridge.accessToken}` },
+    });
+    if (!fileResp.ok) return null;
+    return new Uint8Array(await fileResp.arrayBuffer());
+  } catch {
+    return null;
   }
 }

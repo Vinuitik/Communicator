@@ -14,6 +14,11 @@ async function importKey(keyBase64: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt']);
 }
 
+async function importDecryptKey(keyBase64: string): Promise<CryptoKey> {
+  const raw = Uint8Array.from(atob(keyBase64), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+}
+
 async function gzip(data: Uint8Array): Promise<Uint8Array> {
   const cs = new CompressionStream('gzip');
   const writer = cs.writable.getWriter();
@@ -21,6 +26,15 @@ async function gzip(data: Uint8Array): Promise<Uint8Array> {
   writer.close();
   const compressed = await new Response(cs.readable).arrayBuffer();
   return new Uint8Array(compressed);
+}
+
+async function gunzip(data: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  writer.write(data);
+  writer.close();
+  const decompressed = await new Response(ds.readable).arrayBuffer();
+  return new Uint8Array(decompressed);
 }
 
 export async function encryptJson(keyBase64: string, value: unknown): Promise<Uint8Array> {
@@ -35,4 +49,19 @@ export async function encryptJson(keyBase64: string, value: unknown): Promise<Ui
   out.set(iv, 0);
   out.set(new Uint8Array(ciphertext), iv.length);
   return out;
+}
+
+// Inverse of encryptJson() — used by drivePull.ts to read the read-tier snapshot bundle
+// BundleExportService (services/backup) writes server-side. Same wire format, no version
+// negotiation: [12B IV][ciphertext + 16B GCM tag], decrypt then gunzip then JSON.parse.
+// Throws on any mismatch (wrong key, truncated/corrupt bytes) — callers treat that as a
+// cache miss, not a crash (see drivePull.ts's pullFromDrive()).
+export async function decryptJson<T = unknown>(keyBase64: string, bytes: Uint8Array): Promise<T> {
+  const key = await importDecryptKey(keyBase64);
+  const iv = bytes.slice(0, 12);
+  const ciphertext = bytes.slice(12);
+  const compressed = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, ciphertext);
+  const decompressed = await gunzip(new Uint8Array(compressed));
+  const text = new TextDecoder().decode(decompressed);
+  return JSON.parse(text) as T;
 }
