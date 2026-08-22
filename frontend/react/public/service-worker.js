@@ -29,13 +29,15 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v4'; // v3 fixed handleNavigate()'s unhandled Cache Storage rejection but
-// COULD NOT ACTUALLY INSTALL under quota exhaustion: the install handler's own
-// cache.addAll() had no error handling, so a failed precache rejected waitUntil() and
-// the spec discards a service worker whose install fails — v3 was stuck retrying
-// forever, never activating, same as the v2 it was meant to replace. v4 fixes the
-// install/activate handlers to degrade instead of failing outright, so this can
-// actually take over even while Cache Storage is still over quota.
+const VERSION = 'v5'; // v5: removed the unconditional self.skipWaiting() in install().
+// Every prior version force-activated the instant it finished downloading — mid-
+// session, on ANY open tab, with zero user say in it (compounded by NavigationBar
+// polling checkForUpdate() on every tab-focus). That's a real failure mode: an
+// update can silently take over while the server happens to be mid-restart from an
+// unrelated deploy, leaving a blank page with no explanation. Now installs sit
+// WAITING until a client explicitly posts {type:'SKIP_WAITING'} — see the
+// 'message' listener below and src/pwa/registerSW.ts's applyUpdate(), which is the
+// only thing allowed to call that, and only from a user click.
 const SHELL_CACHE = `communicator-shell-${VERSION}`;
 const MEDIA_CACHE = 'communicator-media'; // unversioned: media doesn't change once uploaded
 
@@ -56,8 +58,22 @@ self.addEventListener('install', (event) => {
     caches.open(SHELL_CACHE)
       .then((c) => c.addAll(SHELL_URLS))
       .catch((e) => console.error('[SW] shell precache failed during install (quota?) — installing anyway, navigation will fall back to network-only until Cache Storage frees up', e))
-      .then(() => self.skipWaiting())
   );
+  // Deliberately NO self.skipWaiting() here. A new SW used to take over every open
+  // tab the instant it finished downloading — mid-session, with no user say in it —
+  // which is exactly the failure mode this app should never have: an update silently
+  // activates while the user is mid-flow (or while the server happens to be mid-restart
+  // from a deploy), the tab's already-loaded JS and the newly-active SW disagree about
+  // something, and the result is a blank/white page with no explanation. Now the new
+  // worker installs and sits in the WAITING state until the client explicitly asks it
+  // to activate (see the 'message' listener below) — same UX contract as most real
+  // software: download in the background, apply on click.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Logo from '../../atoms/Logo';
 import { ROUTES } from '../../../utils/constants';
-import { onUpdateAvailable, checkForUpdate, reloadApp } from '../../../pwa/registerSW';
+import { onUpdateAvailable, checkForUpdate, applyUpdate } from '../../../pwa/registerSW';
 import { useToast } from '../../molecules/Toast';
 
 // Redesign IA (see design_handoff_friends_tracker/README.md): 5 destinations
@@ -53,12 +53,13 @@ const NavigationBar: React.FC = () => {
   const { showToast } = useToast();
   const [updateAvailable, setUpdateAvailable] = useState(false);
 
-  // A new service-worker version has taken over the page — surface a
-  // persistent refresh affordance (not just a toast, which auto-dismisses)
-  // since the user may not be looking at the screen when it fires.
+  // A new service-worker version finished downloading and is waiting — NOT active
+  // yet. Surface a persistent refresh affordance (not just a toast, which
+  // auto-dismisses) since the user may not be looking at the screen when it fires.
+  // It only takes over once the button below is actually clicked (applyUpdate).
   useEffect(() => onUpdateAvailable(() => {
     setUpdateAvailable(true);
-    showToast('Update available — tap refresh to get the latest version.');
+    showToast('Update available — tap refresh to install it.');
   }), [showToast]);
 
   // Nudge the browser to re-check for a new service-worker version whenever
@@ -110,8 +111,8 @@ const NavigationBar: React.FC = () => {
         {updateAvailable && (
           <button
             type="button"
-            title="Update available — click to refresh"
-            onClick={reloadApp}
+            title="Update available — click to install and refresh"
+            onClick={applyUpdate}
             className="w-[38px] h-[38px] flex items-center justify-center rounded-input border border-accent/40 bg-accent/16 text-accent-light hover:brightness-110 transition-all animate-pulse"
           >
             <RefreshIcon />

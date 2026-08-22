@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { onInstallChange, promptInstall, isIOS, isFirefox, InstallState } from '../../../pwa/installPrompt';
-import { onUpdateAvailable, checkForUpdate, reloadApp } from '../../../pwa/registerSW';
+import { onUpdateAvailable, checkForUpdate, applyUpdate } from '../../../pwa/registerSW';
 
 // Desktop installer for the browser extension. Absolute paths, not routed through
 // react-router — nginx serves them straight off disk (see nginx/nginx.conf's
@@ -42,8 +42,10 @@ const GetAppPage: React.FC = () => {
   async function handleCheckForUpdate() {
     setChecking(true);
     await checkForUpdate();
-    // The service worker's controllerchange (which flips updateAvailable) fires
-    // asynchronously after this — give it a beat before re-enabling the button.
+    // Downloading + installing (registerSW.ts's 'installed' statechange, which
+    // flips updateAvailable) happens asynchronously after this resolves — give it
+    // a beat before re-enabling the button. This only downloads; the update still
+    // waits for an explicit applyUpdate() click, same as if it were caught passively.
     setTimeout(() => setChecking(false), 1500);
   }
 
@@ -115,12 +117,12 @@ const GetAppPage: React.FC = () => {
 
         <Card badge="Installed app" title="Keep it updated">
           <p className="text-text-muted text-sm mb-3">
-            Updates install in the background the next time you open the app, but a phone or
-            laptop that's rarely closed can sit on an old version for a while. A pulsing refresh
-            icon appears in the nav when one's ready — or check right here.
+            New versions download in the background but never apply themselves — you're always
+            in control of when the app actually switches over. A pulsing refresh icon appears in
+            the nav once one's ready to install; click it (or the button below) whenever suits you.
           </p>
           {updateAvailable ? (
-            <button className={primaryButtonClasses} onClick={reloadApp}>Refresh to update</button>
+            <button className={primaryButtonClasses} onClick={applyUpdate}>Refresh to update</button>
           ) : (
             <button
               className="inline-block px-4 py-2 rounded-input text-sm font-bold bg-input border border-white/10 text-text-secondary hover:text-text-emphasis disabled:opacity-50 transition-colors"

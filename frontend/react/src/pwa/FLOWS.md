@@ -141,6 +141,47 @@ own. `To change the bundle shape: both this file's OfflineBundle interface AND
 BundleExportService (services/backup) move together — see docs/designs/offline-pwa-plan.md's
 T0 section for the agreed JSON shape.`
 
+## Flow — update detection + click-to-apply (registerSW.ts)
+Files: `registerSW.ts`, `../../public/service-worker.js` (`message` listener),
+`components/organisms/NavigationBar/NavigationBar.tsx`, `components/pages/GetAppPage/GetAppPage.tsx`.
+
+**A new SW version never takes over on its own.** Every version through `v4` called
+`self.skipWaiting()` unconditionally in `install` — the instant a new version finished
+downloading, it silently activated on EVERY open tab, mid-session, with zero user
+say in it. Combined with `NavigationBar`'s `checkForUpdate()` polling on every
+tab-focus, a user could get silently switched to a new version just by alt-tabbing
+back. Confirmed failure mode: a tab got taken over right as an unrelated deploy had
+the backend mid-restart, the newly-active SW's next navigation hit a dead origin
+with nothing useful cached, and the user saw a blank white page with zero
+explanation. `v5` removed the unconditional `skipWaiting()` — updates now download
+and sit **waiting**, same UX contract as most real software (download in background,
+apply on click).
+
+```
+registerServiceWorker() [index.tsx, on every page load]
+  → navigator.serviceWorker.register(...)
+  → checks registration.waiting immediately (another tab may have already
+    finished a download while this tab was closed) → notify if present
+  → watches registration.installing / 'updatefound' → tracks the installing
+    worker's statechange → 'installed' AND navigator.serviceWorker.controller
+    already exists (i.e. NOT the very first install) → onUpdateAvailable fires
+
+NavigationBar / GetAppPage subscribe via onUpdateAvailable()
+  → pulsing refresh icon / "Refresh to update" button appears
+  → user clicks → applyUpdate()
+      → registration.waiting.postMessage({type:'SKIP_WAITING'})
+      → service-worker.js's 'message' listener → self.skipWaiting()
+      → activate → clients.claim() → controllerchange fires
+      → applyUpdate()'s one-time controllerchange listener → window.location.reload()
+```
+`To add a new update-UI surface: subscribe to onUpdateAvailable(cb), call
+applyUpdate() on click — never reloadApp() for this (that's a plain unconditional
+reload with no update semantics, kept for other troubleshooting call sites only).`
+
+`checkForUpdate()` (still proactive, unchanged) only forces `registration.update()`
+— re-fetches `service-worker.js` and starts a download if the bytes differ. It never
+applies anything; that's still gated entirely behind a user's `applyUpdate()` click.
+
 ## Encryption — must match the server byte-for-byte
 `crypto.ts`'s `encryptJson()`: gzip → AES-256-GCM (random 12B IV) → `[IV][ciphertext+tag]`.
 Must exactly match `backup/.../EncryptionService.java`'s `decrypt()` — no version negotiation,
@@ -320,3 +361,7 @@ full round trip:
 | SW cache-bust after any SW logic change | `../../public/service-worker.js` `VERSION` const |
 | Share landing page UI / friend-picker step | `components/pages/ShareLandingPage/ShareLandingPage.tsx` |
 | blobOutbox drained on reconnect/focus/interval | `outbox.ts`'s `wireAutoFlush()` (calls `blobOutbox.flush()` alongside the JSON outbox's `flush()`) |
+| Whether a new SW auto-activates or waits for a click | `service-worker.js`'s `install` handler (no `self.skipWaiting()`) + `message` listener |
+| Apply a waiting update (user-click only, never proactive) | `registerSW.ts`'s `applyUpdate()` |
+| Update-available detection | `registerSW.ts`'s `watchForWaitingWorker()` / `registerServiceWorker()`'s `updatefound` handling |
+| Update-check polling (download only, doesn't apply) | `NavigationBar.tsx`'s `visibilitychange` → `checkForUpdate()` |
