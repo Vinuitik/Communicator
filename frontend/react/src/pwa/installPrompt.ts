@@ -40,6 +40,12 @@ export function isFirefox(): boolean {
   return window.navigator.userAgent.includes('Firefox');
 }
 
+// Phone vs laptop/desktop — used to hide device-irrelevant sections (e.g. the browser
+// extension card: no mobile browser supports extensions, regardless of engine).
+export function isMobile(): boolean {
+  return isIOS() || /Android|Mobi/i.test(window.navigator.userAgent);
+}
+
 export function state(): InstallState {
   return { canInstall: !!deferred, installed: isStandalone() };
 }

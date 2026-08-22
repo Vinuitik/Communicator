@@ -182,6 +182,19 @@ reload with no update semantics, kept for other troubleshooting call sites only)
 — re-fetches `service-worker.js` and starts a download if the bytes differ. It never
 applies anything; that's still gated entirely behind a user's `applyUpdate()` click.
 
+## Install prompt + device detection (installPrompt.ts)
+Files: `installPrompt.ts`, `components/pages/GetAppPage/GetAppPage.tsx`.
+
+Chrome/Edge fire `beforeinstallprompt` once, early — `installPrompt.ts` stashes it
+(module-level `deferred`) so `GetAppPage`'s button can call `.prompt()` later on a
+user gesture. Firefox/Safari never fire it, so `canInstall` stays false forever
+there; `isIOS()`/`isFirefox()` gate manual "Add to Home Screen" / signed-.xpi copy
+instead. `isMobile()` (`isIOS()` OR `/Android|Mobi/` in the UA) is a separate axis
+from browser detection — `GetAppPage` uses it only to hide the "Browser extension"
+card on phones, since no mobile browser supports extensions regardless of engine.
+None of this reads anything the browser hides — plain `navigator.userAgent` /
+`maxTouchPoints`, same as the existing iOS check.
+
 ## Postmortem — the v3-v7 "ServiceWorker intercepted the request" chain
 Symptom: `Failed to load 'https://communicator.work/app/'. A ServiceWorker intercepted
 the request and encountered an unexpected error.` Took 5 SW versions (v3-v7) and one
@@ -406,6 +419,7 @@ full round trip:
 | SW cache-bust after any SW logic change | `../../public/service-worker.js` `VERSION` const |
 | Share landing page UI / friend-picker step | `components/pages/ShareLandingPage/ShareLandingPage.tsx` |
 | blobOutbox drained on reconnect/focus/interval | `outbox.ts`'s `wireAutoFlush()` (calls `blobOutbox.flush()` alongside the JSON outbox's `flush()`) |
+| Phone-vs-desktop UI branching on Get App page | `installPrompt.ts`'s `isMobile()` |
 | Whether a new SW auto-activates or waits for a click | `service-worker.js`'s `install` handler (no `self.skipWaiting()`) + `message` listener |
 | Apply a waiting update (user-click only, never proactive) | `registerSW.ts`'s `applyUpdate()` |
 | Update-available detection | `registerSW.ts`'s `watchForWaitingWorker()` / `registerServiceWorker()`'s `updatefound` handling |
