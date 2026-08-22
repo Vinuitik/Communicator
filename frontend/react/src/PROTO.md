@@ -30,6 +30,7 @@ index.tsx → App.tsx → <Router basename="/app"><ToastProvider><PageLayout><Ro
   /groups/:id          → GroupDetailsPage (People/Notes/Settings)
   /insights            → InsightsPage    (KPIs, compare chart, needs-attention, AI placeholder)
   /settings            → SettingsPage
+  /bin                 → BinPage         (soft-deleted friends, restore — see [FriendService/BIN_FLOWS.md](../../../../services/friend/src/main/java/communicate/Friend/FriendService/BIN_FLOWS.md))
   /get-app             → GetAppPage      (install as PWA + browser extension download)
   /share               → ShareLandingPage (OS share-sheet → friend-picker → blobOutbox; see pwa/FLOWS.md "Flow — share_target")
 ```
@@ -56,6 +57,9 @@ Files: pages/ProfilePage.tsx, organisms/{TalkedForm,MediaGallery,SocialsPanel,Tr
 ProfilePage → hero (Avatar/name/Last-met/Next/Intensity/Birthday stat row)
             → "Log chat" → QuickLogModal (talkedToFriend, minimal payload, closes+toasts, no navigation)
             → "Edit details" → TalkedForm in a modal (repurposed from its old standalone-page role)
+            → "Delete friend" → ConfirmDialog → removeFriend (soft delete, see
+              services/friend's FriendService/BIN_FLOWS.md) → navigate(ROUTES.FRIENDS). Restore lives
+              on BinPage, not here.
             → Tabs: Overview | Media | Socials | Trends
             → AiChatWidget (floating ✦ button, fixed bottom-right)
 
@@ -214,6 +218,7 @@ uploaded media doesn't change in place.
 | Media gallery (upload/primary/delete/pagination) | `FileController` (Java), `services/api/friendService.ts` media functions, `components/organisms/MediaGallery` |
 | Social/contact links CRUD | `SocialController` (note lowercase `url` wire key despite Java field `URL`), `services/api/friendService.ts` social functions, `components/organisms/SocialsPanel` |
 | Confirm/Toast UI | `components/molecules/{ConfirmDialog,Toast}` |
+| Delete/restore a friend, Bin retention window | `services/api/friendService.ts` (`removeFriend`/`restoreFriend`/`getDeletedFriends`), `components/pages/{ProfilePage,BinPage}` — backend in `services/friend/.../FriendService/BIN_FLOWS.md` |
 | SPA mount path (ingress) | `nginx/nginx.conf` `location /app/` (main nginx) |
 | PWA installability (manifest, icons, theme color) | `public/manifest.json`, `public/index.html` `<link rel="manifest">` |
 | Service worker caching rules | `public/service-worker.js` (`SHELL_URLS`, `isMedia`/`isBuildAsset`/`isAppIcon`) |

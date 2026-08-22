@@ -6,6 +6,8 @@ Protos for mechanics: [friend](PROTO.md) · [chrono](../../../../../../chrono/sr
 
 Deep dive on the scheduler itself (FSRS-6 + Thompson-sampling bandit — the part that actually picks `plannedSpeakingTime`): [FriendService/FLOWS.md](FriendService/FLOWS.md)
 
+**Lifecycle's other end** (the loop above never covers this): [FriendService/BIN_FLOWS.md](FriendService/BIN_FLOWS.md) — deleting a friend is a soft delete into a Bin, restorable for 7 days before a nightly job hard-deletes it for real.
+
 **Sibling flow:** [meeting-scheduling.md](../../../../../../flows/meeting-scheduling.md) covers how this scheduling decision now *surfaces* — the home screen described in Stage 2 below has moved off `plannedSpeakingTime` reads entirely, onto a `Meeting` row per subject (Friend/Group/Connection). This doc still owns the actual scheduling math (Stage 1); meeting-scheduling.md owns the UI-facing week board, Group batch-logging, and Connection outcome logging.
 
 ---
