@@ -31,6 +31,7 @@ index.tsx → App.tsx → <Router basename="/app"><ToastProvider><PageLayout><Ro
   /insights            → InsightsPage    (KPIs, compare chart, needs-attention, AI placeholder)
   /settings            → SettingsPage
   /get-app             → GetAppPage      (install as PWA + browser extension download)
+  /share               → ShareLandingPage (OS share-sheet → friend-picker → blobOutbox; see pwa/FLOWS.md "Flow — share_target")
 ```
 
 Old routes still registered as redirects (bookmarks land somewhere real, nothing links to them anymore): `/calendar`→`/`, `/analytics`→`/insights`, `/friends/:id/talked|knowledge|social`→Profile, `/friends/:id/fileUpload`→Profile (`RedirectToProfile` in App.tsx). To retire a redirect entirely: delete its `<Route>` in App.tsx + the matching `ROUTES.*` key in `utils/constants.ts`.

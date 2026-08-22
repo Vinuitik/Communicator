@@ -14,6 +14,7 @@ import * as friendService from '../services/api/friendService';
 import { isServerReachable } from './connectivity';
 import { enqueue, getAllQueued, QueuedIntent, removeFromOutbox } from './db';
 import * as driveClient from './driveClient';
+import * as blobOutbox from './blobOutbox';
 
 export interface SubmitResult {
   queued: boolean;
@@ -144,24 +145,31 @@ async function keepBridgeWarm(): Promise<void> {
 
 let wired = false;
 
-// Wire-up: one call in src/index.tsx, alongside registerServiceWorker().
+// Wire-up: one call in src/index.tsx, alongside registerServiceWorker(). Drains
+// both the JSON outbox AND blobOutbox (share-target uploads) on the same
+// triggers — a share queued while offline would otherwise never retry, since
+// ShareLandingPage has already navigated away by the time connectivity returns.
 export function wireAutoFlush(): void {
   if (wired) return;
   wired = true;
   window.addEventListener('online', () => {
     void keepBridgeWarm();
     void flush();
+    void blobOutbox.flush();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       void keepBridgeWarm();
       void flush();
+      void blobOutbox.flush();
     }
   });
   window.setInterval(() => {
     void keepBridgeWarm();
     void flush();
+    void blobOutbox.flush();
   }, 60_000);
   void keepBridgeWarm();
   void flush();
+  void blobOutbox.flush();
 }

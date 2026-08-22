@@ -154,8 +154,7 @@ Every write carries a client-generated `crypto.randomUUID()` as `requestId`, sen
 
 ## Flow — share_target (OS share sheet → friend picker)
 Files: `../../public/manifest.json` (`share_target`), `../../public/service-worker.js`
-(`handleShareTarget()`), `shareHandoff.ts`, `components/pages/ShareLandingPage` (owned by a
-different lane — not covered here, see its own FLOWS entry once that PR lands).
+(`handleShareTarget()`), `shareHandoff.ts`, `components/pages/ShareLandingPage/ShareLandingPage.tsx`.
 
 A user shares a photo/video from their phone's OS share sheet into the installed app. This is
 the OS-share half of the feature — deliberately NOT a general capture inbox like
@@ -176,19 +175,27 @@ OS share sheet (image/video)
         (NOT db.ts's 'communicator-offline' — kept separate on purpose, see
         Technology Notes below)
       - 303 redirect → /app/share?shared=1&shareId=<id>
-  → React app boots/routes to ShareLandingPage (registers ROUTES.SHARE = '/share'
-    → full path /app/share, matching the SW's redirect target — that route
-    registration belongs to the ShareLandingPage lane, not this one)
+  → React app boots/routes to ShareLandingPage (components/pages/ShareLandingPage,
+    registered at ROUTES.SHARE = '/share' → full path /app/share, matching the
+    SW's redirect target)
   → ShareLandingPage mount effect: reads `shareId` off the URL query,
     calls shareHandoff.ts's takePendingShare(shareId) ONCE
       - resolves { files, title, text, ts } and DELETES the IndexedDB record
         in the same transaction — this is a one-time hand-off, not a cache
-      - null → no record (e.g. stale/reloaded link) → page should show an
-        empty/error state, not retry
-  → user picks a friend (FriendPicker, built by a different lane)
-  → ShareLandingPage hands the file(s) to blobOutbox for the actual upload
-    (blobOutbox is pwa-foundation's binary queue — out of scope here)
+      - null → no record (e.g. stale/reloaded link) → page shows an
+        "expired or already used" empty state, no retry
+  → user picks a friend (FriendPicker, variant="list" searchable — the same
+    component CreateConnectionForm/MeetingEditModal use, single-select mode)
+  → handleShare(): for each shared file, blobOutbox.enqueue(blob,
+    {friendId, requestId: crypto.randomUUID()}) → one immediate best-effort
+    blobOutbox.flush() (offline/failure just leaves it queued for
+    wireAutoFlush's next trigger, same as any other offline write) → toast +
+    navigate(ROUTES.HOME)
 ```
+`wireAutoFlush()` (outbox.ts, called once from index.tsx) now also drains
+`blobOutbox` on every trigger (online/visibilitychange/60s interval/immediate) —
+without this, a share queued while offline would never retry, since
+ShareLandingPage has already navigated away by the time connectivity returns.
 
 **The hand-off contract** (what the ShareLandingPage lane needs to know):
 - DB name: `communicator-share-handoff`, version `1`, object store `pendingShares`, `keyPath: 'id'`.
@@ -296,3 +303,5 @@ full round trip:
 | Share hand-off read/consume (React side) | `shareHandoff.ts`'s `takePendingShare(id)` |
 | Share hand-off record shape (pure builder, unit-tested) | `shareHandoff.ts`'s `buildPendingShare(form, id)` |
 | SW cache-bust after any SW logic change | `../../public/service-worker.js` `VERSION` const |
+| Share landing page UI / friend-picker step | `components/pages/ShareLandingPage/ShareLandingPage.tsx` |
+| blobOutbox drained on reconnect/focus/interval | `outbox.ts`'s `wireAutoFlush()` (calls `blobOutbox.flush()` alongside the JSON outbox's `flush()`) |

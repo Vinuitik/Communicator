@@ -16,6 +16,7 @@ export const ROUTES = {
   GET_APP: '/get-app',
   INSIGHTS: '/insights',
   REVIEW: '/review',
+  SHARE: '/share',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',
 };
