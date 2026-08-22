@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getShortFriendList } from '../../../services/api/friendService';
-import { ShortFriend } from '../../../types/api';
+import FriendPicker from '../../molecules/FriendPicker';
 
 export interface CreateConnectionFormValues {
   friend1Id: number;
@@ -17,22 +16,10 @@ interface CreateConnectionFormProps {
 
 const CreateConnectionForm: React.FC<CreateConnectionFormProps> = ({ onSubmit, submitting, cancelTo }) => {
   const navigate = useNavigate();
-  const [friends, setFriends] = useState<ShortFriend[]>([]);
-  const [friendsLoading, setFriendsLoading] = useState(true);
-  const [friend1Id, setFriend1Id] = useState<string>('');
-  const [friend2Id, setFriend2Id] = useState<string>('');
+  const [friend1Id, setFriend1Id] = useState<number | null>(null);
+  const [friend2Id, setFriend2Id] = useState<number | null>(null);
   const [description, setDescription] = useState('');
   const [touched, setTouched] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        setFriends(await getShortFriendList());
-      } finally {
-        setFriendsLoading(false);
-      }
-    })();
-  }, []);
 
   const error = !touched ? null
     : !friend1Id || !friend2Id ? 'Pick two friends.'
@@ -43,7 +30,7 @@ const CreateConnectionForm: React.FC<CreateConnectionFormProps> = ({ onSubmit, s
     e.preventDefault();
     setTouched(true);
     if (!friend1Id || !friend2Id || friend1Id === friend2Id) return;
-    onSubmit({ friend1Id: Number(friend1Id), friend2Id: Number(friend2Id), description: description.trim() });
+    onSubmit({ friend1Id, friend2Id, description: description.trim() });
   };
 
   const selectClasses = (hasError: boolean) =>
@@ -57,28 +44,22 @@ const CreateConnectionForm: React.FC<CreateConnectionFormProps> = ({ onSubmit, s
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="friend1" className="mb-1 text-xs font-semibold text-text-muted">First friend</label>
-          <select
-            id="friend1" value={friend1Id}
-            onChange={(e) => setFriend1Id(e.target.value)}
-            disabled={friendsLoading}
+          <FriendPicker
+            id="friend1"
+            value={friend1Id}
+            onChange={setFriend1Id}
             className={selectClasses(!!error)}
-          >
-            <option value="">{friendsLoading ? 'Loading…' : 'Select a friend'}</option>
-            {friends.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          />
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="friend2" className="mb-1 text-xs font-semibold text-text-muted">Second friend</label>
-          <select
-            id="friend2" value={friend2Id}
-            onChange={(e) => setFriend2Id(e.target.value)}
-            disabled={friendsLoading}
+          <FriendPicker
+            id="friend2"
+            value={friend2Id}
+            onChange={setFriend2Id}
             className={selectClasses(!!error)}
-          >
-            <option value="">{friendsLoading ? 'Loading…' : 'Select a friend'}</option>
-            {friends.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
+          />
         </div>
 
         {error && <div className="text-xs text-bad">{error}</div>}
