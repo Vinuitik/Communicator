@@ -59,11 +59,20 @@ missing, but won't re-build an existing stale tag — delete the image first to 
 ## Technology Notes
 
 **Debug-signed APK is intentional, not a shortcut to fix later.** `./gradlew assembleDebug`
-signs with Gradle's auto-generated debug keystore (`~/.android/debug.keystore` inside the
-build container, ephemeral per container unless the volume is reused). This is deliberate:
-the app is distributed by direct APK download + sideload, not the Play Store, so there is no
-Play Integrity check or store-signing requirement to satisfy. A release-signed APK is out of
-scope — see `[NOT IMPLEMENTED]` below.
+signs with Gradle's auto-generated debug keystore. This is deliberate: the app is distributed
+by direct APK download + sideload, not the Play Store, so there is no Play Integrity check or
+store-signing requirement to satisfy. A release-signed APK is out of scope — see
+`[NOT IMPLEMENTED]` below.
+
+**The debug keystore persists across builds — `build.sh` mounts `.android-home/` (gitignored,
+machine-local) to `/root/.android` inside the otherwise-ephemeral `--rm` build container.**
+Without this, every rerun of `build.sh` would auto-generate a *new* debug keystore, and Android
+refuses to install an update over an existing app unless it's signed with the same key — so
+anyone who'd already sideloaded the app would have to fully uninstall before installing the
+next build, losing whatever was in that WebView's local storage (the offline-outbox IndexedDB
+queue) in the process. `To force a fresh signing identity` (e.g. you suspect the keystore is
+corrupted): delete `mobile/capacitor/.android-home/` before rebuilding — but know that this
+breaks updates for anyone already on a build signed with the old key.
 
 **The user must enable "install from unknown sources"** on their Android device before the
 downloaded APK will install — this is standard sideload friction with no workaround short of

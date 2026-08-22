@@ -16,17 +16,28 @@ cd "$(dirname "$0")"
 # whatever worktree this build ran from.
 IMAGE=communicator-android-builder
 OUT_APK="/home/victor/Desktop/Communicator/infra/nginx/static/downloads/communicator.apk"
+# Persisted across runs (gitignored) so the debug keystore Gradle auto-generates
+# on first use doesn't get regenerated with a new key every time this script
+# runs in a fresh --rm container. Android refuses to install an update over an
+# existing app unless it's signed with the same key, so without this, every
+# rebuild would force everyone who already sideloaded the app to fully
+# uninstall first — losing their offline-outbox IndexedDB queue in the process.
+ANDROID_HOME_CACHE="$(pwd)/.android-home"
 
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "Image $IMAGE not found — building it now (one-time, multi-GB, can take 10-20+ min)..."
   docker build -t "$IMAGE" -f android-build/Dockerfile android-build/
 fi
 
+mkdir -p "$ANDROID_HOME_CACHE"
+
 # Everything below runs *inside* the builder container, with this directory
 # bind-mounted at /project, so npm/cap/gradle outputs land back on the host
-# for the final cp step.
+# for the final cp step. /root/.android is also bind-mounted so the debug
+# keystore persists across separate --rm container runs (see comment above).
 docker run --rm \
   -v "$(pwd)":/project \
+  -v "$ANDROID_HOME_CACHE":/root/.android \
   -w /project \
   "$IMAGE" \
   bash -euc '
