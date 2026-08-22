@@ -246,6 +246,19 @@ full round trip:
   as `lost` rather than silently returning nothing. It does NOT protect against a full
   origin wipe — the index lives in the same IndexedDB database and would vanish too.
   `persist()` above is the actual defense against that case, not this index.
+- **`MEDIA_CACHE` (service-worker.js) has no eviction — confirmed root cause of a real
+  outage.** Friend photos/videos are cached-first, forever, with no size cap or LRU
+  pruning. A live user hit `caches.open()` throwing (almost certainly quota exceeded)
+  inside `handleNavigate()`, and — because that call sat OUTSIDE the function's
+  try/catch — the whole `/app/` navigation failed with Chrome's generic "ServiceWorker
+  intercepted the request and encountered an unexpected error," which also explains
+  why `beforeinstallprompt` never fires for them (Chrome won't consider a site
+  installable if its own SW errors on the start_url). Fixed defensively in `v3`:
+  `handleNavigate()`'s entire body is now try/caught, any Cache Storage failure falls
+  back to a live network fetch or a minimal inline offline page instead of an unhandled
+  rejection, and every branch `console.error`/`console.warn`s so this is diagnosable
+  from DevTools instead of a mystery. **This does NOT fix the underlying quota growth**
+  — `MEDIA_CACHE` still has no cap. See TODOS.md.
 - **`readCache.ts`'s Drive-pull tier is the oldest data you'll ever render** — the bundle is
   only as fresh as `BundleExportService`'s last scheduled run (backend, services/backup),
   not the live server state. No staleness UI ships with this pass (T4b in the design doc is
@@ -289,6 +302,8 @@ full round trip:
 | Decryption wire format (read) | `crypto.ts`'s `decryptJson()` — same wire format, inverse direction |
 | Reachability probe / timeout | `connectivity.ts`'s `isServerReachable(timeoutMs)` |
 | IndexedDB schema | `db.ts`'s `openDB()` (bump `DB_VERSION` on any store change) |
+| Navigate-fetch fallback chain (network → shell cache → offline page) | `service-worker.js`'s `handleNavigate()` — bump `VERSION` after any change |
+| SW diagnostic logging | `service-worker.js`'s `console.error`/`console.warn` calls in `handleNavigate()` |
 | Add a new page's cached read | `readCache.ts`'s `readThrough(cacheKey, fetchFn)` — call from the owning page, pick a cacheKey convention |
 | Cache tier order (server/local/Drive) | `readCache.ts`'s `readThrough()` |
 | Drive bundle filename / folder | `driveClient.ts`'s `BUNDLE_FILE_NAME` / `pullBundle()` |

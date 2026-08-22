@@ -29,7 +29,10 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v2'; // bumped for share_target handling — new SW logic needs new bytes to install
+const VERSION = 'v3'; // bumped: handleNavigate() no longer lets a Cache Storage failure
+// (e.g. quota exceeded — MEDIA_CACHE has no eviction) crash the whole navigation with
+// an unhandled rejection ("ServiceWorker intercepted the request..."); also resets the
+// shell cache to a fresh key in case v2's was the one hitting quota.
 const SHELL_CACHE = `communicator-shell-${VERSION}`;
 const MEDIA_CACHE = 'communicator-media'; // unversioned: media doesn't change once uploaded
 
@@ -121,18 +124,60 @@ self.addEventListener('fetch', (event) => {
   // Everything else (incl. /api/* data GETs) → straight to network, no caching.
 });
 
+// Everything in here — including caches.open() itself — used to be able to throw
+// past this function and reject respondWith()'s promise, which Chrome surfaces as
+// the maximally uninformative "ServiceWorker intercepted the request and
+// encountered an unexpected error." Wrapping the WHOLE body (not just the fetch)
+// means any cache-layer failure (quota exceeded, private-browsing storage
+// restrictions, a corrupted cache) degrades to a real response instead of an
+// unhandled rejection. console.error calls here are the actual diagnostic: open
+// DevTools → Application → Service Workers → "communicator-app" (or just the
+// page console) to see which branch fired and why.
 async function handleNavigate(request) {
-  const cache = await caches.open(SHELL_CACHE);
   try {
-    const res = await fetchWithTimeout(request, 3500);
-    if (res && res.ok) {
-      cache.put('/app/index.html', res.clone()).catch(() => {});
-      return res;
+    const cache = await caches.open(SHELL_CACHE);
+    try {
+      const res = await fetchWithTimeout(request, 3500);
+      if (res && res.ok) {
+        cache.put('/app/index.html', res.clone()).catch((e) =>
+          console.error('[SW] failed to update shell cache after a live fetch', e));
+        return res;
+      }
+      console.warn('[SW] navigate fetch returned', res && res.status, '— falling back to cached shell');
+      const cached = (await cache.match('/app/index.html')) || (await cache.match('/app/'));
+      return cached || res;
+    } catch (fetchErr) {
+      console.warn('[SW] navigate fetch failed (offline or timeout), falling back to cached shell', fetchErr);
+      const cached = (await cache.match('/app/index.html')) || (await cache.match('/app/'));
+      if (cached) return cached;
+      console.error('[SW] no cached shell available either — serving inline offline page', fetchErr);
+      return offlineFallbackResponse();
     }
-    return (await cache.match('/app/index.html')) || (await cache.match('/app/')) || res;
-  } catch (e) {
-    return (await cache.match('/app/index.html')) || (await cache.match('/app/')) || Response.error();
+  } catch (cacheErr) {
+    // caches.open() (or any other Cache Storage call) itself failed — this is the
+    // bug that used to produce the generic error above. Quota exceeded is the
+    // most likely cause given MEDIA_CACHE has no eviction (see FLOWS.md).
+    console.error('[SW] Cache Storage unavailable — serving live network response with no cache fallback', cacheErr);
+    try {
+      return await fetch(request);
+    } catch (networkErr) {
+      console.error('[SW] Cache Storage AND network both unavailable', networkErr);
+      return offlineFallbackResponse();
+    }
   }
+}
+
+// Last-resort response when there's no cached shell AND no network — a real
+// (if minimal) page instead of Response.error(), which Chrome renders as its own
+// opaque "can't reach this page" error with zero app branding or explanation.
+function offlineFallbackResponse() {
+  return new Response(
+    '<!doctype html><html><body style="font-family:sans-serif;padding:2rem;text-align:center">'
+    + '<h1>Communicator is offline</h1><p>No cached version of the app is available yet on this '
+    + 'device. Connect once online to finish installing, then this page works offline too.</p>'
+    + '</body></html>',
+    { status: 503, headers: { 'Content-Type': 'text/html' } },
+  );
 }
 
 function fetchWithTimeout(request, ms) {
