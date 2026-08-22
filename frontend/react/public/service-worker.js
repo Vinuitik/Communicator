@@ -29,7 +29,14 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v7'; // v7: the ACTUAL fix for the "ServiceWorker intercepted the
+const VERSION = 'v8'; // v8: two offline-correctness fixes. (1) handleNavigate() now
+// checks navigator.onLine first and skips straight to the cached shell when the
+// device is genuinely offline, instead of always waiting out a network attempt
+// (up to 3.5s) first. (2) staleWhileRevalidate()'s network-failure fallback used to
+// return `undefined` (not a Response) when an asset had never been cached before —
+// a fresh profile or a deploy's hashed filename that was never fetched while
+// online, offline, would hit this. Now falls back to Response.error().
+// v7: the ACTUAL fix for the "ServiceWorker intercepted the
 // request and encountered an unexpected error" crash. v6 only wrapped
 // handleNavigate() and the top-level fetch listener; cacheFirst() and
 // staleWhileRevalidate() — which handle EVERY build-asset/media/icon request, i.e.
@@ -216,6 +223,17 @@ async function handleNavigate(request) {
   broadcastLog('log', 'handleNavigate start', request.url);
   try {
     const cache = await caches.open(SHELL_CACHE);
+    // navigator.onLine is only reliable in the negative — true doesn't guarantee the
+    // server is actually reachable, but false reliably means the device has no
+    // network at all. When it's false, skip the network attempt (and its up-to-3.5s
+    // timeout) entirely and go straight to the cached shell — no reason to make an
+    // offline device wait out a fetch that cannot possibly succeed.
+    if (self.navigator && self.navigator.onLine === false) {
+      broadcastLog('log', 'navigator.onLine is false — skipping network attempt, serving cached shell directly');
+      const cachedOffline = (await cache.match('/app/index.html')) || (await cache.match('/app/'));
+      if (cachedOffline) return cachedOffline;
+      return offlineFallbackResponse();
+    }
     try {
       const res = await fetchWithTimeout(request, 3500);
       if (res && res.ok) {
@@ -316,10 +334,16 @@ async function staleWhileRevalidate(request, cacheName) {
   try {
     const cache = await caches.open(cacheName);
     const hit = await cache.match(request);
+    // If this asset was never cached before (fresh profile, or a deploy's hashed
+    // filename that was never fetched while online) AND the network fails, `hit` is
+    // undefined here — .catch() used to just return that undefined straight through,
+    // which respondWith() cannot accept (it requires a real Response), producing the
+    // same class of "unexpected error" this file exists to prevent. Response.error()
+    // is the correct fallback: a real (if opaque) network-error Response.
     const fetching = fetch(request).then((res) => {
       if (res.ok) cache.put(request, res.clone());
       return res;
-    }).catch(() => hit);
+    }).catch(() => hit || Response.error());
     return hit || fetching;
   } catch (cacheErr) {
     broadcastLog('error', 'staleWhileRevalidate: Cache Storage unavailable, falling back to live network', cacheErr);
