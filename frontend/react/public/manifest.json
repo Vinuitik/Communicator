@@ -11,5 +11,20 @@
   "icons": [
     { "src": "logo192.png", "type": "image/png", "sizes": "192x192" },
     { "src": "logo512.png", "type": "image/png", "sizes": "512x512" }
-  ]
+  ],
+  "share_target": {
+    "action": "/app/share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [
+        {
+          "name": "media",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  }
 }

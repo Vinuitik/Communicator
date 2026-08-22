@@ -8,9 +8,19 @@
  *   2. Hashed assets (CRA's static/js, static/css) — stale-while-revalidate.
  *   3. Friend media (/api/fileRepository/...) — cache-first, since photos/files
  *      don't change once uploaded.
- * No offline writes/outbox — Communicator has no queued-write concept, unlike
- * the project this was patterned after. A capture (extension or app) that
- * happens while offline just fails; retry once back online.
+ *   4. Share target — intercept POST /app/share-target (OS share sheet sharing
+ *      a photo/video into the installed app), stash the file(s) in a small
+ *      handoff IndexedDB, and 303-redirect to /app/share so ShareLandingPage
+ *      can read the file once on mount. See src/pwa/shareHandoff.ts for the
+ *      read side and the DB schema this file must stay in sync with.
+ *
+ * Offline writes DO have a queue — this file's old header claiming otherwise
+ * was stale. `src/pwa/outbox.ts` is a 3-tier (direct / Drive-relay / IndexedDB)
+ * JSON-intent queue, and `src/pwa/blobOutbox.ts` is its binary-blob sibling
+ * (queues shared media for upload once ShareLandingPage picks a friend). This
+ * service worker doesn't drive either queue itself — it only owns the share
+ * hand-off above; outbox flushing/replay happens at the app layer (see
+ * src/pwa/FLOWS.md).
  *
  * Served at /app/service-worker.js (CRA copies public/ verbatim to the build
  * root; the app itself is reverse-proxied under /app/ — see nginx/nginx.conf),
@@ -19,7 +29,7 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2'; // bumped for share_target handling — new SW logic needs new bytes to install
 const SHELL_CACHE = `communicator-shell-${VERSION}`;
 const MEDIA_CACHE = 'communicator-media'; // unversioned: media doesn't change once uploaded
 
@@ -42,11 +52,48 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// ── Share-target handoff DB (mirrors src/pwa/shareHandoff.ts's constants —
+// kept inline so this file is a standalone SW with no build step. Bump BOTH
+// files' DB version together if the schema ever changes.) ──
+const SHARE_HANDOFF_DB_NAME = 'communicator-share-handoff';
+const SHARE_HANDOFF_DB_VERSION = 1;
+const SHARE_HANDOFF_STORE = 'pendingShares';
+
+function openShareHandoffDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(SHARE_HANDOFF_DB_NAME, SHARE_HANDOFF_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(SHARE_HANDOFF_STORE)) {
+        db.createObjectStore(SHARE_HANDOFF_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function putPendingShare(record) {
+  return openShareHandoffDB().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(SHARE_HANDOFF_STORE, 'readwrite');
+    tx.objectStore(SHARE_HANDOFF_STORE).put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return; // never cache writes
-
   const url = new URL(request.url);
+
+  // OS share sheet → POST /app/share-target. Field name 'media' must match
+  // manifest.json's share_target.params.files[0].name.
+  if (request.method === 'POST' && url.pathname === '/app/share-target') {
+    event.respondWith(handleShareTarget(request));
+    return;
+  }
+
+  if (request.method !== 'GET') return; // never cache writes
 
   // Navigations → network-first, fall back to the cached shell on ANY failure
   // (offline, DNS down, or a reachable-but-broken origin returning a bad status)
@@ -132,4 +179,47 @@ async function staleWhileRevalidate(request, cacheName) {
     return res;
   }).catch(() => hit);
   return hit || fetching;
+}
+
+// Share sheet → POST /app/share-target (multipart/form-data, per manifest.json's
+// share_target block). Unlike ObsidianOptimizer's handleShareTarget (which POSTs
+// straight to a backend /api/capture/file), Communicator has no such endpoint —
+// there's no "general capture inbox" here, sharing a photo/video is meant to land
+// on a FRIEND, and only the user (via ShareLandingPage) knows which friend. So this
+// handler does the minimum a service worker can do: pull the file(s) out of the
+// multipart body, stash them in a small handoff IndexedDB (a Blob can't ride across
+// a navigation/redirect any other way), and 303-redirect into the React app. The
+// friend-picker + actual upload (via blobOutbox) happen entirely in
+// ShareLandingPage after it mounts and reads this record — see
+// src/pwa/shareHandoff.ts for the read side and the exact contract.
+async function handleShareTarget(request) {
+  let form;
+  try {
+    form = await request.formData();
+  } catch (e) {
+    return Response.redirect('/app/share?shared=err', 303);
+  }
+
+  const files = form.getAll('media').filter((f) => f && typeof f.name === 'string' && f.size > 0);
+  if (files.length === 0) return Response.redirect('/app/share?shared=err', 303);
+
+  const shareId = (self.crypto && self.crypto.randomUUID)
+    ? self.crypto.randomUUID()
+    : `share-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  const record = {
+    id: shareId,
+    files: files.map((f) => ({ name: f.name, type: f.type, blob: f })),
+    title: (form.get('title') || '').toString(),
+    text: (form.get('text') || '').toString(),
+    ts: Date.now(),
+  };
+
+  try {
+    await putPendingShare(record);
+  } catch (e) {
+    return Response.redirect('/app/share?shared=err', 303);
+  }
+
+  return Response.redirect(`/app/share?shared=1&shareId=${shareId}`, 303);
 }
