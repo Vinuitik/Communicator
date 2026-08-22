@@ -1,0 +1,17 @@
+{
+  "name": "communicator-capacitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thin Capacitor Android shell that loads the live Communicator web app — no bundled static snapshot.",
+  "scripts": {
+    "sync": "cap sync android",
+    "build:apk": "bash build.sh"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

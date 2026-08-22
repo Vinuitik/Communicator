@@ -1,0 +1,9 @@
+{
+  "appId": "com.communicator.app",
+  "appName": "Communicator",
+  "webDir": "www",
+  "server": {
+    "url": "https://communicator.work/app/",
+    "cleartext": false
+  }
+}
