@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import Avatar from '../../atoms/Avatar';
 import Input from '../../atoms/Input';
 import ConfirmDialog from '../../molecules/ConfirmDialog';
-import { getShortFriendList } from '../../../services/api/friendService';
+import FriendPicker from '../../molecules/FriendPicker';
 import { updateMeeting, cancelMeeting, previewGroupMatch } from '../../../services/api/meetingService';
 import {
-  GroupMatchDTO, MeetingDTO, MeetingType, ShortFriend, UpdateMeetingRequest,
+  GroupMatchDTO, MeetingDTO, MeetingType, UpdateMeetingRequest,
 } from '../../../types/api';
 import { deriveMeetingType, isValidAttendance } from '../../../utils/meetingType';
 
@@ -40,10 +39,6 @@ const GROUP_MATCH_DEBOUNCE_MS = 350;
 // user edits, purely for the live badge; the server re-derives it for real on
 // save, which is the value actually persisted.
 const MeetingEditModal: React.FC<MeetingEditModalProps> = ({ meeting, onClose, onSaved, onCancelled }) => {
-  const [friends, setFriends] = useState<ShortFriend[]>([]);
-  const [friendsLoading, setFriendsLoading] = useState(true);
-  const [friendsError, setFriendsError] = useState<string | null>(null);
-
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [selfAttending, setSelfAttending] = useState(true);
   const [date, setDate] = useState('');
@@ -76,24 +71,6 @@ const MeetingEditModal: React.FC<MeetingEditModalProps> = ({ meeting, onClose, o
     setMatches([]);
     setSaveError(null);
     setShowCancelConfirm(false);
-  }, [meeting]);
-
-  useEffect(() => {
-    if (!meeting) return;
-    let cancelledEffect = false;
-    (async () => {
-      setFriendsLoading(true);
-      setFriendsError(null);
-      try {
-        const list = await getShortFriendList();
-        if (!cancelledEffect) setFriends(list);
-      } catch {
-        if (!cancelledEffect) setFriendsError('Could not load your friends list.');
-      } finally {
-        if (!cancelledEffect) setFriendsLoading(false);
-      }
-    })();
-    return () => { cancelledEffect = true; };
   }, [meeting]);
 
   const derivedType = useMemo(
@@ -134,14 +111,6 @@ const MeetingEditModal: React.FC<MeetingEditModalProps> = ({ meeting, onClose, o
   }, [meeting, derivedType, selectedIds]);
 
   if (!meeting) return null;
-
-  const toggleFriend = (friendId: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(friendId)) next.delete(friendId); else next.add(friendId);
-      return next;
-    });
-  };
 
   const handleSave = async () => {
     if (!attendanceValid) {
@@ -230,31 +199,11 @@ const MeetingEditModal: React.FC<MeetingEditModalProps> = ({ meeting, onClose, o
 
           <div>
             <div className="mb-1.5 text-xs font-semibold text-text-muted">Attendees</div>
-            {friendsError ? (
-              <div className="text-sm text-bad">{friendsError}</div>
-            ) : (
-              <div className="flex flex-col gap-1.5 max-h-[190px] overflow-y-auto">
-                {friendsLoading ? (
-                  <div className="text-center p-4 text-text-muted text-sm">Loading…</div>
-                ) : (
-                  friends.map((f) => (
-                    <label
-                      key={f.id}
-                      className="flex items-center gap-3 px-3.5 py-2 bg-surface-2 rounded-lg cursor-pointer hover:bg-input transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(f.id)}
-                        onChange={() => toggleFriend(f.id)}
-                        className="accent-accent"
-                      />
-                      <Avatar id={f.id} name={f.name} size={26} />
-                      <span className="flex-1 text-[13px] text-text-secondary">{f.name}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            )}
+            <FriendPicker
+              multiple
+              value={Array.from(selectedIds)}
+              onChange={(ids) => setSelectedIds(new Set(ids))}
+            />
             {!attendanceValid && (
               <p className="mt-1.5 text-xs text-bad">
                 {selfAttending ? 'Add at least one other attendee.' : "Needs at least 2 attendees if you're not attending."}
