@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.communicator.meeting.dtos.MeetingDTO;
+import com.communicator.meeting.dtos.MeetingExportRow;
 import com.communicator.meeting.entities.Meeting;
 import com.communicator.meeting.entities.MeetingStatus;
 import com.communicator.meeting.repositories.MeetingAttendeeRepository;
@@ -43,6 +44,18 @@ public class MeetingQueryService {
     @Transactional(readOnly = true)
     public List<MeetingDTO> forGroup(Integer groupId) {
         return toDtos(meetingRepository.findByGroupIdOrderByDateDesc(groupId));
+    }
+
+    /** Every meeting, DTO + updatedAt, for the offline-bundle export (BundleExportService in
+     * bootstrap) — the only caller that needs updatedAt, so it gets its own shape
+     * (MeetingExportRow) rather than adding that field to MeetingDTO for every caller. */
+    @Transactional(readOnly = true)
+    public List<MeetingExportRow> allForExport() {
+        return meetingRepository.findAll().stream()
+            .map(m -> new MeetingExportRow(
+                MeetingDTO.from(m, attendeeRepository.findByMeetingId(m.getId())),
+                m.getUpdatedAt()))
+            .toList();
     }
 
     /**

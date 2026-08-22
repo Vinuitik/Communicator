@@ -41,3 +41,53 @@ startup.sh
 | Drive destination / creds | `backup/upload_to_drive.py FOLDER_ID` + `backup/service-account-key.json` |
 | Also back up Redis | not implemented |
 | Restore | `backup/restore.py` (manual) |
+
+---
+
+**Staleness note (found, not fixed, while adding the section below):** everything above this
+line describes an older architecture (`startup.sh`, Python `upload_to_drive.py`, a
+service-account key) that no longer matches this module's actual code. The real current
+implementation is OAuth-based Java: `drive/DriveService.java` + `drive/BackupOAuthService.java`
++ `crypto/EncryptionService.java` + `service/DbBackupService.java` (nightly `pg_dump -Fc`,
+scheduled by `scheduler/BackupScheduler.java`, reached via `web/BackupController.java` at
+`/backup/**`). Flagging this drift rather than rewriting the whole file — out of scope for
+this session.
+
+# Flow: Offline-Bundle Export (read-model snapshot → Google Drive)
+Files: DriveService.java (`uploadOrReplace`), EncryptionService.java (`encrypt`) — the
+orchestrator itself, `BundleExportService.java`, lives in `services/bootstrap` (see that
+module's FLOWS.md), not here.
+
+Read-tier counterpart to the write-path's `_mailbox` relay (MailboxConsumeService, also in
+bootstrap): instead of queued write-intents, this is a periodically-refreshed encrypted
+**snapshot** of current friends/groups/connections/meetings/scheduling-presets, so a device
+with an empty or evicted local cache can rebuild offline instead of just failing. Shape and
+rationale: `docs/designs/offline-pwa-plan.md`'s "T0" section.
+
+```
+BundleExportService (bootstrap, own class+FLOWS.md there)
+  gathers friend+group+connections+meeting+scheduling-preset data
+    → JSON (OfflineBundle/BundleRow records, bootstrap)
+    → EncryptionService.encrypt()          (AES-256-GCM, same scheme as the mailbox path)
+    → DriveService.uploadOrReplace(bytes, "offline-bundle.json.enc", "offline-bundle")
+         → root "Communicator" Drive folder — SAME account/folder as backups and the
+           mailbox, DIFFERENT filename, so it never collides with either.
+```
+
+- `DriveService.uploadOrReplace(bytes, name, kind)`: find-or-replace a single named file in
+  the root folder — overwrites content in place on every run (unlike `uploadBackup`, which
+  always creates a new timestamped file and relies on the caller to prune old ones). One
+  current copy only, no history. To change the destination file name:
+  `BundleExportService.BUNDLE_FILE_NAME` (bootstrap).
+- The frontend's `drivePull.ts` reads this file directly from Drive using the
+  `accessToken`/`encryptionKeyBase64` already handed out by `BackupController.syncBridge`
+  (`GET /backup/sync/bridge`) — no new REST endpoint was added for this. It should query Drive
+  by file name only (`name = 'offline-bundle.json.enc' and trashed = false`, no parent-folder
+  id needed — `drive.file` OAuth scope already limits visibility to this app's own files).
+
+## Change Index (this section only — see bootstrap/FLOWS.md for the export job itself)
+| Want to change | Where |
+|---|---|
+| Bundle file name / Drive `kind` tag | `BundleExportService.BUNDLE_FILE_NAME` / `BUNDLE_KIND` (bootstrap) |
+| Find-or-replace-one-file Drive mechanics | `DriveService.uploadOrReplace()` |
+| Encryption scheme | `EncryptionService.encrypt()` (shared with the mailbox path — do not fork) |

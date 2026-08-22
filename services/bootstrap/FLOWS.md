@@ -64,6 +64,43 @@ One file: `bootstrap/src/main/resources/application.yml`. The six former per-mod
 - **nginx east-west coupling.** All five upstreams (`friend_service`, `group_service`, …) point at `communicator-app:8080`; names kept only so location blocks read unchanged. `backup`/`chrono` bare-root paths return 404 by design (they only map deeper paths). `connections` is a real implemented API now (see connections/PROTO.md) — no longer a stub.
 - **Build context.** Root `Dockerfile` builds the whole reactor; `.dockerignore` excludes react/python/`.git`/`target` so the JVM image doesn't ship them.
 
+## Cross-module orchestrators (why they live in bootstrap, not in a business module)
+`MailboxConsumeService.java` (write tier) and `BundleExportService.java` (read tier) are both
+here instead of in `friend`/`group`/`connections`/`meeting`/`backup` for the same reason: each
+needs several business modules **plus** `backup`'s Drive/encryption plumbing at once, and only
+`bootstrap` already depends on all of them. Putting either in `backup` would force `backup`'s
+pom.xml to newly depend on friend/group/connections/meeting — a module that today deliberately
+knows nothing about any domain entity (see `backup/pom.xml`'s comment). No new Maven edges were
+added for either class; both just import types from modules bootstrap already pulls in.
+
+- `MailboxConsumeService`: drains the offline-outbox's Drive relay (`_mailbox` folder) —
+  queued write-intents, replayed through `OutboxWriteService`. See its own class doc.
+- `BundleExportService`: the reverse direction — periodically snapshots current read-model
+  data (friends/groups/connections/meetings/scheduling-presets) to one encrypted Drive file
+  so a device with an empty/evicted local cache can rebuild offline. Detailed flow lives in
+  `services/backup/FLOWS.md`'s "Offline-Bundle Export" section (the Drive/encryption
+  mechanics), this entry is the orchestrator side:
+  - Entry points: `@EventListener(ApplicationReadyEvent.class) onReady()` (runs once on
+    boot) + `@Scheduled(fixedDelayString = "${offline.bundle.export.interval-ms:14400000}")
+    scheduledExport()` (every 4h by default) — both call `exportNow()`.
+  - `exportNow()` is all-or-nothing: an `AtomicBoolean running` guards against overlapping
+    runs (single-JVM in-memory lock — fine, there's only ever one JVM here), and any
+    exception from `gather()` (querying friend/group/connections/meeting/scheduling-preset
+    data) aborts the whole run before anything is encrypted or uploaded — never ships a
+    partial bundle.
+  - New minimal DTOs added alongside this: `GroupDTO` (group module, `GroupDTOs` package) and
+    `ConnectionDTO` (connections module, `ConnectionsDTOs` package), following friend's
+    existing `FriendDTO` record pattern — neither module had a DTO before this. Meeting
+    already had `MeetingDTO`, but not `updatedAt`; rather than add that field to the shared
+    DTO (used by HomePage/ProfilePage), a purpose-specific `MeetingExportRow` was added
+    (meeting module) plus `MeetingQueryService.allForExport()`.
+  - Friend/Group/Connection/SchedulingRolePreset rows have no real `updatedAt` field at all
+    today — their bundle rows use the export's own timestamp as a stand-in. Accepted
+    approximation for a snapshot bundle, not a bug (see `BundleExportService`'s class doc).
+  - Tests: `BundleExportServiceTest.java` — happy path, all-or-nothing on partial query
+    failure, and the overlapping-run guard (`svc.running` is package-private specifically so
+    the test can force that branch without real concurrency).
+
 ## Change Index
 | Want to change… | Where |
 |---|---|
@@ -74,3 +111,6 @@ One file: `bootstrap/src/main/resources/application.yml`. The six former per-mod
 | App-wide security rules | `group/.../config/WebConfig.java` (bean `groupSecurityConfig`) |
 | WebClient targets | `application.yml` `file.repository.service.url` (friend) / `resource.repository.url` (group) |
 | The single service in compose | `docker-compose.yml` `communicator-app`; build via root `Dockerfile` |
+| Offline-bundle export interval | `offline.bundle.export.interval-ms` (application.yml, default 14400000 = 4h) |
+| Offline-bundle export logic / entity list | `BundleExportService.gather()` (bootstrap) |
+| Offline-bundle Drive filename / encryption | `services/backup/FLOWS.md`'s "Offline-Bundle Export" section |
