@@ -50,7 +50,7 @@ class FsrsNeglectServiceTest {
     void notYetOverdue_isLeftAlone() {
         Friend friend = Friend.builder().id(1).fsrsStability(5.0).fsrsDifficulty(3.0)
             .plannedSpeakingTime(today.plusDays(2)).build();
-        when(friendRepository.findAll()).thenReturn(List.of(friend));
+        when(friendRepository.findByDeletedAtIsNull()).thenReturn(List.of(friend));
 
         int lapsed = service.applyNightlyLapse();
 
@@ -64,7 +64,7 @@ class FsrsNeglectServiceTest {
         // 7 days overdue is still within the grace window (> 7 triggers, not >=).
         Friend friend = Friend.builder().id(1).fsrsStability(5.0).fsrsDifficulty(3.0)
             .plannedSpeakingTime(today.minusDays(7)).build();
-        when(friendRepository.findAll()).thenReturn(List.of(friend));
+        when(friendRepository.findByDeletedAtIsNull()).thenReturn(List.of(friend));
 
         int lapsed = service.applyNightlyLapse();
 
@@ -74,7 +74,7 @@ class FsrsNeglectServiceTest {
     @Test
     void neverReviewed_hasNoFsrsState_isSkipped() {
         Friend friend = Friend.builder().id(1).plannedSpeakingTime(today.minusDays(30)).build();
-        when(friendRepository.findAll()).thenReturn(List.of(friend));
+        when(friendRepository.findByDeletedAtIsNull()).thenReturn(List.of(friend));
 
         int lapsed = service.applyNightlyLapse();
 
@@ -90,7 +90,7 @@ class FsrsNeglectServiceTest {
             .plannedSpeakingTime(today.minusDays(10)) // 10 days overdue > 7-day grace
             .pendingBanditArm(1.25).pendingBanditBucket("dEasy:sShort")
             .build();
-        when(friendRepository.findAll()).thenReturn(List.of(friend));
+        when(friendRepository.findByDeletedAtIsNull()).thenReturn(List.of(friend));
 
         int lapsed = service.applyNightlyLapse();
 
@@ -112,7 +112,7 @@ class FsrsNeglectServiceTest {
             .plannedSpeakingTime(today.minusDays(10)).build();
         Friend b = Friend.builder().id(2).fsrsStability(30.0).fsrsDifficulty(4.0)
             .plannedSpeakingTime(today.minusDays(10)).build();
-        when(friendRepository.findAll()).thenReturn(List.of(a, b));
+        when(friendRepository.findByDeletedAtIsNull()).thenReturn(List.of(a, b));
 
         int lapsed = service.applyNightlyLapse();
 

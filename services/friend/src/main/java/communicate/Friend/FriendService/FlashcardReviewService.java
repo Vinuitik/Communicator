@@ -59,7 +59,7 @@ public class FlashcardReviewService {
     @Transactional
     public List<FlashcardFolderDTO> getFolders() {
         LocalDate today = LocalDate.now();
-        return friendRepository.findByFlashcardsEnabledTrue().stream()
+        return friendRepository.findByFlashcardsEnabledTrueAndDeletedAtIsNull().stream()
             .map(f -> {
                 List<FriendKnowledgeReview> rows = reviewRepository.findByFriendId(f.getId());
                 long due = rows.stream().filter(r -> !r.getDueDate().isAfter(today)).count();

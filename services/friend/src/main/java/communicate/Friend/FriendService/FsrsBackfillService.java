@@ -42,7 +42,7 @@ public class FsrsBackfillService {
     @Transactional
     public int backfillAll() {
         int seeded = 0;
-        for (Friend friend : friendRepository.findAll()) {
+        for (Friend friend : friendRepository.findByDeletedAtIsNull()) {
             if (friend.getFsrsStability() != null) continue; // already seeded or already active
             List<Analytics> history = analyticsRepository.findByFriendIdOrderByDateAsc(friend.getId());
             if (history.size() < 2) continue; // no interval to derive stability from

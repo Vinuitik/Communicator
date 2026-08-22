@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import com.example.demo.Group.GroupEntities.SocialGroup;
@@ -62,6 +64,7 @@ public class Meeting {
 
     @ManyToOne
     @JoinColumn(name = "friend_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Friend friend;
 
     @ManyToOne

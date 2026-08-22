@@ -172,19 +172,38 @@ public class FriendController {
         }
     }
 
+    // Soft delete: moves the friend to the Bin (deleted_at set). Purged for
+    // real 7 days later by PurgeService. See FriendService.deleteFriendById.
     @DeleteMapping("/deleteFriend/{id}")
     public ResponseEntity<String> deleteFriend(@PathVariable Integer id) {
         try {
-            // Attempt to delete the friend by ID
-            //int idInt = Integer.parseInt(id);
             friendService.deleteFriendById(id);
 
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Friend deleted successfully!");
-            
+
         } catch (Exception e) {
             System.err.println("Error deleting friend: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while deleting the friend.");
         }
+    }
+
+    @PostMapping("/restoreFriend/{id}")
+    public ResponseEntity<String> restoreFriend(@PathVariable Integer id) {
+        try {
+            boolean restored = friendService.restoreFriendById(id);
+            if (!restored) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Friend not found in bin.");
+            }
+            return ResponseEntity.status(HttpStatus.OK).body("Friend restored successfully!");
+        } catch (Exception e) {
+            System.err.println("Error restoring friend: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while restoring the friend.");
+        }
+    }
+
+    @GetMapping("/deletedFriends")
+    public ResponseEntity<List<Friend>> getDeletedFriends() {
+        return ResponseEntity.ok(friendService.getDeletedFriends());
     }
 
     @PutMapping("talkedToFriend/{id}")

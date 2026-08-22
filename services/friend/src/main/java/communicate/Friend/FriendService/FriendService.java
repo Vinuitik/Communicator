@@ -2,6 +2,7 @@ package communicate.Friend.FriendService;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,7 @@ public class FriendService {
     @Transactional
     public List<Friend> getAllFriends(){
         try {
-            return friendRepository.findAll();
+            return friendRepository.findByDeletedAtIsNull();
         } catch (Exception e) {
            System.out.print("Error retrieving friends " + e.toString());
         }
@@ -50,7 +51,7 @@ public class FriendService {
 
             System.out.print("\n \n \n");
 
-            List<Friend> friends = friendRepository.findAll();
+            List<Friend> friends = friendRepository.findByDeletedAtIsNull();
             List<Friend> result = new ArrayList<Friend>();
             for(Friend friend:friends){
 
@@ -85,13 +86,49 @@ public class FriendService {
         }
     }
 
+    // Soft delete (Bin feature): marks deleted_at instead of removing the
+    // row. PurgeService hard-deletes it 7 days later. Kept as
+    // "deleteFriendById" rather than renamed, since the controller's
+    // existing DELETE /deleteFriend/{id} is the one call site (frontend
+    // and e2e) and its contract is now "move to bin", not "erase".
     @Transactional
     public void deleteFriendById(Integer id){
         try {
-            friendRepository.deleteById(id);
+            Optional<Friend> friendOptional = friendRepository.findById(id);
+            if (friendOptional.isPresent()) {
+                Friend friend = friendOptional.get();
+                friend.setDeletedAt(LocalDateTime.now());
+                friendRepository.save(friend);
+            }
         } catch (Exception e) {
            System.out.print("Error deleting friends " + e.toString());
         }
+    }
+
+    @Transactional
+    public boolean restoreFriendById(Integer id){
+        try {
+            Optional<Friend> friendOptional = friendRepository.findById(id);
+            if (friendOptional.isPresent() && friendOptional.get().getDeletedAt() != null) {
+                Friend friend = friendOptional.get();
+                friend.setDeletedAt(null);
+                friendRepository.save(friend);
+                return true;
+            }
+        } catch (Exception e) {
+           System.out.print("Error restoring friend " + e.toString());
+        }
+        return false;
+    }
+
+    @Transactional
+    public List<Friend> getDeletedFriends(){
+        try {
+            return friendRepository.findByDeletedAtIsNotNull();
+        } catch (Exception e) {
+           System.out.print("Error retrieving deleted friends " + e.toString());
+        }
+        return new ArrayList<>();
     }
 
     @Transactional

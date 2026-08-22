@@ -62,7 +62,7 @@ public class FsrsNeglectService {
         Map<LocalDate, Integer> dayLoad = new HashMap<>();
         int lapsedCount = 0;
 
-        for (Friend friend : friendRepository.findAll()) {
+        for (Friend friend : friendRepository.findByDeletedAtIsNull()) {
             // No FSRS state yet (never reviewed, or cold-start pending) —
             // nothing to lapse.
             if (friend.getFsrsStability() == null || friend.getFsrsDifficulty() == null

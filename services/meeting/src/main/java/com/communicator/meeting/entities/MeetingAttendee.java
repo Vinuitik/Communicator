@@ -12,6 +12,8 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 /**
  * One row per (Meeting, attendee) pair. Originally Group-batch-log-only; generalized to every
@@ -36,10 +38,12 @@ public class MeetingAttendee {
 
     @ManyToOne
     @JoinColumn(name = "meeting_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Meeting meeting;
 
     @ManyToOne
     @JoinColumn(name = "friend_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Friend friend;
 
     /** Toggled off in the batch-log modal's presence step; true by default (pre-filled present). */

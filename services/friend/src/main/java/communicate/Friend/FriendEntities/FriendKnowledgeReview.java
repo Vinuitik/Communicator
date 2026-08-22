@@ -20,6 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 /**
  * A single flashcard-review "slot" over one logged fact — the friend/group
@@ -59,6 +61,7 @@ public class FriendKnowledgeReview {
     // entity graph — so this is a plain @JsonIgnore, not a paired reference.
     @ManyToOne
     @JoinColumn(name = "friend_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JsonIgnore
     @ToString.Exclude
     private Friend friend;

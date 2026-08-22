@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -175,6 +176,11 @@ public class Friend {
     @Column(name = "flashcards_enabled")
     private Boolean flashcardsEnabled = false;
 
+    // Soft-delete marker (Bin feature). Null = active. Set = moved to bin at
+    // this timestamp; PurgeService hard-deletes it 7 days later. All list/
+    // search queries filter this out by default — see FriendRepository.
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public Friend(String name, LocalDate lastTimeSpoken, String experience, LocalDate dateOfBirth) {
         setName(name);

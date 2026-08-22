@@ -85,3 +85,8 @@ extension-firefox/
 ext-dist/
 # npx/web-ext download cache reused across signings (keeps re-signs fast)
 .web-ext-cache/
+# Desktop/Android build outputs (desktop/electron, mobile/capacitor) — too large
+# to track like the extension zip; regenerate via each module's build.sh
+infra/nginx/static/downloads/communicator-desktop-setup.exe
+infra/nginx/static/downloads/communicator-desktop.AppImage
+infra/nginx/static/downloads/communicator.apk
