@@ -182,6 +182,57 @@ reload with no update semantics, kept for other troubleshooting call sites only)
 — re-fetches `service-worker.js` and starts a download if the bytes differ. It never
 applies anything; that's still gated entirely behind a user's `applyUpdate()` click.
 
+## Postmortem — the v3-v7 "ServiceWorker intercepted the request" chain
+Symptom: `Failed to load 'https://communicator.work/app/'. A ServiceWorker intercepted
+the request and encountered an unexpected error.` Took 5 SW versions (v3-v7) and one
+follow-on bug across two sessions to actually kill. Written up because most of the
+elapsed time was two avoidable mistakes, not the actual fix.
+
+**Mistake 1 — assumed Chrome DevTools conventions on a Firefox bug report.** The user
+was on Firefox the whole time; earlier debugging notes (and this file's now-corrected
+MEDIA_CACHE paragraph above) referenced "Chrome's generic error" and "DevTools →
+Application" — wrong browser, wrong panel name. Firefox's error string for this failure
+mode is nearly identical to Chrome's, so the browser was never confirmed until asked
+directly. **Lesson: ask which browser before reasoning about console/DevTools
+behavior — the panels, error strings, and even what's catchable differ.**
+
+**Mistake 2 — didn't know Firefox hides a SW's own console output.** All the
+`console.error`/`console.warn` diagnostics added in `v3` (see the old MEDIA_CACHE
+paragraph) were firing the entire time but invisible in Firefox's normal page
+console — they only surface in the separate `about:debugging#/runtime/this-firefox`
+inspector. Several turns were spent asking the user to read a console that could
+never have shown the answer. Fixed in `v5`→`v6`: `broadcastLog()` in
+service-worker.js now `postMessage`s every log to all clients; `registerSW.ts`
+re-logs them with a `[SW→page]` prefix in the *page's* console, which every browser
+shows by default. **Lesson: a service worker's console is not the same console as
+the page's, and that gap is browser-specific — don't assume a `console.error` inside
+`fetch`/`install`/`activate` handlers is visible where you're looking.**
+
+**The actual bug (v7)** — `v3` wrapped `handleNavigate()`'s body in try/catch after a
+prior outage where `caches.open()` threw past an unhandled `respondWith()` promise.
+That fix was real but incomplete: `cacheFirst()` and `staleWhileRevalidate()` — which
+handle every build-asset/icon/media request, i.e. almost all traffic, not just the one
+navigation — still let `caches.open()`/`cache.match()` throw straight out uncaught.
+When Cache Storage was unavailable in the reported repro, the app's own JS bundle
+(routed through `staleWhileRevalidate`, since it's a build asset) failed to load this
+way — so the React app, and the update-available UI living inside it, never rendered
+at all, which is also why the click-to-apply prompt from `v5` was never seen despite
+being wired up correctly. **Lesson: when one function in a set of parallel
+request-handlers gets a defensive fix, check whether its siblings need the identical
+fix — `grep` for the same unguarded call across the file, don't assume a single
+representative fix generalizes.**
+
+**The follow-on bug, unmasked by fixing the above** — `frontend/react/public/index.html`
+had a stray `<link href="/static/css/main.css">` (no `%PUBLIC_URL%` prefix, no content
+hash) left over from before CRA's `HtmlWebpackPlugin` started auto-injecting the real
+hashed CSS link. It 302'd through nginx's catch-all to `/app/`, which served
+`index.html` as `text/html`, which Firefox's `nosniff` then refused to treat as CSS.
+This bug predates the whole SW saga and was simply never reached before, since the
+SW crash always aborted the page load first. **Lesson: a crash that fully blocks page
+load can mask other real, independent bugs underneath it — fixing the blocker is not
+the same as confirming the page actually works; always re-test the full load after
+removing a hard blocker, don't declare victory on the first error going away.**
+
 ## Encryption — must match the server byte-for-byte
 `crypto.ts`'s `encryptJson()`: gzip → AES-256-GCM (random 12B IV) → `[IV][ciphertext+tag]`.
 Must exactly match `backup/.../EncryptionService.java`'s `decrypt()` — no version negotiation,
@@ -287,19 +338,12 @@ full round trip:
   as `lost` rather than silently returning nothing. It does NOT protect against a full
   origin wipe — the index lives in the same IndexedDB database and would vanish too.
   `persist()` above is the actual defense against that case, not this index.
-- **`MEDIA_CACHE` (service-worker.js) has no eviction — confirmed root cause of a real
-  outage.** Friend photos/videos are cached-first, forever, with no size cap or LRU
-  pruning. A live user hit `caches.open()` throwing (almost certainly quota exceeded)
-  inside `handleNavigate()`, and — because that call sat OUTSIDE the function's
-  try/catch — the whole `/app/` navigation failed with Chrome's generic "ServiceWorker
-  intercepted the request and encountered an unexpected error," which also explains
-  why `beforeinstallprompt` never fires for them (Chrome won't consider a site
-  installable if its own SW errors on the start_url). Fixed defensively in `v3`:
-  `handleNavigate()`'s entire body is now try/caught, any Cache Storage failure falls
-  back to a live network fetch or a minimal inline offline page instead of an unhandled
-  rejection, and every branch `console.error`/`console.warn`s so this is diagnosable
-  from DevTools instead of a mystery. **This does NOT fix the underlying quota growth**
-  — `MEDIA_CACHE` still has no cap. See TODOS.md.
+- **`MEDIA_CACHE` (service-worker.js) has no eviction.** Friend photos/videos are
+  cached-first, forever, with no size cap or LRU pruning. This was the leading
+  suspect for the v3-v7 crash chain below but turned out NOT to be the trigger in
+  the case that was actually debugged (Cache Storage was empty in that repro, not
+  full) — it remains a real, separate latent risk. **Still not fixed** — see
+  TODOS.md.
 - **`readCache.ts`'s Drive-pull tier is the oldest data you'll ever render** — the bundle is
   only as fresh as `BundleExportService`'s last scheduled run (backend, services/backup),
   not the live server state. No staleness UI ships with this pass (T4b in the design doc is
@@ -344,7 +388,8 @@ full round trip:
 | Reachability probe / timeout | `connectivity.ts`'s `isServerReachable(timeoutMs)` |
 | IndexedDB schema | `db.ts`'s `openDB()` (bump `DB_VERSION` on any store change) |
 | Navigate-fetch fallback chain (network → shell cache → offline page) | `service-worker.js`'s `handleNavigate()` — bump `VERSION` after any change |
-| SW diagnostic logging | `service-worker.js`'s `console.error`/`console.warn` calls in `handleNavigate()` |
+| SW diagnostic logging (visible in Firefox too) | `service-worker.js`'s `broadcastLog(level, message, detail)` — used by `handleNavigate()`, `cacheFirst()`, `staleWhileRevalidate()`, and the top-level `fetch` listener's catch; received in the page console via `registerSW.ts`'s `message` listener (`[SW→page]` prefix) |
+| Cache-open failure handling for build assets/icons/media | `service-worker.js`'s `cacheFirst()` / `staleWhileRevalidate()` — both wrap `caches.open()` and fall back to a live `fetch()`, same pattern as `handleNavigate()` |
 | Add a new page's cached read | `readCache.ts`'s `readThrough(cacheKey, fetchFn)` — call from the owning page, pick a cacheKey convention |
 | Cache tier order (server/local/Drive) | `readCache.ts`'s `readThrough()` |
 | Drive bundle filename / folder | `driveClient.ts`'s `BUNDLE_FILE_NAME` / `pullBundle()` |
@@ -365,3 +410,4 @@ full round trip:
 | Apply a waiting update (user-click only, never proactive) | `registerSW.ts`'s `applyUpdate()` |
 | Update-available detection | `registerSW.ts`'s `watchForWaitingWorker()` / `registerServiceWorker()`'s `updatefound` handling |
 | Update-check polling (download only, doesn't apply) | `NavigationBar.tsx`'s `visibilitychange` → `checkForUpdate()` |
+| index.html's injected CSS link (CRA auto-injects the real hashed one) | `../../public/index.html` — do not hand-add a `<link ... main.css>`, CRA's `HtmlWebpackPlugin` does this at build time; a stray unhashed one 404s→302s→gets served as `text/html`→blocked by `nosniff` |
