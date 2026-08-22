@@ -45,6 +45,9 @@ public interface FriendRepository extends JpaRepository<Friend, Integer> {
     // Bin view.
     List<Friend> findByDeletedAtIsNotNull();
 
+    // FriendService.getFriendsCount() — plain count() includes the bin.
+    long countByDeletedAtIsNull();
+
     // PurgeService: everything soft-deleted more than 7 days ago.
     List<Friend> findByDeletedAtBefore(LocalDateTime cutoff);
 

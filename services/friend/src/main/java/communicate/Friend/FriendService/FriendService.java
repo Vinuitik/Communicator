@@ -320,7 +320,7 @@ public class FriendService {
     // Get total count of friends
     @Transactional
     public long getFriendsCount() {
-        return friendRepository.count();
+        return friendRepository.countByDeletedAtIsNull();
     }
 
     // Paginated friends for UI (returns full Friend entities)
