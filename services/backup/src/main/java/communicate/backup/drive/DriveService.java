@@ -298,6 +298,38 @@ public class DriveService {
 
     public record BackupInfo(String fileId, String name, long createdAt, long sizeBytes) {}
 
+    // ── Single-file artifacts (find-or-replace, no history) ───────────────────────
+
+    /**
+     * Find-or-replace a single named file directly in the root folder. Unlike
+     * {@link #uploadBackup} (always creates a new timestamped file, relies on the caller
+     * for retention/pruning), this keeps exactly ONE current copy — overwrites content in
+     * place if a file with this name already exists in the root folder, else creates it.
+     *
+     * <p>Used by the offline-bundle export job (BundleExportService, in bootstrap — needs
+     * friend/group/connections/meeting, which this module deliberately does not depend on,
+     * same reasoning as MailboxConsumeService living in bootstrap rather than here) to keep
+     * a single refreshed {@code offline-bundle.json.enc} snapshot, distinct from both the
+     * timestamped {@code kind=db} backups and the transient {@code _mailbox} relay files.
+     */
+    public String uploadOrReplace(byte[] bytes, String name, String kind) throws IOException {
+        Drive d = requireClient();
+        String folderId = rootFolderId();
+        FileList found = d.files().list()
+            .setQ("name = '" + name + "' and '" + folderId + "' in parents and trashed = false")
+            .setFields("files(id)").setPageSize(1).execute();
+        ByteArrayContent content = new ByteArrayContent("application/octet-stream", bytes);
+
+        if (!found.getFiles().isEmpty()) {
+            String fileId = found.getFiles().get(0).getId();
+            return withRetry(() -> d.files().update(fileId, new File(), content).setFields("id").execute()).getId();
+        }
+        Map<String, String> props = new HashMap<>();
+        props.put("kind", kind);
+        File meta = new File().setName(name).setParents(Collections.singletonList(folderId)).setAppProperties(props);
+        return withRetry(() -> d.files().create(meta, content).setFields("id").execute()).getId();
+    }
+
     // ── Retry (verbatim from OO) ──────────────────────────────────────────────────
 
     private <T> T withRetry(DriveCall<T> call) throws IOException {
