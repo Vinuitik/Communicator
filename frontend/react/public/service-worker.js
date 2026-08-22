@@ -29,7 +29,12 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v5'; // v5: removed the unconditional self.skipWaiting() in install().
+const VERSION = 'v6'; // v6: broadcastLog() bridges [SW] logs to the page console via
+// postMessage (Firefox never surfaces a SW's own console output in the normal page
+// console — see broadcastLog's comment below), and the whole 'fetch' listener body
+// is now try/caught so a synchronous throw before respondWith() is diagnosable
+// instead of surfacing only as the opaque "unexpected error" browsers show.
+// v5: removed the unconditional self.skipWaiting() in install().
 // Every prior version force-activated the instant it finished downloading — mid-
 // session, on ANY open tab, with zero user say in it (compounded by NavigationBar
 // polling checkForUpdate() on every tab-focus). That's a real failure mode: an
@@ -40,6 +45,27 @@ const VERSION = 'v5'; // v5: removed the unconditional self.skipWaiting() in ins
 // only thing allowed to call that, and only from a user click.
 const SHELL_CACHE = `communicator-shell-${VERSION}`;
 const MEDIA_CACHE = 'communicator-media'; // unversioned: media doesn't change once uploaded
+
+// Firefox does NOT surface a service worker's own console.* output in the page's
+// regular DevTools console — it only shows up in a separate inspector
+// (about:debugging#/runtime/this-firefox → this SW → Inspect). That made every
+// [SW] log below invisible during the v3-v5 debugging chain even though they were
+// firing the whole time. broadcastLog() still logs normally (for Chrome / the SW's
+// own console) AND postMessages the same info to every open client, where
+// registerSW.ts re-logs it with a [SW→page] prefix — so it lands in the ONE
+// console every browser actually shows by default.
+function broadcastLog(level, message, detail) {
+  const fn = console[level] || console.log;
+  fn.call(console, '[SW]', message, detail);
+  self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+    clients.forEach((c) => c.postMessage({
+      type: 'SW_LOG',
+      level,
+      message,
+      detail: detail ? String((detail && detail.message) || detail) : undefined,
+    }));
+  }).catch(() => {});
+}
 
 const SHELL_URLS = ['/app/', '/app/index.html', '/app/manifest.json'];
 
@@ -121,42 +147,52 @@ function putPendingShare(record) {
 }
 
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+  // Whole body wrapped: a synchronous throw ANYWHERE in here (bad URL parsing, a
+  // regex blowing up, anything) happens before respondWith() is ever called, which
+  // Firefox and Chrome both then report as exactly the opaque "ServiceWorker
+  // intercepted the request and encountered an unexpected error" — with no [SW] log
+  // at all, since nothing downstream ever ran. This try/catch is the only thing that
+  // can make that specific failure mode visible.
+  try {
+    const { request } = event;
+    const url = new URL(request.url);
 
-  // OS share sheet → POST /app/share-target. Field name 'media' must match
-  // manifest.json's share_target.params.files[0].name.
-  if (request.method === 'POST' && url.pathname === '/app/share-target') {
-    event.respondWith(handleShareTarget(request));
-    return;
+    // OS share sheet → POST /app/share-target. Field name 'media' must match
+    // manifest.json's share_target.params.files[0].name.
+    if (request.method === 'POST' && url.pathname === '/app/share-target') {
+      event.respondWith(handleShareTarget(request));
+      return;
+    }
+
+    if (request.method !== 'GET') return; // never cache writes
+
+    // Navigations → network-first, fall back to the cached shell on ANY failure
+    // (offline, DNS down, or a reachable-but-broken origin returning a bad status)
+    // so the installed app still boots.
+    if (request.mode === 'navigate') {
+      event.respondWith(handleNavigate(request));
+      return;
+    }
+
+    if (url.origin === self.location.origin && isAppIcon(url.pathname)) {
+      event.respondWith(staleWhileRevalidate(request, SHELL_CACHE));
+      return;
+    }
+
+    if (url.origin === self.location.origin && isMedia(url.pathname)) {
+      event.respondWith(cacheFirst(request, MEDIA_CACHE));
+      return;
+    }
+
+    if (url.origin === self.location.origin && isBuildAsset(url.pathname)) {
+      event.respondWith(staleWhileRevalidate(request, SHELL_CACHE));
+      return;
+    }
+
+    // Everything else (incl. /api/* data GETs) → straight to network, no caching.
+  } catch (e) {
+    broadcastLog('error', 'fetch listener threw synchronously before respondWith — this IS the "unexpected error" Firefox shows', e);
   }
-
-  if (request.method !== 'GET') return; // never cache writes
-
-  // Navigations → network-first, fall back to the cached shell on ANY failure
-  // (offline, DNS down, or a reachable-but-broken origin returning a bad status)
-  // so the installed app still boots.
-  if (request.mode === 'navigate') {
-    event.respondWith(handleNavigate(request));
-    return;
-  }
-
-  if (url.origin === self.location.origin && isAppIcon(url.pathname)) {
-    event.respondWith(staleWhileRevalidate(request, SHELL_CACHE));
-    return;
-  }
-
-  if (url.origin === self.location.origin && isMedia(url.pathname)) {
-    event.respondWith(cacheFirst(request, MEDIA_CACHE));
-    return;
-  }
-
-  if (url.origin === self.location.origin && isBuildAsset(url.pathname)) {
-    event.respondWith(staleWhileRevalidate(request, SHELL_CACHE));
-    return;
-  }
-
-  // Everything else (incl. /api/* data GETs) → straight to network, no caching.
 });
 
 // Everything in here — including caches.open() itself — used to be able to throw
@@ -169,34 +205,35 @@ self.addEventListener('fetch', (event) => {
 // DevTools → Application → Service Workers → "communicator-app" (or just the
 // page console) to see which branch fired and why.
 async function handleNavigate(request) {
+  broadcastLog('log', 'handleNavigate start', request.url);
   try {
     const cache = await caches.open(SHELL_CACHE);
     try {
       const res = await fetchWithTimeout(request, 3500);
       if (res && res.ok) {
         cache.put('/app/index.html', res.clone()).catch((e) =>
-          console.error('[SW] failed to update shell cache after a live fetch', e));
+          broadcastLog('error', 'failed to update shell cache after a live fetch', e));
         return res;
       }
-      console.warn('[SW] navigate fetch returned', res && res.status, '— falling back to cached shell');
+      broadcastLog('warn', `navigate fetch returned status ${res && res.status} — falling back to cached shell`);
       const cached = (await cache.match('/app/index.html')) || (await cache.match('/app/'));
       return cached || res;
     } catch (fetchErr) {
-      console.warn('[SW] navigate fetch failed (offline or timeout), falling back to cached shell', fetchErr);
+      broadcastLog('warn', 'navigate fetch failed (offline or timeout), falling back to cached shell', fetchErr);
       const cached = (await cache.match('/app/index.html')) || (await cache.match('/app/'));
       if (cached) return cached;
-      console.error('[SW] no cached shell available either — serving inline offline page', fetchErr);
+      broadcastLog('error', 'no cached shell available either — serving inline offline page', fetchErr);
       return offlineFallbackResponse();
     }
   } catch (cacheErr) {
     // caches.open() (or any other Cache Storage call) itself failed — this is the
     // bug that used to produce the generic error above. Quota exceeded is the
     // most likely cause given MEDIA_CACHE has no eviction (see FLOWS.md).
-    console.error('[SW] Cache Storage unavailable — serving live network response with no cache fallback', cacheErr);
+    broadcastLog('error', 'Cache Storage unavailable — serving live network response with no cache fallback', cacheErr);
     try {
       return await fetch(request);
     } catch (networkErr) {
-      console.error('[SW] Cache Storage AND network both unavailable', networkErr);
+      broadcastLog('error', 'Cache Storage AND network both unavailable', networkErr);
       return offlineFallbackResponse();
     }
   }

@@ -38,6 +38,18 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     console.info('[PWA] not a secure context — service worker skipped');
     return null;
   }
+  // Firefox never surfaces a service worker's own console.* output in the page's
+  // regular DevTools console (it only shows up in a separate about:debugging
+  // inspector) — this bridges service-worker.js's broadcastLog() postMessages back
+  // into the one console every browser actually shows by default.
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SW_LOG') {
+      const { level, message, detail } = event.data;
+      const fn = (console as unknown as Record<string, (...args: unknown[]) => void>)[level] || console.log;
+      fn('[SW→page]', message, detail || '');
+    }
+  });
+
   try {
     const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
     registration = await navigator.serviceWorker.register(swUrl, { scope: `${process.env.PUBLIC_URL}/` });
