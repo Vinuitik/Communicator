@@ -29,29 +29,48 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v3'; // bumped: handleNavigate() no longer lets a Cache Storage failure
-// (e.g. quota exceeded — MEDIA_CACHE has no eviction) crash the whole navigation with
-// an unhandled rejection ("ServiceWorker intercepted the request..."); also resets the
-// shell cache to a fresh key in case v2's was the one hitting quota.
+const VERSION = 'v4'; // v3 fixed handleNavigate()'s unhandled Cache Storage rejection but
+// COULD NOT ACTUALLY INSTALL under quota exhaustion: the install handler's own
+// cache.addAll() had no error handling, so a failed precache rejected waitUntil() and
+// the spec discards a service worker whose install fails — v3 was stuck retrying
+// forever, never activating, same as the v2 it was meant to replace. v4 fixes the
+// install/activate handlers to degrade instead of failing outright, so this can
+// actually take over even while Cache Storage is still over quota.
 const SHELL_CACHE = `communicator-shell-${VERSION}`;
 const MEDIA_CACHE = 'communicator-media'; // unversioned: media doesn't change once uploaded
 
 const SHELL_URLS = ['/app/', '/app/index.html', '/app/manifest.json'];
 
+// If precaching fails (quota exceeded is the live suspect — see FLOWS.md), the OLD
+// install handler let that rejection propagate out of waitUntil(), which per spec
+// DISCARDS the new service worker entirely — it never activates, skipWaiting() never
+// runs, and the browser silently keeps running whatever buggy version was already
+// active, forever, no matter how many times the page is reloaded. This was the exact
+// deadlock behind v3 failing to take over from v2: the fix needed a successful cache
+// write to install, and a successful cache write was the very thing broken. Precache
+// failure now degrades to "install with an empty shell cache" instead of "don't
+// install at all" — handleNavigate()'s network-first fetch still works fine with
+// nothing precached, it just always goes to the network until Cache Storage frees up.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL_URLS)).then(() => self.skipWaiting())
+    caches.open(SHELL_CACHE)
+      .then((c) => c.addAll(SHELL_URLS))
+      .catch((e) => console.error('[SW] shell precache failed during install (quota?) — installing anyway, navigation will fall back to network-only until Cache Storage frees up', e))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((k) => k.startsWith('communicator-shell-') && k !== SHELL_CACHE)
-          .map((k) => caches.delete(k))
+    caches.keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k.startsWith('communicator-shell-') && k !== SHELL_CACHE)
+            .map((k) => caches.delete(k))
+        )
       )
-    ).then(() => self.clients.claim())
+      .catch((e) => console.error('[SW] old shell-cache cleanup failed — continuing to claim clients anyway', e))
+      .then(() => self.clients.claim())
   );
 });
 
