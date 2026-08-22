@@ -48,12 +48,31 @@ async function fillAndSubmitAddFriendForm(page: Page, name: string): Promise<voi
 }
 
 test.describe('offline outbox — three-tier write path', () => {
+  // Registered by name (not id — the id often isn't known yet if the test
+  // fails/times out before findFriendByName resolves) the moment each test
+  // decides its friend's name, so afterEach can always find and clean it up
+  // regardless of where the test failed. This is the fix for the previous
+  // inline "if (friend) await deleteFriend(friend.id)" at each test's tail,
+  // which silently skipped cleanup on any earlier assertion failure/timeout
+  // — that's how orphaned E2E-Cold-*/E2E-Warm-* friends piled up.
+  const createdFriendNames: string[] = [];
+
   test.beforeAll(async () => {
     await startContainer(APP_CONTAINER);
     await waitForServerUp();
   });
 
   test.afterEach(async () => {
+    for (const name of createdFriendNames.splice(0)) {
+      try {
+        const friend = await findFriendByName(name);
+        if (friend) await deleteFriend(friend.id);
+      } catch {
+        // Best-effort — a friend that failed to even get created has
+        // nothing to clean up.
+      }
+    }
+
     // Safety net regardless of pass/fail: leave the real app running for the user.
     await startContainer(APP_CONTAINER).catch(() => {});
     await waitForServerUp().catch(() => {});
@@ -61,6 +80,7 @@ test.describe('offline outbox — three-tier write path', () => {
 
   test('cold outage: write queues locally (no Drive token cached yet) and flushes on recovery', async ({ page }) => {
     const name = `E2E-Cold-${Date.now()}`;
+    createdFriendNames.push(name);
 
     // Stopping before the first navigation is what makes this "cold" — the app's proactive
     // bridge-warming (outbox.ts's keepBridgeWarm, called from wireAutoFlush on load) never
@@ -87,12 +107,11 @@ test.describe('offline outbox — three-tier write path', () => {
       friend = await findFriendByName(name);
       expect(friend).toBeTruthy();
     }).toPass({ timeout: 30_000 });
-
-    if (friend) await deleteFriend(friend.id);
   });
 
   test('warm bridge: write relays through Drive while server is down, drained by MailboxConsumeService on restart', async ({ page }) => {
     const name = `E2E-Warm-${Date.now()}`;
+    createdFriendNames.push(name);
 
     // Load the app while the server is healthy so keepBridgeWarm() has a real chance to mint
     // and cache a Drive bridge token before the outage — this is the behavior the proactive-
@@ -122,7 +141,5 @@ test.describe('offline outbox — three-tier write path', () => {
       friend = await findFriendByName(name);
       expect(friend).toBeTruthy();
     }).toPass({ timeout: 60_000 });
-
-    if (friend) await deleteFriend(friend.id);
   });
 });
