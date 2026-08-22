@@ -46,6 +46,12 @@ export function isMobile(): boolean {
   return isIOS() || /Android|Mobi/i.test(window.navigator.userAgent);
 }
 
+// Real Android only, not "any mobile" — gates the sideloadable APK card (GetAppPage),
+// which iOS can't use at all (no APK, no sideloading).
+export function isAndroid(): boolean {
+  return /Android/i.test(window.navigator.userAgent);
+}
+
 export function state(): InstallState {
   return { canInstall: !!deferred, installed: isStandalone() };
 }

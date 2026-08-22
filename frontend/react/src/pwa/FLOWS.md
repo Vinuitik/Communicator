@@ -425,3 +425,5 @@ full round trip:
 | Update-available detection | `registerSW.ts`'s `watchForWaitingWorker()` / `registerServiceWorker()`'s `updatefound` handling |
 | Update-check polling (download only, doesn't apply) | `NavigationBar.tsx`'s `visibilitychange` → `checkForUpdate()` |
 | index.html's injected CSS link (CRA auto-injects the real hashed one) | `../../public/index.html` — do not hand-add a `<link ... main.css>`, CRA's `HtmlWebpackPlugin` does this at build time; a stray unhashed one 404s→302s→gets served as `text/html`→blocked by `nosniff` |
+| Desktop app download card (Windows/Linux) | `components/pages/GetAppPage/GetAppPage.tsx` — links to `/downloads/communicator-desktop-setup.exe` / `.AppImage`, see `desktop/electron/FLOWS.md` for the shell that produces them |
+| Android APK download card | `components/pages/GetAppPage/GetAppPage.tsx` + `installPrompt.ts`'s `isAndroid()` — links to `/downloads/communicator.apk`, see `mobile/capacitor/FLOWS.md` for the shell that produces it |

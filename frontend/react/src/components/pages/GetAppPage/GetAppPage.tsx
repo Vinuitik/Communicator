@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { onInstallChange, promptInstall, isIOS, isFirefox, isMobile, InstallState } from '../../../pwa/installPrompt';
+import { onInstallChange, promptInstall, isIOS, isFirefox, isMobile, isAndroid, InstallState } from '../../../pwa/installPrompt';
 import { onUpdateAvailable, checkForUpdate, applyUpdate } from '../../../pwa/registerSW';
 
 // Desktop installer for the browser extension. Absolute paths, not routed through
@@ -11,6 +11,13 @@ const EXTENSION_ZIP = '/downloads/communicator-extension.zip';
 // requires signing for a persistent install; see extension/deploy-extension.sh).
 // "latest" is a stable alias so this link survives every version bump.
 const EXTENSION_XPI = '/ext/communicator-extension-latest.xpi';
+
+// Electron shell (desktop/electron/) and Capacitor shell (mobile/capacitor/) — thin
+// webviews pointed at the live prod URL, not bundled static builds. See flows/
+// native-app-downloads.md for the full click → nginx → binary → shell picture.
+const DESKTOP_EXE = '/downloads/communicator-desktop-setup.exe';
+const DESKTOP_APPIMAGE = '/downloads/communicator-desktop.AppImage';
+const ANDROID_APK = '/downloads/communicator.apk';
 
 const primaryButtonClasses =
   'inline-block px-4 py-2 rounded-input text-sm font-bold bg-accent-gradient text-white shadow-button-sm hover:brightness-110 disabled:opacity-50 transition-all';
@@ -114,6 +121,44 @@ const GetAppPage: React.FC = () => {
                 </p>
               </>
             )}
+          </Card>
+        )}
+
+        {!isMobile() && (
+          <Card badge="Windows / Linux" title="Desktop app">
+            <p className="text-text-muted text-sm mb-3">
+              A standalone window that loads Communicator directly — no browser tab needed.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <a className={primaryButtonClasses} href={DESKTOP_EXE} download>Download for Windows</a>
+              <a className={primaryButtonClasses} href={DESKTOP_APPIMAGE} download>Download for Linux</a>
+            </div>
+            <p className="text-text-faint text-xs mt-2">
+              Unsigned — no code-signing cert yet. On{' '}
+              <strong className="text-text-secondary">Windows</strong>, SmartScreen will say
+              "Windows protected your PC"; click{' '}
+              <strong className="text-text-secondary">More info → Run anyway</strong>, this is
+              expected. On <strong className="text-text-secondary">Linux</strong>, mark the
+              AppImage executable first: <code className="text-accent-light">chmod +x
+              communicator-desktop.AppImage</code>. No macOS build is offered.
+            </p>
+          </Card>
+        )}
+
+        {isAndroid() && (
+          <Card badge="Android" title="Android APK">
+            <p className="text-text-muted text-sm mb-3">
+              A direct sideload of the app, not a Play Store install — no store account needed.
+            </p>
+            <a className={primaryButtonClasses} href={ANDROID_APK} download>Download APK</a>
+            <p className="text-text-faint text-xs mt-2">
+              Android blocks installs from outside the Play Store by default. When you open the
+              downloaded file, tap <strong className="text-text-secondary">Settings</strong> in
+              the warning dialog and enable{' '}
+              <strong className="text-text-secondary">Allow from this source</strong> (wording
+              varies by Android version), then go back and tap{' '}
+              <strong className="text-text-secondary">Install</strong>.
+            </p>
           </Card>
         )}
 
