@@ -29,11 +29,19 @@
  * :8090 plain-http origin will refuse registration everywhere else.
  */
 
-const VERSION = 'v6'; // v6: broadcastLog() bridges [SW] logs to the page console via
-// postMessage (Firefox never surfaces a SW's own console output in the normal page
-// console — see broadcastLog's comment below), and the whole 'fetch' listener body
-// is now try/caught so a synchronous throw before respondWith() is diagnosable
-// instead of surfacing only as the opaque "unexpected error" browsers show.
+const VERSION = 'v7'; // v7: the ACTUAL fix for the "ServiceWorker intercepted the
+// request and encountered an unexpected error" crash. v6 only wrapped
+// handleNavigate() and the top-level fetch listener; cacheFirst() and
+// staleWhileRevalidate() — which handle EVERY build-asset/media/icon request, i.e.
+// almost all of them — still let caches.open() throw straight out to
+// event.respondWith() uncaught whenever Cache Storage is unavailable. That's what
+// was actually crashing: the app's own JS bundle load (a build asset) failing this
+// way meant the React app, and with it the update-available UI, never rendered.
+// v6: broadcastLog() bridges [SW] logs to the page console via postMessage
+// (Firefox never surfaces a SW's own console output in the normal page console —
+// see broadcastLog's comment below), and the whole 'fetch' listener body is now
+// try/caught so a synchronous throw before respondWith() is diagnosable instead of
+// surfacing only as the opaque "unexpected error" browsers show.
 // v5: removed the unconditional self.skipWaiting() in install().
 // Every prior version force-activated the instant it finished downloading — mid-
 // session, on ANY open tab, with zero user say in it (compounded by NavigationBar
@@ -275,27 +283,52 @@ function isBuildAsset(path) {
   return path.startsWith('/app/static/') || /\.(js|css|woff2?|ttf)$/i.test(path);
 }
 
+// Both cache strategies below used to let caches.open()/cache.match() throw straight
+// out to event.respondWith() uncaught — the exact "ServiceWorker intercepted the
+// request and encountered an unexpected error" bug, just on build-asset/media
+// requests instead of navigations. handleNavigate got this fix first; these two were
+// the actual culprit for a case where Cache Storage itself is unavailable (broken
+// profile, private browsing, storage partitioning) since EVERY JS/CSS/media request
+// routes through one of these two, unlike the single navigation request.
 async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  if (hit) return hit;
   try {
-    const res = await fetch(request);
-    if (res.ok) cache.put(request, res.clone());
-    return res;
-  } catch (e) {
-    return hit || Response.error();
+    const cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    if (hit) return hit;
+    try {
+      const res = await fetch(request);
+      if (res.ok) cache.put(request, res.clone());
+      return res;
+    } catch (e) {
+      return hit || Response.error();
+    }
+  } catch (cacheErr) {
+    broadcastLog('error', 'cacheFirst: Cache Storage unavailable, falling back to live network', cacheErr);
+    try {
+      return await fetch(request);
+    } catch (networkErr) {
+      return Response.error();
+    }
   }
 }
 
 async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const hit = await cache.match(request);
-  const fetching = fetch(request).then((res) => {
-    if (res.ok) cache.put(request, res.clone());
-    return res;
-  }).catch(() => hit);
-  return hit || fetching;
+  try {
+    const cache = await caches.open(cacheName);
+    const hit = await cache.match(request);
+    const fetching = fetch(request).then((res) => {
+      if (res.ok) cache.put(request, res.clone());
+      return res;
+    }).catch(() => hit);
+    return hit || fetching;
+  } catch (cacheErr) {
+    broadcastLog('error', 'staleWhileRevalidate: Cache Storage unavailable, falling back to live network', cacheErr);
+    try {
+      return await fetch(request);
+    } catch (networkErr) {
+      return Response.error();
+    }
+  }
 }
 
 // Share sheet → POST /app/share-target (multipart/form-data, per manifest.json's
