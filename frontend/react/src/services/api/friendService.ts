@@ -90,11 +90,30 @@ export const getOutreachDraft = async (friendId: number): Promise<string> => {
     return data.draft;
 };
 
+// Soft delete — moves the friend to the Bin (FriendService.deleteFriendById
+// sets deleted_at rather than removing the row).
 export const removeFriend = async (friendId: number): Promise<void> => {
     const response = await fetch(`${API_URL}/deleteFriend/${friendId}`, { method: 'DELETE' });
     if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
     }
+};
+
+export const restoreFriend = async (friendId: number): Promise<void> => {
+    const response = await fetch(`${API_URL}/restoreFriend/${friendId}`, { method: 'POST' });
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+};
+
+// Bin view — everything soft-deleted but not yet purged (7-day retention,
+// see BinPurgeService).
+export const getDeletedFriends = async (): Promise<Friend[]> => {
+    const response = await fetch(`${API_URL}/deletedFriends`);
+    if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+    }
+    return response.json();
 };
 
 // Added for the facts.html SPA port. FriendKnowledgeController.getKnowledgePaginatedCustomSize

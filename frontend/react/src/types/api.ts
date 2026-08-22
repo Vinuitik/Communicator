@@ -38,6 +38,10 @@ export interface Friend {
     // logged knowledge as flashcards, independent of the FSRS state above
     // (which drives contact scheduling, not fact recall).
     flashcardsEnabled?: boolean;
+    // Bin feature — null/undefined while active, set to an ISO timestamp
+    // once soft-deleted (FriendController's /deletedFriends returns these).
+    // PurgeService hard-deletes 7 days after this.
+    deletedAt?: string | null;
 }
 
 // Mirrors FriendKnowledge.java — @JsonProperty renames text->fact, priority->importance.

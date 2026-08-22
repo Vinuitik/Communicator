@@ -17,6 +17,7 @@ import InsightsPage from './components/pages/InsightsPage';
 import ProfilePage from './components/pages/ProfilePage';
 import FlashcardReviewPage from './components/pages/FlashcardReviewPage';
 import ShareLandingPage from './components/pages/ShareLandingPage';
+import BinPage from './components/pages/BinPage';
 import { ROUTES, profilePath } from './utils/constants';
 
 // Talked/Knowledge/Social/FileUpload used to be standalone routes — all four
@@ -51,6 +52,7 @@ const App: React.FC = () => {
             <Route path={ROUTES.CREATE_CONNECTION} element={<CreateConnectionPage />} />
             <Route path={ROUTES.CONNECTION_DETAILS} element={<ConnectionDetailsPage />} />
             <Route path={ROUTES.SETTINGS} element={<SettingsPage />} />
+            <Route path={ROUTES.BIN} element={<BinPage />} />
             <Route path={ROUTES.GET_APP} element={<GetAppPage />} />
             {/* Old "Analytics" bookmarks still land somewhere real. */}
             <Route path="/analytics" element={<Navigate to={ROUTES.INSIGHTS} replace />} />

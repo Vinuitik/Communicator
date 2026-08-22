@@ -126,6 +126,13 @@ const NavigationBar: React.FC = () => {
           <DownloadIcon />
         </Link>
         <Link
+          to={ROUTES.BIN}
+          title="Bin — deleted friends"
+          className="w-[38px] h-[38px] flex items-center justify-center rounded-input border border-white/10 bg-input text-text-muted hover:text-text-emphasis transition-colors text-base"
+        >
+          🗑
+        </Link>
+        <Link
           to={ROUTES.SETTINGS}
           title="Settings"
           className="w-[38px] h-[38px] flex items-center justify-center rounded-input border border-white/10 bg-input text-text-muted hover:text-text-emphasis transition-colors text-base"

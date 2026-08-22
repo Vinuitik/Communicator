@@ -19,6 +19,7 @@ export const ROUTES = {
   SHARE: '/share',
   FILE_UPLOAD: '/friends/:id/fileUpload',
   PROFILE: '/friends/:id/profile',
+  BIN: '/bin',
 };
 
 // ROUTES.TALKED/FRIEND_KNOWLEDGE/FRIEND_SOCIAL/FILE_UPLOAD stay registered in

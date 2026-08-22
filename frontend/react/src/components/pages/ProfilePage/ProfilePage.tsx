@@ -12,10 +12,11 @@ import AiChatWidget from '../../organisms/AiChatWidget';
 import QuickLogModal from '../../organisms/QuickLogModal';
 import ScheduleMeetingModal from '../../organisms/ScheduleMeetingModal';
 import TalkedForm, { TalkedFormValues } from '../../organisms/TalkedForm';
+import ConfirmDialog from '../../molecules/ConfirmDialog';
 import { useToast } from '../../molecules/Toast';
 import {
   getFriendProfileData, getFriend, getFriendAnalytics, getFriendGroupIds,
-  getFriendKnowledge, deleteFriendKnowledgeItem, getOutreachDraft,
+  getFriendKnowledge, deleteFriendKnowledgeItem, getOutreachDraft, removeFriend,
 } from '../../../services/api/friendService';
 import { talkedToFriendOffline, addFriendKnowledgeItemOffline } from '../../../pwa/offlineApi';
 import { getGroups } from '../../../services/api/groupService';
@@ -131,6 +132,9 @@ const ProfilePage: React.FC = () => {
   const [outreachLoading, setOutreachLoading] = useState(false);
 
   const [starBusy, setStarBusy] = useState(false);
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadFriend = useCallback(async () => {
     setLoading(true);
@@ -250,6 +254,18 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    setConfirmDeleteOpen(false);
+    setDeleting(true);
+    try {
+      await removeFriend(friendId);
+      navigate(ROUTES.FRIENDS);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to delete friend. Please try again.', 'error');
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center p-16 text-text-muted">Loading…</div>;
   }
@@ -356,6 +372,15 @@ const ProfilePage: React.FC = () => {
                 className="border border-white/10 bg-input text-text-emphasis font-semibold text-[12.5px] rounded-input hover:bg-input-2 disabled:opacity-50 transition-colors"
               >
                 {outreachLoading ? 'Drafting…' : '✍️ Draft message'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOpen(true)}
+                disabled={deleting}
+                style={{ padding: '9px 18px' }}
+                className="border border-bad/40 bg-bad/[.12] text-bad font-semibold text-[12.5px] rounded-input hover:bg-bad/[.2] disabled:opacity-50 transition-colors"
+              >
+                {deleting ? 'Deleting…' : '🗑 Delete friend'}
               </button>
             </div>
           </div>
@@ -539,6 +564,16 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete ${friend.name}?`}
+        message="Moves this friend to the Bin. You can restore them for 7 days before they're permanently deleted."
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 };
